@@ -1,11 +1,11 @@
 export type DvolCandle = [ts: number, open: number, high: number, low: number, close: number];
 
 function normalizeVol(v: number): number {
-  // DVOL sometimes comes as 0.45 (45%) or 45.0 (%); normalize to percent
+  // DVOL may come as 0.45 (45%) or 45.0 (%). Normalize to percent.
   return v < 1 ? v * 100 : v;
 }
 
-/** Latest DVOL close over a small recent window (minutes->hours). */
+/** Latest DVOL close over a small recent window (minutes→hours). */
 export async function fetchDvolLatest(
   currency: "BTC" | "ETH" = "BTC",
   resolutionSec: 60 | 3600 = 60
@@ -26,7 +26,7 @@ export async function fetchDvolLatest(
 export async function fetchDvolHistory(
   currency: "BTC" | "ETH" = "BTC",
   days = 400,
-  resolutionSec = 86400 // 1 day candles
+  resolutionSec = 86400 // daily
 ): Promise<Array<{ ts: number; closePct: number }>> {
   const end = Date.now();
   const start = end - days * 24 * 60 * 60 * 1000;

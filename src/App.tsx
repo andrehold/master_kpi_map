@@ -1,6 +1,14 @@
 import React, { useMemo, useState, useEffect } from "react";
 import {
-  ChevronDown, ChevronUp, Search, RefreshCw, Filter, Download, Sun, Moon, Cloud,
+  ChevronDown,
+  ChevronUp,
+  Search,
+  RefreshCw,
+  Filter,
+  Download,
+  Sun,
+  Moon,
+  Cloud,
 } from "lucide-react";
 import { useDeribitDvol } from "./hooks/useDeribitDvol";
 import { useIvrFromDvol } from "./hooks/useIvrFromDvol";
@@ -164,7 +172,7 @@ const KPI_GROUPS: KPIGroup[] = [
       { id: "max-dd-calmar", name: "Max drawdown & Calmar ratio", strategies: ["Expected Move"], valueType: "percent" },
       { id: "locked-vs-realized", name: "Locked vs realized edge (capture ratio)", strategies: ["Parity Edge"], valueType: "percent" },
       { id: "stress-tests", name: "Stress tests (±Y% spot, liquidity haircut)", strategies: ["Parity Edge", "Expected Move"], valueType: "percent" },
-      { id: "capital-utilization", name: "Capital utilization / margin footprint (Reg-T vs PM)", strategies: ["Box Financing", "Parity Edge"], valueType: "percent" },
+      { id: "capital-utilization", name: "Capital utilization / margin footprint (Reg‑T vs PM)", strategies: ["Box Financing", "Parity Edge"], valueType: "percent" },
       { id: "concentration-limits", name: "Concentration limits", strategies: ["Parity Edge", "Box Financing"], valueType: "percent" },
       { id: "utilization-vs-caps", name: "Utilization vs daily/expiry risk caps", strategies: ["Carry Trade", "Parity Edge", "Box Financing"], valueType: "percent" },
     ],
@@ -207,6 +215,7 @@ function sampleFor(type: KPIValueType): string {
 }
 
 const ALL_KPIS = KPI_GROUPS.flatMap((g) => g.kpis.map((k) => k.id));
+
 type Samples = Record<string, string>;
 
 function buildSamples(): Samples {
@@ -271,16 +280,16 @@ function TokenStyles({ theme }: { theme: ThemeKey }) {
   return <style>{css}</style>;
 }
 
-// --- UI helpers --------------------------------------------------------------
-function StrategyTag({
-  label,
-  active = false,
-  onClick,
-}: {
-  label: Strategy;
-  active?: boolean;
-  onClick?: () => void;
-}) {
+// --- Small UI primitives -----------------------------------------------------
+function Badge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border border-[var(--border)] bg-[var(--surface-900)] text-[10px] text-[var(--fg-muted)]">
+      {children}
+    </span>
+  );
+}
+
+function StrategyTag({ label, active = false, onClick }: { label: Strategy; active?: boolean; onClick?: () => void }) {
   return (
     <button
       onClick={onClick}
@@ -296,15 +305,7 @@ function StrategyTag({
   );
 }
 
-function GroupHeader({
-  title,
-  open,
-  onToggle,
-}: {
-  title: string;
-  open: boolean;
-  onToggle: () => void;
-}) {
+function GroupHeader({ title, open, onToggle }: { title: string; open: boolean; onToggle: () => void }) {
   return (
     <button
       onClick={onToggle}
@@ -315,55 +316,25 @@ function GroupHeader({
           <span className="h-4 w-1 rounded-full bg-gradient-to-b from-[var(--brand-500)] to-[var(--brand-400)]" />
           {title}
         </h3>
-        <p className="text-xs text-[var(--fg-muted)]">
-          Click to {open ? "collapse" : "expand"}
-        </p>
+        <p className="text-xs text-[var(--fg-muted)]">Click to {open ? "collapse" : "expand"}</p>
       </div>
-      {open ? (
-        <ChevronUp className="w-5 h-5 text-[var(--fg-muted)]" />
-      ) : (
-        <ChevronDown className="w-5 h-5 text-[var(--fg-muted)]" />
-      )}
+      {open ? <ChevronUp className="w-5 h-5 text-[var(--fg-muted)]" /> : <ChevronDown className="w-5 h-5 text-[var(--fg-muted)]" />}
     </button>
   );
 }
 
-function Badge({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border border-[var(--border)] bg-[var(--surface-900)] text-[10px] text-[var(--fg-muted)]">
-      {children}
-    </span>
-  );
-}
-
-function KpiCard({
-  kpi,
-  value,
-  meta,
-  extraBadge, // e.g., "IVP 72"
-}: {
-  kpi: KPIDef;
-  value: string;
-  meta?: string;
-  extraBadge?: string | null;
-}) {
+function KpiCard({ kpi, value, meta, extraBadge }: { kpi: KPIDef; value: string; meta?: string; extraBadge?: string | null; }) {
   return (
     <div className="group rounded-2xl border border-[var(--border)] bg-[var(--surface-950)] p-4 shadow-[var(--shadow)] hover:border-[var(--brand-500)]/30 transition">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="text-[var(--fg)] font-medium leading-snug">
-            {kpi.name}
-          </div>
+          <div className="text-[var(--fg)] font-medium leading-snug">{kpi.name}</div>
           {kpi.description && (
-            <div className="text-xs text-[var(--fg-muted)] mt-0.5">
-              {kpi.description}
-            </div>
+            <div className="text-xs text-[var(--fg-muted)] mt-0.5">{kpi.description}</div>
           )}
         </div>
         <div className="text-right">
-          <div className="text-xl font-semibold tabular-nums font-mono text-[var(--fg)]">
-            {value}
-          </div>
+          <div className="text-xl font-semibold tabular-nums font-mono text-[var(--fg)]">{value}</div>
           <div className="mt-1 flex items-center gap-1 justify-end">
             {extraBadge ? <Badge>{extraBadge}</Badge> : null}
             <div className="text-[10px] text-[var(--fg-muted)] flex items-center gap-1">
@@ -375,10 +346,7 @@ function KpiCard({
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5">
         {kpi.strategies.map((s) => (
-          <span
-            key={s}
-            className="px-2 py-0.5 rounded-full text-[10px] border border-[var(--border)] text-[var(--fg-muted)] bg-[var(--surface-900)]"
-          >
+          <span key={s} className="px-2 py-0.5 rounded-full text-[10px] border border-[var(--border)] text-[var(--fg-muted)] bg-[var(--surface-900)]">
             {s}
           </span>
         ))}
@@ -401,38 +369,18 @@ export default function MasterKPIMapDemo() {
   const [samples, setSamples] = useState<Samples>(() => buildSamples());
   const [theme, setTheme] = useState<ThemeKey>("light");
 
-  // Live data hooks (BTC by default). Change to "ETH" if needed.
-  const {
-    valuePct: dvolPct,
-    lastUpdated: dvolTs,
-    loading: dvolLoading,
-    error: dvolError,
-    refresh: refreshDvol,
-  } = useDeribitDvol("BTC");
-  const {
-    ivr,
-    ivp,
-    lastUpdated: ivrTs,
-    loading: ivrLoading,
-    error: ivrError,
-    refresh: refreshIvr,
-  } = useIvrFromDvol("BTC");
+  // Live data (BTC by default)
+  const { valuePct: dvolPct, lastUpdated: dvolTs, loading: dvolLoading, error: dvolError, refresh: refreshDvol } = useDeribitDvol("BTC");
+  const { ivr, ivp, lastUpdated: ivrTs, loading: ivrLoading, error: ivrError, refresh: refreshIvr } = useIvrFromDvol("BTC");
 
-  useEffect(() => {
-    setSamples(buildSamples());
-  }, []);
+  useEffect(() => { setSamples(buildSamples()); }, []);
 
   const filteredGroups = useMemo(() => {
     const q = search.trim().toLowerCase();
     return KPI_GROUPS.map((group) => {
       const kpis = group.kpis.filter((k) => {
-        const matchesText =
-          !q ||
-          k.name.toLowerCase().includes(q) ||
-          k.id.toLowerCase().includes(q);
-        const matchesStrategy =
-          activeStrategies.length === 0 ||
-          activeStrategies.some((s) => k.strategies.includes(s));
+        const matchesText = !q || k.name.toLowerCase().includes(q) || k.id.toLowerCase().includes(q);
+        const matchesStrategy = activeStrategies.length === 0 || activeStrategies.some((s) => k.strategies.includes(s));
         return matchesText && matchesStrategy;
       });
       return { ...group, kpis } as KPIGroup;
@@ -443,16 +391,10 @@ export default function MasterKPIMapDemo() {
   const visibleKpis = filteredGroups.reduce((acc, g) => acc + g.kpis.length, 0);
 
   function toggleStrategy(s: Strategy) {
-    setActiveStrategies((prev) =>
-      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
-    );
+    setActiveStrategies((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
   }
-  function toggleGroup(id: string) {
-    setOpenGroups((prev) => ({ ...prev, [id]: !prev[id] }));
-  }
-  function regenerate() {
-    setSamples(buildSamples());
-  }
+  function toggleGroup(id: string) { setOpenGroups((prev) => ({ ...prev, [id]: !prev[id] })); }
+  function regenerate() { setSamples(buildSamples()); }
   function exportJSON() {
     const payload = {
       generated_at: new Date().toISOString(),
@@ -460,22 +402,13 @@ export default function MasterKPIMapDemo() {
       groups: KPI_GROUPS.map((g) => ({
         id: g.id,
         title: g.title,
-        kpis: g.kpis.map((k) => ({
-          id: k.id,
-          name: k.name,
-          strategies: k.strategies,
-          value: samples[k.id],
-        })),
+        kpis: g.kpis.map((k) => ({ id: k.id, name: k.name, strategies: k.strategies, value: samples[k.id] })),
       })),
     };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json",
-    });
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = `master-kpi-map-sample-${Date.now()}.json`;
-    a.click();
+    a.href = url; a.download = `master-kpi-map-sample-${Date.now()}.json`; a.click();
     URL.revokeObjectURL(url);
   }
 
@@ -484,44 +417,26 @@ export default function MasterKPIMapDemo() {
   }
 
   return (
-    <div
-      data-theme="tm"
-      style={{ colorScheme: TOKENS[theme].colorScheme as any }}
-      className="min-h-screen bg-[var(--bg)] text-[var(--fg)]"
-    >
+    <div data-theme="tm" style={{ colorScheme: TOKENS[theme].colorScheme as any }} className="min-h-screen bg-[var(--bg)] text-[var(--fg)]">
       <TokenStyles theme={theme} />
+
       {/* Header */}
       <header className="sticky top-0 z-30 backdrop-blur bg-[var(--surface-950)]/95 border-b border-[var(--border)]">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3 justify-between">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[var(--brand-600)] to-[var(--brand-400)] text-white grid place-items-center shadow-[var(--shadow)]">
-              <svg
-                viewBox="0 0 24 24"
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M12 3l8 4-8 4-8-4 8-4Z" />
-                <path d="M4 11l8 4 8-4" />
-                <path d="M4 17l8 4 8-4" />
-              </svg>
+              <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3l8 4-8 4-8-4 8-4Z"/><path d="M4 11l8 4 8-4"/><path d="M4 17l8 4 8-4"/></svg>
             </div>
             <div>
-              <h1 className="text-base font-semibold leading-tight">
-                Master KPI Map
-              </h1>
-              <p className="text-xs text-[var(--fg-muted)] -mt-0.5">
-                Across All Strategies
-              </p>
+              <h1 className="text-base font-semibold leading-tight">Master KPI Map</h1>
+              <p className="text-xs text-[var(--fg-muted)] -mt-0.5">Across All Strategies</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <div className="hidden md:flex items-center gap-3 text-xs text-[var(--fg-muted)]">
               <span className="px-2 py-1 rounded-lg bg-[var(--surface-900)] border border-[var(--border)] shadow-[var(--shadow)]">
-                KPIs <span className="font-mono">{visibleKpis}</span>/
-                <span className="font-mono">{totalKpis}</span>
+                KPIs <span className="font-mono">{visibleKpis}</span>/<span className="font-mono">{totalKpis}</span>
               </span>
               <span className="px-2 py-1 rounded-lg bg-[var(--surface-900)] border border-[var(--border)] shadow-[var(--shadow)]">
                 Groups <span className="font-mono">{filteredGroups.length}</span>/8
@@ -543,10 +458,7 @@ export default function MasterKPIMapDemo() {
               )}
             </div>
 
-            <button
-              onClick={regenerate}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)]"
-            >
+            <button onClick={regenerate} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)]">
               <RefreshCw className="w-4 h-4" /> Samples
             </button>
 
@@ -561,23 +473,11 @@ export default function MasterKPIMapDemo() {
               Update
             </button>
 
-            <button
-              onClick={exportJSON}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)]"
-            >
+            <button onClick={exportJSON} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)]">
               <Download className="w-4 h-4" /> JSON
             </button>
-            <button
-              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)]"
-              aria-label="Toggle theme"
-            >
-              {theme === "light" ? (
-                <Moon className="w-4 h-4" />
-              ) : (
-                <Sun className="w-4 h-4" />
-              )}{" "}
-              {theme === "light" ? "Dark" : "Light"}
+            <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)]" aria-label="Toggle theme">
+              {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />} {theme === 'light' ? 'Dark' : 'Light'}
             </button>
           </div>
         </div>
@@ -598,17 +498,10 @@ export default function MasterKPIMapDemo() {
             </div>
           </div>
           <div>
-            <div className="flex items-center gap-2 text-[var(--fg-muted)] text-sm">
-              <Filter className="w-4 h-4" /> Filter by strategy
-            </div>
+            <div className="flex items-center gap-2 text-[var(--fg-muted)] text-sm"><Filter className="w-4 h-4" /> Filter by strategy</div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {STRATEGIES.map((s) => (
-                <StrategyTag
-                  key={s}
-                  label={s}
-                  active={activeStrategies.includes(s)}
-                  onClick={() => toggleStrategy(s)}
-                />
+                <StrategyTag key={s} label={s} active={activeStrategies.includes(s)} onClick={() => toggleStrategy(s)} />
               ))}
             </div>
           </div>
@@ -618,20 +511,14 @@ export default function MasterKPIMapDemo() {
         <div className="space-y-4">
           {filteredGroups.map((group) => (
             <section key={group.id}>
-              <GroupHeader
-                title={group.title}
-                open={openGroups[group.id]}
-                onToggle={() => toggleGroup(group.id)}
-              />
+              <GroupHeader title={group.title} open={openGroups[group.id]} onToggle={() => toggleGroup(group.id)} />
               {openGroups[group.id] && (
                 <div className="mt-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {group.kpis.map((kpi) => {
-                    // Base sample
                     let value = samples[kpi.id];
                     let meta: string | undefined = undefined;
                     let extraBadge: string | null = null;
 
-                    // Live overrides
                     if (kpi.id === "atm-iv" && dvolPct != null) {
                       value = `${dvolPct.toFixed(1)}%`;
                       meta = "DVOL 30D (proxy)";
@@ -639,19 +526,11 @@ export default function MasterKPIMapDemo() {
                     if (kpi.id === "ivr" && ivr != null) {
                       value = `${ivr}`; // keep as 0..100 (not %)
                       meta = "DVOL-based IVR";
-                      if (ivp != null) {
-                        extraBadge = `IVP ${ivp}`;
-                      }
+                      if (ivp != null) extraBadge = `IVP ${ivp}`;
                     }
 
                     return (
-                      <KpiCard
-                        key={kpi.id}
-                        kpi={kpi}
-                        value={value}
-                        meta={meta}
-                        extraBadge={extraBadge}
-                      />
+                      <KpiCard key={kpi.id} kpi={kpi} value={value} meta={meta} extraBadge={extraBadge} />
                     );
                   })}
                 </div>
@@ -660,16 +539,13 @@ export default function MasterKPIMapDemo() {
           ))}
 
           {filteredGroups.length === 0 && (
-            <div className="text-center py-16 text-[var(--fg-muted)]">
-              No KPIs match your search/filters.
-            </div>
+            <div className="text-center py-16 text-[var(--fg-muted)]">No KPIs match your search/filters.</div>
           )}
         </div>
 
         {/* Footer */}
         <div className="text-xs text-[var(--fg-muted)] mt-10">
-          ATM IV shows <span className="font-semibold">DVOL 30D (proxy)</span> when updated.
-          IVR/IVP are computed from DVOL (52-week window). Samples are mock values until refreshed.
+          ATM IV shows <span className="font-semibold">DVOL 30D (proxy)</span> when updated. IVR/IVP are computed from DVOL (52-week window). Samples are mock values until refreshed.
         </div>
       </main>
 

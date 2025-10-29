@@ -11,7 +11,7 @@ export function useDeribitDvol(currency: "BTC" | "ETH" = "BTC") {
     setLoading(true);
     setError(null);
     try {
-      const { valuePct, ts } = await fetchDvolLatest(currency, "60");
+      const { valuePct, ts } = await fetchDvolLatest(currency, 60);
       setValuePct(valuePct);
       setLastUpdated(ts);
     } catch (e: any) {
