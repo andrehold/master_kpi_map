@@ -1,15 +1,15 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { ChevronDown, ChevronUp, Search, RefreshCw, Filter, Download, Sun, Moon, Cloud } from "lucide-react";
+import {
+  ChevronDown, ChevronUp, Search, RefreshCw, Filter, Download, Sun, Moon, Cloud,
+} from "lucide-react";
 import { useDeribitDvol } from "./hooks/useDeribitDvol";
+import { useIvrFromDvol } from "./hooks/useIvrFromDvol";
 
 /**
  * Master KPI Map – Light layout (Trade Manager style) with Dark Mode ready
  * Tech: React (Vite-ready) + Tailwind (token-driven via CSS vars)
  *
- * Layout goals:
- *  - Light, spacious canvas, white cards with soft borders/shadows
- *  - Rounded inputs, subtle gray text, brand-blue accents
- *  - Dark mode toggle via token switch
+ * Light default, dark-mode toggle, tokenized colors.
  */
 
 // --- Strategies --------------------------------------------------------------
@@ -50,18 +50,48 @@ interface KPIGroup {
   kpis: KPIDef[];
 }
 
-// --- Master KPI Catalog ------------------------------------------------------
+// --- Master KPI Catalog (from spec) -----------------------------------------
 const KPI_GROUPS: KPIGroup[] = [
   {
     id: "vol-skew",
     title: "1. Volatility & Skew Metrics",
     kpis: [
-      { id: "atm-iv", name: "ATM Implied Volatility (IV)", strategies: ["Expected Move", "Range-Bound Premium", "Carry Trade", "0DTE Overwrite"], valueType: "percent" },
-      { id: "ivr", name: "IV Rank / Percentile (IVR)", strategies: ["Expected Move", "Range-Bound Premium", "Carry Trade", "0DTE Overwrite"], valueType: "ivrank" },
-      { id: "term-structure", name: "IV Term Structure (Contango vs Backwardation)", strategies: ["Expected Move", "Carry Trade", "0DTE Overwrite"], valueType: "text" },
-      { id: "skew-25d-rr", name: "Skew (25Δ Risk Reversal)", strategies: ["Expected Move", "Weekend Vol", "Carry Trade", "0DTE Overwrite"], valueType: "price" },
-      { id: "vol-of-vol", name: "Vol-of-Vol (VVIX/MOVE/intraday IV)", strategies: ["Expected Move", "0DTE Overwrite"], valueType: "index" },
-      { id: "ts-kink", name: "Term Structure Kink (0DTE vs 1–3DTE IV)", strategies: ["0DTE Overwrite"], valueType: "percent" },
+      {
+        id: "atm-iv",
+        name: "ATM Implied Volatility (IV)",
+        strategies: ["Expected Move", "Range-Bound Premium", "Carry Trade", "0DTE Overwrite"],
+        valueType: "percent",
+      },
+      {
+        id: "ivr",
+        name: "IV Rank / Percentile (IVR)",
+        strategies: ["Expected Move", "Range-Bound Premium", "Carry Trade", "0DTE Overwrite"],
+        valueType: "ivrank",
+      },
+      {
+        id: "term-structure",
+        name: "IV Term Structure (Contango vs Backwardation)",
+        strategies: ["Expected Move", "Carry Trade", "0DTE Overwrite"],
+        valueType: "text",
+      },
+      {
+        id: "skew-25d-rr",
+        name: "Skew (25Δ Risk Reversal)",
+        strategies: ["Expected Move", "Weekend Vol", "Carry Trade", "0DTE Overwrite"],
+        valueType: "price",
+      },
+      {
+        id: "vol-of-vol",
+        name: "Vol-of-Vol (VVIX/MOVE/intraday IV)",
+        strategies: ["Expected Move", "0DTE Overwrite"],
+        valueType: "index",
+      },
+      {
+        id: "ts-kink",
+        name: "Term Structure Kink (0DTE vs 1–3DTE IV)",
+        strategies: ["0DTE Overwrite"],
+        valueType: "percent",
+      },
     ],
   },
   {
@@ -150,22 +180,23 @@ const KPI_GROUPS: KPIGroup[] = [
   },
 ];
 
-// --- Sample value generation --------------------------------------------------
+// --- Sample value generation -------------------------------------------------
 function rand(min: number, max: number, decimals = 1) {
   const v = Math.random() * (max - min) + min;
   const f = Math.pow(10, decimals);
   return Math.round(v * f) / f;
 }
+
 function sampleFor(type: KPIValueType): string {
   switch (type) {
-    case "percent": return `${rand(0,150,1).toFixed(1)}%`;
-    case "ivrank": return `${Math.round(rand(0,100,0))}`;
-    case "ratio": return `${rand(0.3,2.5,2).toFixed(2)}×`;
-    case "bps": return `${Math.round(rand(0,150,0))} bps`;
-    case "sigma": return `${rand(0.1,5.0,2).toFixed(2)}σ`;
-    case "index": return `${rand(5,60,1).toFixed(1)}`;
-    case "ms": return `${Math.round(rand(8,120,0))} ms`;
-    case "price": return `${rand(-3.5,3.5,2).toFixed(2)}`;
+    case "percent": return `${rand(0, 150, 1).toFixed(1)}%`;
+    case "ivrank": return `${Math.round(rand(0, 100, 0))}`;
+    case "ratio": return `${rand(0.3, 2.5, 2).toFixed(2)}×`;
+    case "bps": return `${Math.round(rand(0, 150, 0))} bps`;
+    case "sigma": return `${rand(0.1, 5.0, 2).toFixed(2)}σ`;
+    case "index": return `${rand(5, 60, 1).toFixed(1)}`;
+    case "ms": return `${Math.round(rand(8, 120, 0))} ms`;
+    case "price": return `${rand(-3.5, 3.5, 2).toFixed(2)}`;
     case "text": {
       const isContango = Math.random() > 0.35;
       const v = rand(0.0, 8.0, 1) * (isContango ? 1 : -1);
@@ -174,24 +205,26 @@ function sampleFor(type: KPIValueType): string {
     default: return "—";
   }
 }
-const ALL_KPIS = KPI_GROUPS.flatMap(g => g.kpis.map(k => k.id));
+
+const ALL_KPIS = KPI_GROUPS.flatMap((g) => g.kpis.map((k) => k.id));
 type Samples = Record<string, string>;
+
 function buildSamples(): Samples {
   const s: Samples = {};
   for (const gid of ALL_KPIS) {
-    const k = KPI_GROUPS.flatMap(g => g.kpis).find(x => x.id === gid)!;
+    const k = KPI_GROUPS.flatMap((g) => g.kpis).find((x) => x.id === gid)!;
     s[gid] = sampleFor(k.valueType);
   }
   return s;
 }
 
-// --- Theme tokens -------------------------------------------------------------
+// --- Theme tokens ------------------------------------------------------------
 const TOKENS = {
   light: {
     colorScheme: "light",
-    bg: "#F6F8FC",
-    surface950: "#FFFFFF",
-    surface900: "#F8FAFF",
+    bg: "#F6F8FC", // canvas
+    surface950: "#FFFFFF", // cards / panels
+    surface900: "#F8FAFF", // secondary surface / headers
     border: "#E2E8F0",
     shadow: "0 1px 2px rgba(16,24,40,.04), 0 1px 1px rgba(16,24,40,.06)",
     fg: "#0F172A",
@@ -238,8 +271,16 @@ function TokenStyles({ theme }: { theme: ThemeKey }) {
   return <style>{css}</style>;
 }
 
-// --- UI helpers ---------------------------------------------------------------
-function StrategyTag({ label, active = false, onClick }: { label: Strategy; active?: boolean; onClick?: () => void }) {
+// --- UI helpers --------------------------------------------------------------
+function StrategyTag({
+  label,
+  active = false,
+  onClick,
+}: {
+  label: Strategy;
+  active?: boolean;
+  onClick?: () => void;
+}) {
   return (
     <button
       onClick={onClick}
@@ -255,7 +296,15 @@ function StrategyTag({ label, active = false, onClick }: { label: Strategy; acti
   );
 }
 
-function GroupHeader({ title, open, onToggle }: { title: string; open: boolean; onToggle: () => void }) {
+function GroupHeader({
+  title,
+  open,
+  onToggle,
+}: {
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+}) {
   return (
     <button
       onClick={onToggle}
@@ -266,33 +315,70 @@ function GroupHeader({ title, open, onToggle }: { title: string; open: boolean; 
           <span className="h-4 w-1 rounded-full bg-gradient-to-b from-[var(--brand-500)] to-[var(--brand-400)]" />
           {title}
         </h3>
-        <p className="text-xs text-[var(--fg-muted)]">Click to {open ? "collapse" : "expand"}</p>
+        <p className="text-xs text-[var(--fg-muted)]">
+          Click to {open ? "collapse" : "expand"}
+        </p>
       </div>
-      {open ? <ChevronUp className="w-5 h-5 text-[var(--fg-muted)]" /> : <ChevronDown className="w-5 h-5 text-[var(--fg-muted)]" />}
+      {open ? (
+        <ChevronUp className="w-5 h-5 text-[var(--fg-muted)]" />
+      ) : (
+        <ChevronDown className="w-5 h-5 text-[var(--fg-muted)]" />
+      )}
     </button>
   );
 }
 
-function KpiCard({ kpi, value }: { kpi: KPIDef; value: string }) {
+function Badge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border border-[var(--border)] bg-[var(--surface-900)] text-[10px] text-[var(--fg-muted)]">
+      {children}
+    </span>
+  );
+}
+
+function KpiCard({
+  kpi,
+  value,
+  meta,
+  extraBadge, // e.g., "IVP 72"
+}: {
+  kpi: KPIDef;
+  value: string;
+  meta?: string;
+  extraBadge?: string | null;
+}) {
   return (
     <div className="group rounded-2xl border border-[var(--border)] bg-[var(--surface-950)] p-4 shadow-[var(--shadow)] hover:border-[var(--brand-500)]/30 transition">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="text-[var(--fg)] font-medium leading-snug">{kpi.name}</div>
+          <div className="text-[var(--fg)] font-medium leading-snug">
+            {kpi.name}
+          </div>
           {kpi.description && (
-            <div className="text-xs text-[var(--fg-muted)] mt-0.5">{kpi.description}</div>
+            <div className="text-xs text-[var(--fg-muted)] mt-0.5">
+              {kpi.description}
+            </div>
           )}
         </div>
         <div className="text-right">
-          <div className="text-xl font-semibold tabular-nums font-mono text-[var(--fg)]">{value}</div>
-          <div className="text-[10px] text-[var(--fg-muted)] flex items-center gap-1 justify-end">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--fg-muted)]" /> sample / live
+          <div className="text-xl font-semibold tabular-nums font-mono text-[var(--fg)]">
+            {value}
+          </div>
+          <div className="mt-1 flex items-center gap-1 justify-end">
+            {extraBadge ? <Badge>{extraBadge}</Badge> : null}
+            <div className="text-[10px] text-[var(--fg-muted)] flex items-center gap-1">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--fg-muted)]" />
+              {meta ?? "sample"}
+            </div>
           </div>
         </div>
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5">
         {kpi.strategies.map((s) => (
-          <span key={s} className="px-2 py-0.5 rounded-full text-[10px] border border-[var(--border)] text-[var(--fg-muted)] bg-[var(--surface-900)]">
+          <span
+            key={s}
+            className="px-2 py-0.5 rounded-full text-[10px] border border-[var(--border)] text-[var(--fg-muted)] bg-[var(--surface-900)]"
+          >
             {s}
           </span>
         ))}
@@ -301,115 +387,197 @@ function KpiCard({ kpi, value }: { kpi: KPIDef; value: string }) {
   );
 }
 
-// --- Main ---------------------------------------------------------------------
+// --- Main --------------------------------------------------------------------
 export default function MasterKPIMapDemo() {
   const [search, setSearch] = useState("");
   const [activeStrategies, setActiveStrategies] = useState<Strategy[]>([]);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
-    KPI_GROUPS.forEach(g => { init[g.id] = true; });
+    KPI_GROUPS.forEach((g) => {
+      init[g.id] = true;
+    });
     return init;
   });
   const [samples, setSamples] = useState<Samples>(() => buildSamples());
   const [theme, setTheme] = useState<ThemeKey>("light");
 
-  // DVOL hook (BTC by default). Change to "ETH" if needed.
-  const { valuePct: dvolPct, lastUpdated: dvolTs, loading: dvolLoading, error: dvolError, refresh: refreshDvol } = useDeribitDvol("BTC");
+  // Live data hooks (BTC by default). Change to "ETH" if needed.
+  const {
+    valuePct: dvolPct,
+    lastUpdated: dvolTs,
+    loading: dvolLoading,
+    error: dvolError,
+    refresh: refreshDvol,
+  } = useDeribitDvol("BTC");
+  const {
+    ivr,
+    ivp,
+    lastUpdated: ivrTs,
+    loading: ivrLoading,
+    error: ivrError,
+    refresh: refreshIvr,
+  } = useIvrFromDvol("BTC");
 
-  useEffect(() => { setSamples(buildSamples()); }, []);
+  useEffect(() => {
+    setSamples(buildSamples());
+  }, []);
 
   const filteredGroups = useMemo(() => {
     const q = search.trim().toLowerCase();
     return KPI_GROUPS.map((group) => {
       const kpis = group.kpis.filter((k) => {
-        const matchesText = !q || k.name.toLowerCase().includes(q) || k.id.toLowerCase().includes(q);
-        const matchesStrategy = activeStrategies.length === 0 || activeStrategies.some((s) => k.strategies.includes(s));
+        const matchesText =
+          !q ||
+          k.name.toLowerCase().includes(q) ||
+          k.id.toLowerCase().includes(q);
+        const matchesStrategy =
+          activeStrategies.length === 0 ||
+          activeStrategies.some((s) => k.strategies.includes(s));
         return matchesText && matchesStrategy;
       });
       return { ...group, kpis } as KPIGroup;
-    }).filter(g => g.kpis.length > 0);
+    }).filter((g) => g.kpis.length > 0);
   }, [search, activeStrategies]);
 
   const totalKpis = KPI_GROUPS.reduce((acc, g) => acc + g.kpis.length, 0);
   const visibleKpis = filteredGroups.reduce((acc, g) => acc + g.kpis.length, 0);
 
   function toggleStrategy(s: Strategy) {
-    setActiveStrategies((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+    setActiveStrategies((prev) =>
+      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
+    );
   }
-  function toggleGroup(id: string) { setOpenGroups((prev) => ({ ...prev, [id]: !prev[id] })); }
-  function regenerate() { setSamples(buildSamples()); }
+  function toggleGroup(id: string) {
+    setOpenGroups((prev) => ({ ...prev, [id]: !prev[id] }));
+  }
+  function regenerate() {
+    setSamples(buildSamples());
+  }
   function exportJSON() {
     const payload = {
       generated_at: new Date().toISOString(),
       strategies: STRATEGIES,
-      groups: KPI_GROUPS.map((g) => ({ id: g.id, title: g.title, kpis: g.kpis.map((k) => ({ id: k.id, name: k.name, strategies: k.strategies, value: samples[k.id] })) })),
+      groups: KPI_GROUPS.map((g) => ({
+        id: g.id,
+        title: g.title,
+        kpis: g.kpis.map((k) => ({
+          id: k.id,
+          name: k.name,
+          strategies: k.strategies,
+          value: samples[k.id],
+        })),
+      })),
     };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `master-kpi-map-sample-${Date.now()}.json`; a.click();
+    a.href = url;
+    a.download = `master-kpi-map-sample-${Date.now()}.json`;
+    a.click();
     URL.revokeObjectURL(url);
   }
 
-  return (
-    <div data-theme="tm" style={{ colorScheme: TOKENS[theme].colorScheme as any }} className="min-h-screen bg-[var(--bg)] text-[var(--fg)]">
-      <TokenStyles theme={theme} />
+  async function refreshLive() {
+    await Promise.all([refreshDvol(), refreshIvr()]);
+  }
 
+  return (
+    <div
+      data-theme="tm"
+      style={{ colorScheme: TOKENS[theme].colorScheme as any }}
+      className="min-h-screen bg-[var(--bg)] text-[var(--fg)]"
+    >
+      <TokenStyles theme={theme} />
       {/* Header */}
       <header className="sticky top-0 z-30 backdrop-blur bg-[var(--surface-950)]/95 border-b border-[var(--border)]">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3 justify-between">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[var(--brand-600)] to-[var(--brand-400)] text-white grid place-items-center shadow-[var(--shadow)]">
-              <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3l8 4-8 4-8-4 8-4Z"/><path d="M4 11l8 4 8-4"/><path d="M4 17l8 4 8-4"/></svg>
+              <svg
+                viewBox="0 0 24 24"
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M12 3l8 4-8 4-8-4 8-4Z" />
+                <path d="M4 11l8 4 8-4" />
+                <path d="M4 17l8 4 8-4" />
+              </svg>
             </div>
             <div>
-              <h1 className="text-base font-semibold leading-tight">Master KPI Map</h1>
-              <p className="text-xs text-[var(--fg-muted)] -mt-0.5">Across All Strategies</p>
+              <h1 className="text-base font-semibold leading-tight">
+                Master KPI Map
+              </h1>
+              <p className="text-xs text-[var(--fg-muted)] -mt-0.5">
+                Across All Strategies
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <div className="hidden md:flex items-center gap-3 text-xs text-[var(--fg-muted)]">
               <span className="px-2 py-1 rounded-lg bg-[var(--surface-900)] border border-[var(--border)] shadow-[var(--shadow)]">
-                KPIs <span className="font-mono">{visibleKpis}</span>/<span className="font-mono">{totalKpis}</span>
+                KPIs <span className="font-mono">{visibleKpis}</span>/
+                <span className="font-mono">{totalKpis}</span>
               </span>
               <span className="px-2 py-1 rounded-lg bg-[var(--surface-900)] border border-[var(--border)] shadow-[var(--shadow)]">
                 Groups <span className="font-mono">{filteredGroups.length}</span>/8
               </span>
-
-              {/* DVOL status badges */}
               {dvolTs && (
                 <span className="px-2 py-1 rounded-lg bg-[var(--surface-900)] border border-[var(--border)] text-xs text-[var(--fg-muted)] shadow-[var(--shadow)]">
                   DVOL {new Date(dvolTs).toLocaleTimeString()}
                 </span>
               )}
-              {dvolError && (
+              {ivrTs && (
+                <span className="px-2 py-1 rounded-lg bg-[var(--surface-900)] border border-[var(--border)] text-xs text-[var(--fg-muted)] shadow-[var(--shadow)]">
+                  IVR {new Date(ivrTs).toLocaleDateString()}
+                </span>
+              )}
+              {(dvolError || ivrError) && (
                 <span className="px-2 py-1 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
-                  {dvolError}
+                  {dvolError || ivrError}
                 </span>
               )}
             </div>
 
-            <button onClick={regenerate} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)]">
+            <button
+              onClick={regenerate}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)]"
+            >
               <RefreshCw className="w-4 h-4" /> Samples
             </button>
 
-            {/* Update from Deribit DVOL */}
+            {/* Update: refresh DVOL + IVR/IVP */}
             <button
-              onClick={refreshDvol}
+              onClick={refreshLive}
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)] disabled:opacity-60"
-              disabled={dvolLoading}
-              title="Update DVOL from Deribit"
+              disabled={dvolLoading || ivrLoading}
+              title="Update DVOL + IVR from Deribit"
             >
-              <Cloud className={`w-4 h-4 ${dvolLoading ? "animate-spin" : ""}`} />
+              <Cloud className={`w-4 h-4 ${(dvolLoading || ivrLoading) ? "animate-spin" : ""}`} />
               Update
             </button>
 
-            <button onClick={exportJSON} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)]">
+            <button
+              onClick={exportJSON}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)]"
+            >
               <Download className="w-4 h-4" /> JSON
             </button>
-            <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)]" aria-label="Toggle theme">
-              {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />} {theme === 'light' ? 'Dark' : 'Light'}
+            <button
+              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)]"
+              aria-label="Toggle theme"
+            >
+              {theme === "light" ? (
+                <Moon className="w-4 h-4" />
+              ) : (
+                <Sun className="w-4 h-4" />
+              )}{" "}
+              {theme === "light" ? "Dark" : "Light"}
             </button>
           </div>
         </div>
@@ -430,10 +598,17 @@ export default function MasterKPIMapDemo() {
             </div>
           </div>
           <div>
-            <div className="flex items-center gap-2 text-[var(--fg-muted)] text-sm"><Filter className="w-4 h-4" /> Filter by strategy</div>
+            <div className="flex items-center gap-2 text-[var(--fg-muted)] text-sm">
+              <Filter className="w-4 h-4" /> Filter by strategy
+            </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {STRATEGIES.map((s) => (
-                <StrategyTag key={s} label={s} active={activeStrategies.includes(s)} onClick={() => toggleStrategy(s)} />
+                <StrategyTag
+                  key={s}
+                  label={s}
+                  active={activeStrategies.includes(s)}
+                  onClick={() => toggleStrategy(s)}
+                />
               ))}
             </div>
           </div>
@@ -443,14 +618,41 @@ export default function MasterKPIMapDemo() {
         <div className="space-y-4">
           {filteredGroups.map((group) => (
             <section key={group.id}>
-              <GroupHeader title={group.title} open={openGroups[group.id]} onToggle={() => toggleGroup(group.id)} />
+              <GroupHeader
+                title={group.title}
+                open={openGroups[group.id]}
+                onToggle={() => toggleGroup(group.id)}
+              />
               {openGroups[group.id] && (
                 <div className="mt-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {group.kpis.map((kpi) => {
-                    // Override ATM IV with DVOL when available
-                    const base = samples[kpi.id];
-                    const value = kpi.id === "atm-iv" && dvolPct != null ? `${dvolPct.toFixed(1)}%` : base;
-                    return <KpiCard key={kpi.id} kpi={kpi} value={value} />;
+                    // Base sample
+                    let value = samples[kpi.id];
+                    let meta: string | undefined = undefined;
+                    let extraBadge: string | null = null;
+
+                    // Live overrides
+                    if (kpi.id === "atm-iv" && dvolPct != null) {
+                      value = `${dvolPct.toFixed(1)}%`;
+                      meta = "DVOL 30D (proxy)";
+                    }
+                    if (kpi.id === "ivr" && ivr != null) {
+                      value = `${ivr}`; // keep as 0..100 (not %)
+                      meta = "DVOL-based IVR";
+                      if (ivp != null) {
+                        extraBadge = `IVP ${ivp}`;
+                      }
+                    }
+
+                    return (
+                      <KpiCard
+                        key={kpi.id}
+                        kpi={kpi}
+                        value={value}
+                        meta={meta}
+                        extraBadge={extraBadge}
+                      />
+                    );
                   })}
                 </div>
               )}
@@ -458,13 +660,16 @@ export default function MasterKPIMapDemo() {
           ))}
 
           {filteredGroups.length === 0 && (
-            <div className="text-center py-16 text-[var(--fg-muted)]">No KPIs match your search/filters.</div>
+            <div className="text-center py-16 text-[var(--fg-muted)]">
+              No KPIs match your search/filters.
+            </div>
           )}
         </div>
 
         {/* Footer */}
         <div className="text-xs text-[var(--fg-muted)] mt-10">
-          ATM IV currently shows <span className="font-semibold">DVOL 30D (proxy)</span> when updated. Samples are mock values for layout/dev only.
+          ATM IV shows <span className="font-semibold">DVOL 30D (proxy)</span> when updated.
+          IVR/IVP are computed from DVOL (52-week window). Samples are mock values until refreshed.
         </div>
       </main>
 
