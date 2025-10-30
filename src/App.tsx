@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useDeribitDvol } from "./hooks/useDeribitDvol";
 import { useIvrFromDvol } from "./hooks/useIvrFromDvol";
+import { useIVTermStructure } from "./hooks/useIVTermStructure";
 
 /**
  * Master KPI Map – Light layout (Trade Manager style) with Dark Mode ready
@@ -372,6 +373,14 @@ export default function MasterKPIMapDemo() {
   // Live data (BTC by default)
   const { valuePct: dvolPct, lastUpdated: dvolTs, loading: dvolLoading, error: dvolError, refresh: refreshDvol } = useDeribitDvol("BTC");
   const { ivr, ivp, lastUpdated: ivrTs, loading: ivrLoading, error: ivrError, refresh: refreshIvr } = useIvrFromDvol("BTC");
+  // IV Term Structure (BTC by default)
+  const { data: tsData, loading: tsLoading, error: tsError, reload: refreshTerm } = useIVTermStructure({
+    currency: "BTC",
+    maxExpiries: 6,
+    bandPct: 0.07,    // optional: consider strikes within ±7% of spot
+    minDteHours: 12,  // skip expiries expiring very soon
+    // refreshMs: 15000, // optional polling
+  });
 
   useEffect(() => { setSamples(buildSamples()); }, []);
 
@@ -413,7 +422,7 @@ export default function MasterKPIMapDemo() {
   }
 
   async function refreshLive() {
-    await Promise.all([refreshDvol(), refreshIvr()]);
+    await Promise.all([refreshDvol(), refreshIvr(), refreshTerm()]);
   }
 
   return (
@@ -451,9 +460,14 @@ export default function MasterKPIMapDemo() {
                   IVR {new Date(ivrTs).toLocaleDateString()}
                 </span>
               )}
-              {(dvolError || ivrError) && (
+              {tsData?.asOf && (
+                <span className="px-2 py-1 rounded-lg bg-[var(--surface-900)] border border-[var(--border)] text-xs text-[var(--fg-muted)] shadow-[var(--shadow)]">
+                  IV TS {new Date(tsData.asOf).toLocaleTimeString()}
+                </span>
+              )}
+              {(dvolError || ivrError || tsError) && (
                 <span className="px-2 py-1 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
-                  {dvolError || ivrError}
+                  {dvolError || ivrError || tsError}
                 </span>
               )}
             </div>
@@ -466,10 +480,10 @@ export default function MasterKPIMapDemo() {
             <button
               onClick={refreshLive}
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)] disabled:opacity-60"
-              disabled={dvolLoading || ivrLoading}
-              title="Update DVOL + IVR from Deribit"
+              disabled={dvolLoading || ivrLoading || tsLoading}
+              title="Update DVOL + IVR + IV Term Structure from Deribit"
             >
-              <Cloud className={`w-4 h-4 ${(dvolLoading || ivrLoading) ? "animate-spin" : ""}`} />
+              <Cloud className={`w-4 h-4 ${(dvolLoading || ivrLoading || tsLoading) ? "animate-spin" : ""}`} />
               Update
             </button>
 
