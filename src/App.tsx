@@ -13,6 +13,7 @@ import {
 import { useDeribitDvol } from "./hooks/useDeribitDvol";
 import { useIvrFromDvol } from "./hooks/useIvrFromDvol";
 import { useIVTermStructure } from "./hooks/useIVTermStructure";
+import { useDeribitSkew25D } from './hooks/useDeribitSkew25D';
 
 /**
  * Master KPI Map – Light layout (Trade Manager style) with Dark Mode ready
@@ -381,6 +382,8 @@ export default function MasterKPIMapDemo() {
     minDteHours: 12,  // skip expiries expiring very soon
     // refreshMs: 15000, // optional polling
   });
+  // Skew (25Δ Risk Reversal), BTC 30D
+  const { skew, ivC25, ivP25, expiryLabel: skewExpiry, loading: skewLoading, error: skewError, refresh: refreshSkew } = useDeribitSkew25D({ currency: "BTC", targetDays: 30 });
 
   useEffect(() => { setSamples(buildSamples()); }, []);
 
@@ -422,7 +425,7 @@ export default function MasterKPIMapDemo() {
   }
 
   async function refreshLive() {
-    await Promise.all([refreshDvol(), refreshIvr(), refreshTerm()]);
+    await Promise.all([refreshDvol(), refreshIvr(), refreshTerm(), refreshSkew]);
   }
 
   return (
@@ -467,7 +470,7 @@ export default function MasterKPIMapDemo() {
               )}
               {(dvolError || ivrError || tsError) && (
                 <span className="px-2 py-1 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
-                  {dvolError || ivrError || tsError}
+                  {dvolError || ivrError || tsError || skewError}
                 </span>
               )}
             </div>
@@ -480,10 +483,10 @@ export default function MasterKPIMapDemo() {
             <button
               onClick={refreshLive}
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)] disabled:opacity-60"
-              disabled={dvolLoading || ivrLoading || tsLoading}
+              disabled={dvolLoading || ivrLoading || tsLoading || skewLoading}
               title="Update DVOL + IVR + IV Term Structure from Deribit"
             >
-              <Cloud className={`w-4 h-4 ${(dvolLoading || ivrLoading || tsLoading) ? "animate-spin" : ""}`} />
+              <Cloud className={`w-4 h-4 ${(dvolLoading || ivrLoading || tsLoading || skewLoading) ? "animate-spin" : ""}`} />
               Update
             </button>
 
@@ -541,6 +544,42 @@ export default function MasterKPIMapDemo() {
                       value = `${ivr}`; // keep as 0..100 (not %)
                       meta = "DVOL-based IVR";
                       if (ivp != null) extraBadge = `IVP ${ivp}`;
+                    }
+                    if (kpi.id === "term-structure" && tsData) {
+                      const labelTitle =
+                        tsData.label === "insufficient"
+                          ? "Insufficient"
+                          : tsData.label[0].toUpperCase() + tsData.label.slice(1);
+                    
+                      const premiumPct =
+                        tsData.termPremium != null ? (tsData.termPremium * 100) : null;
+                      const sign = premiumPct != null && premiumPct >= 0 ? "+" : "";
+                    
+                      value = labelTitle + (premiumPct != null ? ` (${sign}${premiumPct.toFixed(1)}%)` : "");
+                      // meta: show slope and sample window size
+                      meta = tsData.slopePerYear != null
+                        ? `Slope ${(tsData.slopePerYear * 100).toFixed(2)}%/yr · n=${tsData.n}`
+                        : `n=${tsData.n}`;
+                      // extra badge: front→back expiries
+                      if (tsData.points.length >= 2) {
+                        const first = tsData.points[0]?.expiryISO;
+                        const last = tsData.points[tsData.points.length - 1]?.expiryISO;
+                        extraBadge = `${first} → ${last}`;
+                      } else {
+                        extraBadge = "Awaiting data";
+                      }
+                    }
+                    // Skew (25Δ Risk Reversal): RR = IV(25Δ Call) − IV(25Δ Put)  [vol points]
+                    if (kpi.id === "skew-25d-rr" && skew != null) {
+                      const vp = skew * 100; // convert to vol points
+                      const sign = vp >= 0 ? "+" : "";
+                      value = `${sign}${vp.toFixed(2)}`;
+                      meta = skewExpiry ? `BTC 30D · ${skewExpiry}` : "BTC 30D";
+                      if (ivC25 != null && ivP25 != null) {
+                       extraBadge = `C25 ${(ivC25 * 100).toFixed(1)} • P25 ${(ivP25 * 100).toFixed(1)}`;
+                      } else {
+                        extraBadge = "Interpolating…";
+                      }
                     }
 
                     return (
