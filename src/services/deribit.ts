@@ -3,12 +3,21 @@
 export type DeribitInstrument = {
   instrument_name: string;
   is_active: boolean;
-  kind: "option" | string;
-  option_type?: "call" | "put";
-  base_currency: "BTC" | "ETH" | string;
-  quote_currency: string;
+  kind: 'option' | 'future';
+  option_type?: 'call' | 'put';
   expiration_timestamp: number; // ms
   strike?: number;
+  tick_size?: number;
+  settlement_period?: string;
+  min_trade_amount?: number;
+  quote_currency: string; // "USD"
+  base_currency: string;  // "BTC" | "ETH"
+};
+
+export type DeribitTicker = {
+  instrument_name: string;
+  mark_iv?: number; // IV as decimal (e.g. 0.62 for 62%)
+  greeks?: { delta?: number };
 };
 
 export type BookSummary = {
@@ -51,6 +60,27 @@ async function fetchJSON<T>(url: string, signal?: AbortSignal): Promise<T> {
   const j = await r.json();
   if (j?.error) throw new Error(`Deribit error: ${JSON.stringify(j.error)}`);
   return j.result as T;
+}
+
+async function dget<T>(path: string, params: Record<string, any>) {
+  const qs = new URLSearchParams(params as any).toString();
+  const res = await fetch(`${DERIBIT}${path}?${qs}`);
+  if (!res.ok) throw new Error(`Deribit error: ${res.status} ${res.statusText}`);
+  const json = await res.json();
+  if (!json?.result) throw new Error('Deribit: empty result');
+  return json.result as T;
+}
+
+export async function getInstruments(currency: 'BTC' | 'ETH') {
+  // Only active options, non-expired
+  return dget<{ instruments: DeribitInstrument[] }>(
+    '/public/get_instruments',
+    { currency, kind: 'option', expired: false }
+  ).then(r => r as any as DeribitInstrument[]);
+}
+
+export async function getTicker(instrument_name: string) {
+  return dget<DeribitTicker>('/public/ticker', { instrument_name });
 }
 
 /** NEW: currency-aware instruments */
@@ -241,14 +271,16 @@ export async function getATMIVPoints(
     const dte = Math.max(0, Math.round((s.expiryTs - now) / (1000 * 60 * 60 * 24)));
     const ttmY = dte / 365;
     const pair = map.get(s.expiryISO) ?? {};
-    const ivs = [pair.C?.mark_iv, pair.P?.mark_iv].filter((v): v is number => typeof v === "number" && isFinite(v));
+    // Deribit 'mark_iv' is in PERCENT units (e.g., 50 = 50%), convert to decimal.
+    const ivsPct = [pair.C?.mark_iv, pair.P?.mark_iv].filter((v): v is number => typeof v === "number" && isFinite(v));
+    const ivsDec = ivsPct.map(v => v / 100);
 
     points.push({
       expiryISO: s.expiryISO,
       dte,
       ttmY,
       strike: s.strike,
-      iv: ivs.length ? ivs.reduce((a, b) => a + b, 0) / ivs.length : null,
+      iv: ivsDec.length ? ivsDec.reduce((a, b) => a + b, 0) / ivsDec.length : null,
       call: s.call,
       put: s.put,
     });
