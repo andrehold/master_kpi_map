@@ -1,7 +1,8 @@
 // src/services/deribit.ts
-// Global rate-limited + cached Deribit REST client used across the app.
-// Provides thin API wrappers and centralizes 429/backoff handling.
+// Global, rate-limited + cached Deribit REST client used across the app.
+// Centralizes retries, timeouts, caching, and optional console debugging.
 
+// ---------- Types ------------------------------------------------------------
 export type DeribitInstrument = {
   instrument_name: string;
   is_active: boolean;
@@ -18,7 +19,7 @@ export type DeribitInstrument = {
 
 export type DeribitTicker = {
   instrument_name: string;
-  mark_iv?: number; // IV, may come as % (e.g. 45.8) or decimal (0.458)
+  mark_iv?: number; // can be percent (45.8) or decimal (0.458)
   greeks?: { delta?: number };
   best_bid_price?: number;
   best_ask_price?: number;
@@ -26,7 +27,7 @@ export type DeribitTicker = {
 };
 
 export type DvolPoint = {
-  ts: number;        // ms
+  ts: number;        // ms since epoch
   closePct: number;  // e.g., 45.8 means 45.8%
   openPct?: number;
   highPct?: number;
@@ -35,15 +36,38 @@ export type DvolPoint = {
 
 const DERIBIT = 'https://www.deribit.com/api/v2';
 
-// ---- Rate limit + caching primitives ----------------------------------------
+// ---------- Debug logging (toggle at runtime) --------------------------------
+// Turn on in DevTools at any time:
+//   window.__DERIBIT_DEBUG__ = true
+// Or persist across reloads:
+//   localStorage.setItem('deribitDebug','1')
+function isDbg(): boolean {
+  try {
+    if (typeof window !== 'undefined') {
+      if ((window as any).__DERIBIT_DEBUG__ === true) return true;
+      if (localStorage.getItem('deribitDebug') === '1') return true;
+    }
+  } catch {}
+  return false;
+}
+function dlog(...args: any[]) { if (isDbg()) try { console.log('[deribit]', ...args); } catch {} }
+function dgroup(label: string, collapsed = true) {
+  if (!isDbg()) return;
+  try { (collapsed ? console.groupCollapsed : console.group).call(console, `[deribit] ${label}`); } catch {}
+}
+function dgroupEnd() { if (isDbg()) try { console.groupEnd(); } catch {} }
+
+// ---------- Small utils ------------------------------------------------------
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
+// ---------- Rate limiter (global gate) ---------------------------------------
 class RateGate {
   private maxPerSec: number;
   private concurrency: number;
   private running = 0;
   private queue: Array<() => void> = [];
-  private starts: number[] = []; // timestamps of task starts in the last 1s
+  private starts: number[] = []; // request start timestamps (ms)
+  private wakeTimer: any | null = null; // timer to re-check queue when blocked
 
   constructor(maxPerSec: number, concurrency: number) {
     this.maxPerSec = Math.max(1, maxPerSec);
@@ -52,17 +76,29 @@ class RateGate {
 
   private canStart() {
     const now = Date.now();
-    // prune start times older than 1s
     while (this.starts.length && now - this.starts[0] > 1000) this.starts.shift();
     return this.running < this.concurrency && this.starts.length < this.maxPerSec;
   }
 
   private tryStartNext() {
+    dlog('gate: tryStartNext q=', this.queue.length, 'running=', this.running);
     if (!this.queue.length) return;
-    if (!this.canStart()) return;
+    if (!this.canStart()) {
+      // If we're blocked by rate window or concurrency but have nothing running
+      // to trigger the next check, schedule a wake-up to re-evaluate shortly.
+      if (this.wakeTimer == null) {
+        const delayMs = 150; // small heartbeat to drain the queue when tokens free up
+        this.wakeTimer = setTimeout(() => {
+          this.wakeTimer = null;
+          this.tryStartNext();
+        }, delayMs);
+      }
+      return;
+    }
     const next = this.queue.shift()!;
     this.running++;
     this.starts.push(Date.now());
+    dlog('gate: start task, running=', this.running);
     next();
   }
 
@@ -76,19 +112,21 @@ class RateGate {
           reject(e);
         } finally {
           this.running--;
+          dlog('gate: end task, running=', this.running);
           this.tryStartNext();
         }
       };
       this.queue.push(run);
+      dlog('gate: enqueued, q=', this.queue.length);
       this.tryStartNext();
     });
   }
 }
 
-// Tune conservatively for public REST. Adjust if needed.
+// Conservative defaults for public REST
 const limiter = new RateGate(/* maxPerSec */ 5, /* concurrency */ 2);
 
-// Simple caches (with in-flight coalescing) to avoid duplicate hits.
+// ---------- Caches + inflight coalescing ------------------------------------
 type CacheEntry<T> = { at: number; data: T };
 
 const TICKER_TTL = 20_000;  // 20s
@@ -96,46 +134,76 @@ const INDEX_TTL  = 3_000;   // 3s
 const INSTR_TTL  = 60_000;  // 60s
 
 const tickerCache = new Map<string, CacheEntry<any>>();
-const inflight    = new Map<string, Promise<any>>();
 const indexCache  = new Map<string, CacheEntry<number>>();
 const instrCache  = new Map<string, CacheEntry<any>>();
 
-// ---- Low-level GET with limiter + retry/backoff -----------------------------
+// Single inflight registry for all keys to allow coalescing
+const inflight = new Map<string, Promise<any>>();
+
+// ---------- Low-level GET with timeout + retry/backoff ----------------------
 async function dget<T>(path: string, params: Record<string, any>) {
   const qs = new URLSearchParams(params as any).toString();
   const url = `${DERIBIT}${path}?${qs}`;
 
+  dgroup(`dget ${path}`);
+  dlog('params', params);
+
   return limiter.schedule(async () => {
+    dlog('limiter: scheduled for', path);
     let delay = 250;
     for (let attempt = 1; attempt <= 4; attempt++) {
-      const res = await fetch(url);
-      if (res.ok) {
-        const json = await res.json();
-        if (!json?.result) throw new Error('Deribit: empty result');
-        return json.result as T;
+      dlog('fetch attempt', attempt);
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), 12_000); // 12s timeout
+
+      try {
+        const res = await fetch(url, { signal: ctrl.signal });
+        if (res.ok) {
+          dlog('response', res.status, res.statusText);
+          const json = await res.json();
+          if (!json?.result) throw new Error('Deribit: empty result');
+          return json.result as T;
+        }
+        const is429 = res.status === 429;
+        if (attempt === 4 || !is429) {
+          dlog('error', res.status, res.statusText);
+          throw new Error(`Deribit error ${res.status}: ${res.statusText}`);
+        }
+        await sleep(delay);
+        delay = Math.min(delay * 2, 2000);
+      } catch (e: any) {
+        // retry on network error or abort
+        if (attempt === 4) throw e;
+        await sleep(delay);
+        delay = Math.min(delay * 2, 2000);
+      } finally {
+        clearTimeout(to);
       }
-      const is429 = res.status === 429;
-      if (attempt === 4 || !is429) {
-        throw new Error(`Deribit error ${res.status}: ${res.statusText}`);
-      }
-      await sleep(delay);
-      delay = Math.min(delay * 2, 2000);
     }
     throw new Error('unreachable');
+  }).finally(() => {
+    dgroupEnd();
   });
 }
 
-// ---- Public API wrappers (cached) -------------------------------------------
+// ---------- Public API wrappers (cached + coalesced) -------------------------
 export async function getTicker(instrument_name: string) {
+  dlog('getTicker called', instrument_name);
   const key = `ticker:${instrument_name}`;
   const now = Date.now();
 
   const cached = tickerCache.get(key);
-  if (cached && now - cached.at < TICKER_TTL) return cached.data;
-
+  if (cached && now - cached.at < TICKER_TTL) {
+    dlog('getTicker: cache hit', key);
+    return cached.data;
+  }
   const running = inflight.get(key);
-  if (running) return running;
+  if (running) {
+    dlog('getTicker: join inflight', key);
+    return running;
+  }
 
+  dlog('getTicker: network fetch', key);
   const p = (async () => {
     try {
       const data = await dget<DeribitTicker>('/public/ticker', { instrument_name });
@@ -151,68 +219,111 @@ export async function getTicker(instrument_name: string) {
 }
 
 export async function getIndexPrice(currency: 'BTC' | 'ETH') {
+  dlog('getIndexPrice called', currency);
   const key = `index:${currency}`;
   const now = Date.now();
+
   const cached = indexCache.get(key);
-  if (cached && now - cached.at < INDEX_TTL) return cached.data;
+  if (cached && now - cached.at < INDEX_TTL) {
+    dlog('getIndexPrice: cache hit', key);
+    return cached.data;
+  }
+  const running = inflight.get(key);
+  if (running) {
+    dlog('getIndexPrice: join inflight', key);
+    return running;
+  }
 
-  // Deribit index names are lowercase with underscore, e.g., btc_usd / eth_usd
-  const index_name = currency === 'BTC' ? 'btc_usd' : 'eth_usd';
-  const r = await dget<{ index_price: number }>('/public/get_index_price', { index_name });
-  const price = (r as any).index_price as number;
+  dlog('getIndexPrice: network fetch', key);
+  const p = (async () => {
+    try {
+      const index_name = currency === 'BTC' ? 'btc_usd' : 'eth_usd';
+      const r = await dget<{ index_price: number }>('/public/get_index_price', { index_name });
+      const price = (r as any).index_price as number;
+      indexCache.set(key, { at: Date.now(), data: price });
+      return price;
+    } finally {
+      inflight.delete(key);
+    }
+  })();
 
-  indexCache.set(key, { at: Date.now(), data: price });
-  return price;
+  inflight.set(key, p);
+  return p;
 }
 
 export async function getInstruments(currency: 'BTC' | 'ETH') {
+  dlog('getInstruments: called');
   const key = `instr:${currency}`;
   const now = Date.now();
+
   const cached = instrCache.get(key);
-  if (cached && now - cached.at < INSTR_TTL) return cached.data;
+  if (cached && now - cached.at < INSTR_TTL) {
+    dlog('getInstruments: cache hit', key);
+    return cached.data;
+  }
+  const running = inflight.get(key);
+  if (running) {
+    dlog('getInstruments: join inflight', key);
+    return running;
+  }
 
-  const result = await dget<{ instruments: DeribitInstrument[] }>(
-    '/public/get_instruments',
-    { currency, kind: 'option', expired: false }
-  );
-  const instruments = result as any as DeribitInstrument[];
+  dlog('getInstruments: network fetch', key);
+  const p = (async () => {
+    try {
+      const result = await dget<{ instruments: DeribitInstrument[] }>(
+        '/public/get_instruments',
+        { currency, kind: 'option', expired: false }
+      );
+      const instruments = result as any as DeribitInstrument[];
+      instrCache.set(key, { at: Date.now(), data: instruments });
+      return instruments;
+    } finally {
+      inflight.delete(key);
+    }
+  })();
 
-  instrCache.set(key, { at: Date.now(), data: instruments });
-  return instruments;
+  inflight.set(key, p);
+  return p;
 }
 
-// DVOL history (percent units), normalized and lightweight typed
-
-// Implementation must follow the declaration immediately to satisfy TS.
+// ---------- DVOL (volatility index) history ---------------------------------
+/**
+ * Fetch DVOL history for a currency.
+ * @param currency 'BTC' | 'ETH'
+ * @param limit number of points to fetch (approximate)
+ * @param resolutionSec bar size in seconds (e.g., 60, 3600, 86400)
+ * @returns array of { ts, closePct, openPct?, highPct?, lowPct? } sorted ascending
+ */
 export async function fetchDvolHistory(
   currency: 'BTC' | 'ETH',
   limit = 400,
   resolutionSec = 86400
 ): Promise<DvolPoint[]> {
-  const end = Date.now();
-  const start = end - limit * 24 * 60 * 60 * 1000;
+  dlog('fetchDvolHistory called', currency, { limit, resolutionSec });
 
-  // Deribit returns DVOL candles as [ts, open, high, low, close]
+  const end = Date.now();
+  const start = end - Math.max(1, limit) * Math.max(60, resolutionSec) * 1000;
+
   const result = await dget<{ data: [number, number, number, number, number][] }>(
     '/public/get_volatility_index_data',
-    {
-      currency,
-      start_timestamp: start,
-      end_timestamp: end,
-      resolution: resolutionSec,
-    }
+    { currency, start_timestamp: start, end_timestamp: end, resolution: Math.max(60, resolutionSec) }
   );
 
   const rows = (result as any).data ?? [];
-
   const toPct = (v: number | undefined) =>
     typeof v === 'number' ? (v < 1 ? v * 100 : v) : undefined;
 
-  return rows.map(([ts, open, high, low, close]) => ({
-    ts,
-    closePct: toPct(close)!,
-    openPct: toPct(open),
-    highPct: toPct(high),
-    lowPct: toPct(low),
-  }));
+  const out: DvolPoint[] = rows
+    .map(([ts, open, high, low, close]) => ({
+      ts,
+      closePct: toPct(close)!,
+      openPct: toPct(open),
+      highPct: toPct(high),
+      lowPct: toPct(low),
+    }))
+    .filter(p => Number.isFinite(p.ts) && Number.isFinite(p.closePct as any))
+    .sort((a, b) => a.ts - b.ts);
+
+  if (out.length > limit) return out.slice(out.length - limit);
+  return out;
 }

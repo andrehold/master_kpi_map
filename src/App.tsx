@@ -371,6 +371,7 @@ export default function MasterKPIMapDemo() {
   });
   const [samples, setSamples] = useState<Samples>(() => buildSamples());
   const [theme, setTheme] = useState<ThemeKey>("light");
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Live data (BTC by default)
   const { valuePct: dvolPct, lastUpdated: dvolTs, loading: dvolLoading, error: dvolError, refresh: refreshDvol } = useDeribitDvol("BTC");
@@ -432,7 +433,24 @@ export default function MasterKPIMapDemo() {
   }
 
   async function refreshLive() {
-    await Promise.all([refreshDvol(), refreshIvr(), refreshTerm(), skew7.refresh?.(), skew30.refresh?.(), skew60.refresh?.(), refreshSK()]);
+    if (isUpdating) return;
+    setIsUpdating(true);
+    console.time("update");
+    try {
+      await refreshDvol();
+      await new Promise(r => setTimeout(r, 120));
+      await refreshIvr();
+      await new Promise(r => setTimeout(r, 120));
+      await refreshTerm();
+      skew7.refresh?.();
+      await new Promise(r => setTimeout(r, 150));
+      skew30.refresh?.();
+      await new Promise(r => setTimeout(r, 150));
+      skew60.refresh?.();
+    } finally {
+      console.timeEnd("update");
+      setIsUpdating(false);
+    }
   }
 
   return (

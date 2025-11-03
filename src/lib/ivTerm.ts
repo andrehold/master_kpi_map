@@ -1,5 +1,6 @@
 // src/lib/ivTerm.ts
-import type { IVPoint } from "../services/deribit";
+// Keep this in sync with `useIVTermStructure`'s IVPoint shape
+import type { IVPoint } from "../hooks/useIVTermStructure";
 
 export type IVTermStructureLabel =
   | "contango"
@@ -42,18 +43,16 @@ export function getTermStructureStats(points: IVPoint[]): {
   label: IVTermStructureLabel;
 } {
   const usable = points
-    .filter(p => typeof p.iv === "number" && isFinite(p.iv as number) && p.ttmY > 0)
-    .sort((a, b) => a.dte - b.dte);
+    .filter(p => typeof p.iv === "number" && isFinite(p.iv as number) && p.dteDays > 0)
+    .sort((a, b) => a.dteDays - b.dteDays);
 
   const n = usable.length;
   if (n < 2) {
     return { n, slopePerYear: null, termPremium: null, label: "insufficient" };
   }
 
-  const slopePerYear = linregSlope(
-    usable.map(p => p.ttmY),
-    usable.map(p => p.iv as number)
-  );
+  const ttmYears = usable.map(p => p.dteDays / 365);
+  const slopePerYear = linregSlope(ttmYears, usable.map(p => p.iv as number));
 
   const termPremium = (usable[n - 1].iv as number) - (usable[0].iv as number);
   const label = classifyTermStructure(slopePerYear, termPremium);
