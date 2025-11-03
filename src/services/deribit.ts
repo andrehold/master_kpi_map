@@ -303,11 +303,24 @@ export async function fetchDvolHistory(
 
   const end = Date.now();
   const start = end - Math.max(1, limit) * Math.max(60, resolutionSec) * 1000;
+  async function load(resSec: number) {
+    return dget<{ data: [number, number, number, number, number][] }>(
+      '/public/get_volatility_index_data',
+      { currency, start_timestamp: start, end_timestamp: end, resolution: Math.max(60, resSec) }
+    );
+  }
 
-  const result = await dget<{ data: [number, number, number, number, number][] }>(
-    '/public/get_volatility_index_data',
-    { currency, start_timestamp: start, end_timestamp: end, resolution: Math.max(60, resolutionSec) }
-  );
+  let result: any;
+  try {
+    result = await load(resolutionSec);
+  } catch (e) {
+    // Fallback to hourly if minute resolution fails (e.g., rate/limits)
+    if (resolutionSec < 3600) {
+      result = await load(3600);
+    } else {
+      throw e;
+    }
+  }
 
   const rows = (result as any).data ?? [];
   const toPct = (v: number | undefined) =>
@@ -326,4 +339,57 @@ export async function fetchDvolHistory(
 
   if (out.length > limit) return out.slice(out.length - limit);
   return out;
+}
+
+// ---------- TradingView-style price history (PERPETUAL proxy for spot) -------
+export type PriceCandle = { ts: number; open?: number; high?: number; low?: number; close: number; volume?: number };
+
+/** Fetch close prices for PERPETUAL future as spot proxy. */
+export async function fetchPerpHistory(
+  currency: 'BTC' | 'ETH',
+  limit = 400,
+  resolutionSec = 86400
+): Promise<PriceCandle[]> {
+  const instrument_name = currency === 'BTC' ? 'BTC-PERPETUAL' : 'ETH-PERPETUAL';
+  const end = Math.floor(Date.now() / 1000) * 1000; // ms
+  const start = end - Math.max(1, limit) * Math.max(60, resolutionSec) * 1000;
+
+  // Deribit returns either arrays (data rows) or TradingView vectors; handle both
+  // TradingView API expects resolution as minutes string or 'D','W','M'. Use 'D' for >= 1 day.
+  const resolution = resolutionSec >= 86400
+    ? 'D'
+    : String(Math.max(1, Math.floor(resolutionSec / 60)));
+
+  const result = await dget<any>('/public/get_tradingview_chart_data', {
+    instrument_name,
+    start_timestamp: start,
+    end_timestamp: end,
+    resolution
+  });
+
+  // Shape A: { data: [[ts, open, high, low, close, volume], ...] }
+  if (Array.isArray(result?.data)) {
+    return (result.data as any[])
+      .map((row: any[]) => ({ ts: row[0], open: row[1], high: row[2], low: row[3], close: row[4], volume: row[5] }))
+      .filter(p => Number.isFinite(p.ts) && Number.isFinite(p.close as any))
+      .sort((a, b) => a.ts - b.ts)
+      .slice(-limit);
+  }
+
+  // Shape B: TradingView vectors { ticks, open, high, low, close, volume }
+  const ticks: number[] = result?.ticks || result?.t || [];
+  const close: number[] = result?.close || result?.c || [];
+  const open: number[] = result?.open || result?.o || [];
+  const high: number[] = result?.high || result?.h || [];
+  const low: number[] = result?.low || result?.l || [];
+  const volume: number[] = result?.volume || result?.v || [];
+
+  const out: PriceCandle[] = [];
+  for (let i = 0; i < Math.min(ticks.length, close.length); i++) {
+    out.push({ ts: ticks[i], open: open[i], high: high[i], low: low[i], close: close[i], volume: volume[i] });
+  }
+  return out
+    .filter(p => Number.isFinite(p.ts) && Number.isFinite(p.close as any))
+    .sort((a, b) => a.ts - b.ts)
+    .slice(-limit);
 }

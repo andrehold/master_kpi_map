@@ -15,6 +15,7 @@ import { useIvrFromDvol } from "./hooks/useIvrFromDvol";
 import { useIVTermStructure } from "./hooks/useIVTermStructure";
 import { useDeribitSkew25D } from './hooks/useDeribitSkew25D';
 import { useTermStructureKink } from "./hooks/useTermStructureKink";
+import { useRealizedVol } from "./hooks/useRealizedVol";
 
 /**
  * Master KPI Map – Light layout (Trade Manager style) with Dark Mode ready
@@ -393,6 +394,9 @@ export default function MasterKPIMapDemo() {
 
   const { data: skData, loading: skLoading, error: skError, refresh: refreshSK } = useTermStructureKink("BTC", { pollMs: 0 });
 
+  // Realized Volatility (BTC): 20D daily RV from PERPETUAL closes
+  const { rv: rv20d, lastUpdated: rvTs, loading: rvLoading, error: rvError, refresh: refreshRV } = useRealizedVol({ currency: "BTC", windowDays: 20, resolutionSec: 86400, annualizationDays: 365 });
+
   useEffect(() => { setSamples(buildSamples()); }, []);
 
   const filteredGroups = useMemo(() => {
@@ -437,11 +441,21 @@ export default function MasterKPIMapDemo() {
     setIsUpdating(true);
     console.time("update");
     try {
-      await refreshDvol();
+      // 1) Light KPIs first: DVOL → IVR → RV
+      try { await refreshDvol(); } catch {}
       await new Promise(r => setTimeout(r, 120));
-      await refreshIvr();
+      try { await refreshIvr(); } catch {}
       await new Promise(r => setTimeout(r, 120));
-      await refreshTerm();
+      try { refreshRV(); } catch {}
+
+      // 2) Then IV Term Structure & Kink (heavier)
+      await new Promise(r => setTimeout(r, 150));
+      try { await refreshTerm(); } catch {}
+      await new Promise(r => setTimeout(r, 150));
+      try { refreshSK(); } catch {}
+
+      // 3) Finally multiple skews (fan out)
+      await new Promise(r => setTimeout(r, 150));
       skew7.refresh?.();
       await new Promise(r => setTimeout(r, 150));
       skew30.refresh?.();
@@ -493,9 +507,9 @@ export default function MasterKPIMapDemo() {
                   IV TS {new Date(tsData.asOf).toLocaleTimeString()}
                 </span>
               )}
-              {(dvolError || ivrError || tsError || skewErrorAny || skError) && (
+              {(dvolError || ivrError || tsError || skewErrorAny || skError || rvError) && (
                 <span className="px-2 py-1 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
-                  {dvolError || ivrError || tsError || skewErrorAny || skError}
+                  {dvolError || ivrError || tsError || skewErrorAny || skError || rvError}
                 </span>
               )}
               {skData?.asOf && (
@@ -574,6 +588,11 @@ export default function MasterKPIMapDemo() {
                       value = `${ivr}`; // keep as 0..100 (not %)
                       meta = "DVOL-based IVR";
                       if (ivp != null) extraBadge = `IVP ${ivp}`;
+                    }
+                    if (kpi.id === "rv" && rv20d != null) {
+                      value = `${(rv20d * 100).toFixed(1)}%`;
+                      meta = rvTs ? `20D RV · ${new Date(rvTs).toLocaleDateString()}` : "20D RV";
+                      extraBadge = rvLoading ? "Refreshing…" : null;
                     }
                     if (kpi.id === "term-structure" && tsData) {
                       const labelTitle =
