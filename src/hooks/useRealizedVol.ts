@@ -13,7 +13,7 @@ export type UseRealizedVolReturn = {
   lastUpdated?: number;   // ms
   loading: boolean;
   error?: string;
-  refresh: () => void;
+  refresh: () => Promise<void>;
 };
 
 function computeRealizedVol(closes: number[], windowDays: number, annualizationDays: number): number | undefined {
@@ -65,7 +65,7 @@ export function useRealizedVol(options: UseRealizedVolOptions = {}): UseRealized
 
   useEffect(() => { run(); }, [run, tick.current]);
 
-  const refresh = useCallback(() => { tick.current++; run(); }, [run]);
+  const refresh = useCallback(async () => { tick.current++; await run(); }, [run]);
 
   return useMemo(() => ({ rv, lastUpdated: ts, loading, error, refresh }), [rv, ts, loading, error, refresh]);
 }

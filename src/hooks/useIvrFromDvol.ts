@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fetchDvolHistory } from "../services/deribit";
 
 /** Compute IVR (rank 0..100) and IVP (percentile 0..100) from DVOL history. */
@@ -36,6 +36,9 @@ export function useIvrFromDvol(currency: "BTC" | "ETH" = "BTC") {
       setLoading(false);
     }
   }, [currency]);
+  
+  // Auto-run once on mount
+  useEffect(() => { refresh(); }, [refresh]);
 
   return { ivr, ivp, lastUpdated, loading, error, refresh };
 }

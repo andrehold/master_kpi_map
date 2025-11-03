@@ -1,5 +1,5 @@
 // src/hooks/useDeribitDvol.ts
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fetchDvolHistory } from "../services/deribit";
 
 /**
@@ -33,6 +33,9 @@ export function useDeribitDvol(currency: "BTC" | "ETH" = "BTC") {
       setLoading(false);
     }
   }, [currency]);
+
+  // Auto-run once on mount
+  useEffect(() => { refresh(); }, [refresh]);
 
   return { valuePct, lastUpdated, loading, error, refresh };
 }

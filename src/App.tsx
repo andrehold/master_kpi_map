@@ -446,7 +446,7 @@ export default function MasterKPIMapDemo() {
       await new Promise(r => setTimeout(r, 120));
       try { await refreshIvr(); } catch {}
       await new Promise(r => setTimeout(r, 120));
-      try { refreshRV(); } catch {}
+      try { await refreshRV(); } catch {}
 
       // 2) Then IV Term Structure & Kink (heavier)
       await new Promise(r => setTimeout(r, 150));

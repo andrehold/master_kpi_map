@@ -34,7 +34,10 @@ export type DvolPoint = {
   lowPct?: number;
 };
 
-const DERIBIT = 'https://www.deribit.com/api/v2';
+// Use Vite dev proxy in development to avoid CORS; fall back to absolute in prod
+const DERIBIT = (typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV)
+  ? '/api/v2'
+  : 'https://www.deribit.com/api/v2';
 
 // ---------- Debug logging (toggle at runtime) --------------------------------
 // Turn on in DevTools at any time:
