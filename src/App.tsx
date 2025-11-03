@@ -594,6 +594,13 @@ export default function MasterKPIMapDemo() {
                       meta = rvTs ? `20D RV · ${new Date(rvTs).toLocaleDateString()}` : "20D RV";
                       extraBadge = rvLoading ? "Refreshing…" : null;
                     }
+                    if (kpi.id === "iv-rv-spread" && dvolPct != null && rv20d != null) {
+                      const spread = dvolPct - (rv20d * 100);
+                      const sign = spread >= 0 ? "+" : "";
+                      value = `${sign}${spread.toFixed(1)}%`;
+                      meta = "IV − RV";
+                      extraBadge = `IV ${dvolPct.toFixed(1)} • RV ${(rv20d * 100).toFixed(1)}`;
+                    }
                     if (kpi.id === "term-structure" && tsData) {
                       const labelTitle =
                         tsData.label === "insufficient"
