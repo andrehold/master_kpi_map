@@ -14,6 +14,7 @@ import { useDeribitDvol } from "./hooks/useDeribitDvol";
 import { useIvrFromDvol } from "./hooks/useIvrFromDvol";
 import { useIVTermStructure } from "./hooks/useIVTermStructure";
 import { useDeribitSkew25D } from './hooks/useDeribitSkew25D';
+import { useTermStructureKink } from "./hooks/useTermStructureKink";
 
 /**
  * Master KPI Map – Light layout (Trade Manager style) with Dark Mode ready
@@ -382,8 +383,14 @@ export default function MasterKPIMapDemo() {
     minDteHours: 12,  // skip expiries expiring very soon
     // refreshMs: 15000, // optional polling
   });
-  // Skew (25Δ Risk Reversal), BTC 30D
-  const { skew, ivC25, ivP25, expiryLabel: skewExpiry, loading: skewLoading, error: skewError, refresh: refreshSkew } = useDeribitSkew25D({ currency: "BTC", targetDays: 30 });
+  // Skew (25Δ Risk Reversal) – multiple tenors side-by-side
+  const skew7  = useDeribitSkew25D({ currency: "BTC", targetDays: 7  });
+  const skew30  = useDeribitSkew25D({ currency: "BTC", targetDays: 30  });
+  const skew60  = useDeribitSkew25D({ currency: "BTC", targetDays: 60  });
+  const skewLoadingAny = !!(skew7.loading || skew30.loading || skew60.loading);
+  const skewErrorAny   = skew7.error || skew30.error || skew60.error;
+
+  const { data: skData, loading: skLoading, error: skError, refresh: refreshSK } = useTermStructureKink("BTC", { pollMs: 0 });
 
   useEffect(() => { setSamples(buildSamples()); }, []);
 
@@ -425,7 +432,7 @@ export default function MasterKPIMapDemo() {
   }
 
   async function refreshLive() {
-    await Promise.all([refreshDvol(), refreshIvr(), refreshTerm(), refreshSkew]);
+    await Promise.all([refreshDvol(), refreshIvr(), refreshTerm(), skew7.refresh?.(), skew30.refresh?.(), skew60.refresh?.(), refreshSK()]);
   }
 
   return (
@@ -468,9 +475,14 @@ export default function MasterKPIMapDemo() {
                   IV TS {new Date(tsData.asOf).toLocaleTimeString()}
                 </span>
               )}
-              {(dvolError || ivrError || tsError) && (
+              {(dvolError || ivrError || tsError || skewErrorAny || skError) && (
                 <span className="px-2 py-1 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
-                  {dvolError || ivrError || tsError || skewError}
+                  {dvolError || ivrError || tsError || skewErrorAny || skError}
+                </span>
+              )}
+              {skData?.asOf && (
+                <span className="px-2 py-1 rounded-lg bg-[var(--surface-900)] border border-[var(--border)] text-xs text-[var(--fg-muted)] shadow-[var(--shadow)]">
+                  0–3D Kink {new Date(skData.asOf).toLocaleTimeString()}
                 </span>
               )}
             </div>
@@ -483,10 +495,10 @@ export default function MasterKPIMapDemo() {
             <button
               onClick={refreshLive}
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)] disabled:opacity-60"
-              disabled={dvolLoading || ivrLoading || tsLoading || skewLoading}
+              disabled={dvolLoading || ivrLoading || tsLoading || skewLoadingAny || skLoading}
               title="Update DVOL + IVR + IV Term Structure from Deribit"
             >
-              <Cloud className={`w-4 h-4 ${(dvolLoading || ivrLoading || tsLoading || skewLoading) ? "animate-spin" : ""}`} />
+              <Cloud className={`w-4 h-4 ${(dvolLoading || ivrLoading || tsLoading || skewLoadingAny || skLoading) ? "animate-spin" : ""}`} />
               Update
             </button>
 
@@ -570,16 +582,82 @@ export default function MasterKPIMapDemo() {
                       }
                     }
                     // Skew (25Δ Risk Reversal): RR = IV(25Δ Call) − IV(25Δ Put)  [vol points]
-                    if (kpi.id === "skew-25d-rr" && skew != null) {
-                      const vp = skew * 100; // convert to vol points
-                      const sign = vp >= 0 ? "+" : "";
-                      value = `${sign}${vp.toFixed(2)}`;
-                      meta = skewExpiry ? `BTC 30D · ${skewExpiry}` : "BTC 30D";
-                      if (ivC25 != null && ivP25 != null) {
-                       extraBadge = `C25 ${(ivC25 * 100).toFixed(1)} • P25 ${(ivP25 * 100).toFixed(1)}`;
+                    if (kpi.id === "skew-25d-rr") {
+                      const tenors = [
+                        { key: "7d",  label: "BTC 7D",  s: skew7  },
+                        { key: "30d", label: "BTC 30D", s: skew30 },
+                        { key: "60d", label: "BTC 60D", s: skew60 },
+                      ];
+                      return (
+                        <>
+                          {tenors.map(({ key, label, s }) => {
+                            let v = samples[kpi.id];
+                            let m: string | undefined = undefined;
+                            let b: string | null = null;
+                    
+                            if (s?.skew != null) {
+                              const vp = s.skew * 100; // vol points
+                              const sign = vp >= 0 ? "+" : "";
+                              v = `${sign}${vp.toFixed(2)}`;
+                              m = s.expiryLabel ? `${label} · ${s.expiryLabel}` : label;
+                              if (s.ivC25 != null && s.ivP25 != null) {
+                                b = `C25 ${(s.ivC25 * 100).toFixed(1)} • P25 ${(s.ivP25 * 100).toFixed(1)}`;
+                              } else {
+                                b = "Interpolating…";
+                              }
+                            } else if (s?.loading) {
+                              v = "…";
+                              m = `${label} · loading`;
+                              b = null;
+                            } else if (s?.error) {
+                              v = "—";
+                              m = `${label} · error`;
+                              b = null;
+                            } else {
+                              m = label;
+                            }
+                    
+                            return (
+                              <KpiCard
+                                key={`${kpi.id}-${key}`}
+                                kpi={kpi}
+                                value={v}
+                                meta={m}
+                                extraBadge={b}
+                              />
+                            );
+                          })}
+                        </>
+                      );
+                    }
+
+                    if (kpi.id === "ts-kink") {
+                      let v = samples[kpi.id];
+                      let m: string | undefined = undefined;
+                      let b: string | null = null;
+
+                      if (skLoading) {
+                        v = "…";
+                        m = "loading";
+                      } else if (skError) {
+                        v = "—";
+                        m = "error";
+                      } else if (skData && typeof skData.kinkPoints === "number") {
+                        const vp = skData.kinkPoints * 100; // vol points in %
+                        const sign = vp >= 0 ? "+" : "";
+                        v = `${sign}${vp.toFixed(2)}%`;
+                        m = `0DTE − mean(1–3DTE)${skData.indexPrice ? ` · S ${Math.round(skData.indexPrice)}` : ""}`;
+
+                        // tiny extra badge, like IVR’s IVP badge
+                        const iv0 = skData.iv0dte != null ? (skData.iv0dte * 100).toFixed(1) : "—";
+                        const m13 = skData.mean1to3 != null ? (skData.mean1to3 * 100).toFixed(1) : "—";
+                        const ratio = skData.kinkRatio != null ? `${skData.kinkRatio.toFixed(2)}×` : null;
+                        b = ratio ? `0D ${iv0} • 1–3D ${m13} • ${ratio}` : `0D ${iv0} • 1–3D ${m13}`;
                       } else {
-                        extraBadge = "Interpolating…";
+                        m = "Awaiting data";
                       }
+
+                      return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={b} />;
                     }
 
                     return (
