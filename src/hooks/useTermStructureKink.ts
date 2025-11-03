@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DeribitInstrument } from "../services/deribit";
 import {
-  getActiveOptionInstruments,
-  getBookSummary,
+  getInstruments,
+  getTicker,
   getIndexPrice,
 } from "../services/deribit";
 
@@ -113,7 +113,7 @@ export function useTermStructureKink(
 
       // Delegate all data fetching to your service
       const [instruments, indexPrice] = await Promise.all([
-        getActiveOptionInstruments(currency),
+        getInstruments(currency),
         getIndexPrice(currency),
       ]);
 
@@ -135,16 +135,22 @@ export function useTermStructureKink(
 
       // Per-instrument summaries (<= 4 requests)
       const [s0, s1, s2, s3] = await Promise.all([
-        atm0 ? getBookSummary(atm0.instrument_name) : Promise.resolve(null),
-        atm1 ? getBookSummary(atm1.instrument_name) : Promise.resolve(null),
-        atm2 ? getBookSummary(atm2.instrument_name) : Promise.resolve(null),
-        atm3 ? getBookSummary(atm3.instrument_name) : Promise.resolve(null),
+        atm0 ? getTicker(atm0.instrument_name) : Promise.resolve(null),
+        atm1 ? getTicker(atm1.instrument_name) : Promise.resolve(null),
+        atm2 ? getTicker(atm2.instrument_name) : Promise.resolve(null),
+        atm3 ? getTicker(atm3.instrument_name) : Promise.resolve(null),
       ]);
 
-      const iv0 = s0?.mark_iv;
-      const iv1 = s1?.mark_iv;
-      const iv2 = s2?.mark_iv;
-      const iv3 = s3?.mark_iv;
+      // Normalize Deribit mark_iv to decimals: examples show values like 80 for 80%.
+      const normalizeIv = (iv?: number): number | undefined =>
+        typeof iv === "number" && isFinite(iv)
+          ? (iv > 2 ? iv / 100 : iv)
+          : undefined;
+
+      const iv0 = normalizeIv(s0?.mark_iv);
+      const iv1 = normalizeIv(s1?.mark_iv);
+      const iv2 = normalizeIv(s2?.mark_iv);
+      const iv3 = normalizeIv(s3?.mark_iv);
 
       const m13 = mean([iv1, iv2, iv3]);
       const kinkPts = iv0 !== undefined && m13 !== undefined ? iv0 - m13 : undefined;
@@ -186,4 +192,3 @@ export function useTermStructureKink(
     [data, loading, error]
   );
 }
-
