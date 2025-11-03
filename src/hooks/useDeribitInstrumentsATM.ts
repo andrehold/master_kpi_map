@@ -1,6 +1,6 @@
 // src/hooks/useDeribitInstrumentsATM.ts
 import { useEffect, useRef, useState } from "react";
-import { getActiveOptionInstruments, getIndexPrice, type DeribitInstrument } from "../services/deribit";
+import { getInstruments, getIndexPrice, type DeribitInstrument } from "../services/deribit";
 
 export type Group = {
   expiryTs: number;
@@ -78,7 +78,7 @@ export function useDeribitInstrumentsATM(options: UseDeribitInstrumentsATMOption
     try {
       setLoading(true); setError(null);
       const [instruments, indexPrice] = await Promise.all([
-        getActiveOptionInstruments("BTC"),
+        getInstruments("BTC"),
         getIndexPrice("BTC"),
       ]);
       if (signal?.aborted) return;
