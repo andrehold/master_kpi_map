@@ -17,6 +17,7 @@ import { useDeribitSkew25D } from './hooks/useDeribitSkew25D';
 import { useTermStructureKink } from "./hooks/useTermStructureKink";
 import { useRealizedVol } from "./hooks/useRealizedVol";
 import ExpectedMoveRibbonCard from "./components/ExpectedMoveRibbonCard";
+import { useRvEmFactor } from "./hooks/useRvEmFactor";
 
 /**
  * Master KPI Map – Light layout (Trade Manager style) with Dark Mode ready
@@ -47,7 +48,8 @@ type KPIValueType =
   | "ivrank"
   | "ms"
   | "price"
-  | "text";
+  | "text"
+  | "custom";
 
 interface KPIDef {
   id: string;
@@ -216,6 +218,7 @@ function sampleFor(type: KPIValueType): string {
       const v = rand(0.0, 8.0, 1) * (isContango ? 1 : -1);
       return `${isContango ? "Contango" : "Backwardation"} (${v.toFixed(1)}%)`;
     }
+    case "custom": return "—";
     default: return "—";
   }
 }
@@ -704,6 +707,17 @@ export default function MasterKPIMapDemo() {
                       }
 
                       return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={b} />;
+                    }
+
+                    if (kpi.id === "rv-em-factor") {
+                      const TENOR_DAYS = 20; // choose your tenor (match your RV window)
+                      const { value: ratio, rvAnn, ivAnn, loading, error } = useRvEmFactor({ currency: "BTC", days: TENOR_DAYS });
+                    
+                      const v   = loading ? "…" : (ratio != null ? `${ratio.toFixed(2)}×` : "—");
+                      const m   = loading ? "loading" : (error ? "error" : `BTC ${TENOR_DAYS}D · RV ÷ IV`);
+                      const bad = (rvAnn != null && ivAnn != null) ? `IV ${(ivAnn * 100).toFixed(1)} • RV ${(rvAnn * 100).toFixed(1)}` : null;
+                    
+                      return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={bad} />;
                     }
 
                     if (kpi.id === "em-ribbon") {
