@@ -10,7 +10,7 @@ import {
   Moon,
   Cloud,
 } from "lucide-react";
-import kpiStrings from "./i18n/en/kpi.json";
+import KpiInfo from "./components/KpiInfo";
 import { useDeribitDvol } from "./hooks/useDeribitDvol";
 import { useIvrFromDvol } from "./hooks/useIvrFromDvol";
 import { useIVTermStructure } from "./hooks/useIVTermStructure";
@@ -334,24 +334,24 @@ function GroupHeader({ title, open, onToggle }: { title: string; open: boolean; 
 }
 
 function KpiCard({ kpi, value, meta, extraBadge }: { kpi: KPIDef; value: string; meta?: string; extraBadge?: string | null; }) {
-  const desc = kpi.description ?? (kpiStrings as any)?.kpis?.[kpi.id] ?? "";
   return (
     <div className="group rounded-2xl border border-[var(--border)] bg-[var(--surface-950)] p-4 shadow-[var(--shadow)] hover:border-[var(--brand-500)]/30 transition">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="text-[var(--fg)] font-medium leading-snug">{kpi.name}</div>
-          {desc && (
-            <div className="text-xs text-[var(--fg-muted)] mt-0.5">{desc}</div>
-          )}
+          <div className="text-[var(--fg)] font-medium leading-snug">{kpi.name}
+            <KpiInfo id={kpi.id} description={kpi.description} />
+          </div>
         </div>
         <div className="text-right">
           <div className="text-xl font-semibold tabular-nums font-mono text-[var(--fg)]">{value}</div>
           <div className="mt-1 flex items-center gap-1 justify-end">
             {extraBadge ? <Badge>{extraBadge}</Badge> : null}
-            <div className="text-[10px] text-[var(--fg-muted)] flex items-center gap-1">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--fg-muted)]" />
-              {meta ?? "sample"}
-            </div>
+            {meta ? (
+              <div className="text-[10px] text-[var(--fg-muted)] flex items-center gap-1">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--fg-muted)]" />
+                {meta}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
