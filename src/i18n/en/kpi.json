@@ -1,0 +1,60 @@
+{
+    "kpis": {
+      "atm-iv": "Annualized IV for near-the-money options; DVOL(30D) used as proxy.",
+      "ivr": "Percentile of IV over a 52-week window; high = rich implied vol.",
+      "term-structure": "Shape/slope of IV across expiries (contango/backwardation and steepness).",
+      "skew-25d-rr": "25Δ call IV minus 25Δ put IV; positive = call-heavy skew.",
+      "vol-of-vol": "Volatility of implied vol itself; gauges instability of IV levels.",
+      "ts-kink": "0DTE IV minus mean(1–3DTE) IV; same-day premium signal.",
+  
+      "rv": "Historical (realized) volatility over the selected window, annualized.",
+      "iv-rv-spread": "IV minus RV; positive suggests an implied volatility risk premium.",
+      "em-hit-rate": "Share of periods where spot stayed within the expected-move band.",
+      "rv-em-factor": "RV divided by expected-move-implied volatility; >1 = EM underpriced.",
+      "short-horizon-atr": "Short-horizon realized σ / intraday ATR normalized vs expected move.",
+      "em-ribbon": "Recent expected-move bands vs closes; quick read of over/under moves.",
+  
+      "vix-vvix": "Equity vol (VIX) and vol-of-vol (VVIX) regime and jump risk.",
+      "cross-asset-vol": "Rates (MOVE), FX, and credit vol benchmarks for cross-asset stress.",
+      "implied-corr": "Correlation implied by index vs constituents; crowding/systemic risk.",
+      "macro-events": "Upcoming catalysts (FOMC, CPI, NFP, etc.) that reprice vol.",
+      "event-collapse": "Post-event IV decay; how quickly premium normalizes after catalysts.",
+  
+      "funding": "Perp funding rate; positive = longs pay shorts (carry direction).",
+      "basis": "Spot–perp/futures basis; carry opportunity and pressure indicator.",
+      "oi-concentration": "Open interest clustered near strikes; indicator of pin risk.",
+      "gamma-walls": "Large dealer gamma levels that can magnetize or repel price.",
+      "liquidity-stress": "Spreads/depth slippage signals; execution risk under stress.",
+      "orderbook-health": "Order book slope/staleness/resiliency; spoofing/refresh risk.",
+  
+      "condor-credit-em": "Net condor credit as % of expected-move width.",
+      "maxloss-credit": "Max loss divided by expected credit; entry risk-reward ratio.",
+      "delta-gamma-near-shorts": "Delta/Gamma exposure near short strikes; shock sensitivity.",
+      "portfolio-vega-theta": "Aggregate vega and theta across positions; carry vs convexity.",
+      "pnl-vs-premium": "Realized PnL relative to total premium collected.",
+      "reversion-half-life": "Half-life for parity/Δ deviations to mean-revert.",
+      "edge-z": "Standardized edge versus historical; z-score of opportunity quality.",
+      "box-financing-spread": "Implied financing (box) minus cost of capital; lending carry.",
+      "ex-div-early-ex": "Assignment risk from dividends/carry around ex-dates.",
+  
+      "fill-ratio": "Filled quantity vs submitted; route/quote quality.",
+      "maker-taker": "Maker/taker fee mix and realized rebates.",
+      "slippage": "Arrival-to-fill price difference per leg/kit.",
+      "legging-risk": "PnL impact from legging vs package execution.",
+      "time-to-fill": "End-to-end time to fill and number of reprices.",
+      "breakage": "Failed/cancelled orders leading to opportunity loss.",
+      "fees-spread": "All-in fees plus realized spread paid.",
+      "infra-errors": "Automation/system error rates affecting trading.",
+  
+      "max-dd-calmar": "Peak-to-trough drawdown and return/drawdown (Calmar).",
+      "locked-vs-realized": "Captured edge at fill vs ultimately realized edge.",
+      "stress-tests": "Portfolio PnL under spot shocks and liquidity haircuts.",
+      "capital-utilization": "Margin usage footprint vs limits (Reg-T / PM).",
+      "concentration-limits": "Exposure by underlying/tenor vs concentration caps.",
+      "utilization-vs-caps": "Daily/expiry risk utilization vs defined caps.",
+  
+      "latency": "End-to-end automation latency (ms).",
+      "data-freshness": "Book/update staleness; data freshness for decisions.",
+      "uptime": "Automation uptime and safety/kill-switch trigger counts."
+    }
+  }

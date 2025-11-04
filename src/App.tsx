@@ -10,6 +10,7 @@ import {
   Moon,
   Cloud,
 } from "lucide-react";
+import kpiStrings from "./i18n/en/kpi.json";
 import { useDeribitDvol } from "./hooks/useDeribitDvol";
 import { useIvrFromDvol } from "./hooks/useIvrFromDvol";
 import { useIVTermStructure } from "./hooks/useIVTermStructure";
@@ -333,13 +334,14 @@ function GroupHeader({ title, open, onToggle }: { title: string; open: boolean; 
 }
 
 function KpiCard({ kpi, value, meta, extraBadge }: { kpi: KPIDef; value: string; meta?: string; extraBadge?: string | null; }) {
+  const desc = kpi.description ?? (kpiStrings as any)?.kpis?.[kpi.id] ?? "";
   return (
     <div className="group rounded-2xl border border-[var(--border)] bg-[var(--surface-950)] p-4 shadow-[var(--shadow)] hover:border-[var(--brand-500)]/30 transition">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-[var(--fg)] font-medium leading-snug">{kpi.name}</div>
-          {kpi.description && (
-            <div className="text-xs text-[var(--fg-muted)] mt-0.5">{kpi.description}</div>
+          {desc && (
+            <div className="text-xs text-[var(--fg-muted)] mt-0.5">{desc}</div>
           )}
         </div>
         <div className="text-right">
@@ -355,7 +357,10 @@ function KpiCard({ kpi, value, meta, extraBadge }: { kpi: KPIDef; value: string;
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5">
         {kpi.strategies.map((s) => (
-          <span key={s} className="px-2 py-0.5 rounded-full text-[10px] border border-[var(--border)] text-[var(--fg-muted)] bg-[var(--surface-900)]">
+          <span
+            key={s}
+            className="px-2 py-0.5 rounded-full text-[10px] border border-[var(--border)] text-[var(--fg-muted)] bg-[var(--surface-900)]"
+          >
             {s}
           </span>
         ))}

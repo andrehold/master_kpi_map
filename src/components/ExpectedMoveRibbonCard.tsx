@@ -32,7 +32,11 @@ export default function ExpectedMoveRibbonCard({
         }
       }
       const badge = typeof it.ivPct === "number" ? `IV ${it.label} ${it.ivPct.toFixed(1)}%` : undefined;
-      const footnote = `S × IV × √t · √t ${(Math.sqrt(it.days / 365)).toFixed(3)}`;
+      const footnote =
+        `S × IV × √t · √t ${(Math.sqrt(it.days / 365)).toFixed(3)}` +
+        (it.expiryTs
+          ? ` · Exp ${it.expiryLabel ?? new Date(it.expiryTs).toLocaleDateString(undefined, { day: "2-digit", month: "short" })}`
+          : "");
       return { id: it.id, label: it.label, value, badge, footnote };
     });
   }, [data.items, data.spot, mode]);

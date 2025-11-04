@@ -4,20 +4,30 @@ import { getIndexPrice, type Currency } from "../services/deribit";
 
 /**
  * useExpectedMove
- * Computes Expected Move for a set of tenors using: EM = Spot × IV × √t
- * - IV(t) is interpolated from the IV Term Structure in *variance space*
- * - Spot is Deribit index price (btc_usd / eth_usd)
- *
- * Returns a familiar hook shape: { data, loading, error, refresh }
+ * EM = Spot × IV × √t
+ * - IV(t) is interpolated in *variance space* from the term structure
+ * - We also expose, for each tenor, the *closest real option expiry* used
+ *   when interpolating (so you can show it next to the formula).
  */
 
 export type TenorDef = { id: string; label: string; days: number };
+
 export type ExpectedMoveItem = {
   id: string;
   label: string;
   days: number;
-  em?: number;     // absolute expected move
-  ivPct?: number;  // IV used (percent)
+  em?: number;            // absolute expected move
+  ivPct?: number;         // IV used (percent)
+  // --- NEW: expiry metadata you can render in the UI ---
+  expiryTs?: number;      // ms epoch (closest real expiry used)
+  expiryISO?: string;     // ISO (if available from source)
+  expiryLabel?: string;   // short UI label, e.g., "20 Jan"
+  // optional: reveal interpolation source (left/right nodes)
+  source?: {
+    leftTs?: number;
+    rightTs?: number;
+    weightRight?: number; // 0..1 (weight of right node)
+  };
 };
 
 export type UseExpectedMoveArgs = {
@@ -27,7 +37,7 @@ export type UseExpectedMoveArgs = {
 
 export type UseExpectedMoveResult = {
   data: {
-    items: ExpectedMoveItem[]; // in the same order as provided tenors
+    items: ExpectedMoveItem[];
     byId: Record<string, ExpectedMoveItem>;
     spot: number | null;
     tsAsOf: number | null; // ms epoch
@@ -37,8 +47,9 @@ export type UseExpectedMoveResult = {
   refresh: () => Promise<void>;
 };
 
+// Default display set; adjust as you prefer
 const DEFAULT_TENORS = [
-  { id: "em-2d", label: "2D", days: 2 },
+  { id: "em-1d", label: "1D", days: 1 },
   { id: "em-1w", label: "1W", days: 7 },
   { id: "em-1m", label: "1M", days: 30 },
   { id: "em-3m", label: "3M", days: 90 },
@@ -47,7 +58,7 @@ const DEFAULT_TENORS = [
 export function useExpectedMove(
   { currency = "BTC", tenors = DEFAULT_TENORS }: UseExpectedMoveArgs = {}
 ): UseExpectedMoveResult {
-  // 1) Source hooks / data
+  // 1) Term structure
   const { data: tsData, loading: tsLoading, error: tsError, reload } = useIVTermStructure({ currency });
 
   // 2) Spot via Deribit index
@@ -72,45 +83,50 @@ export function useExpectedMove(
     void fetchSpot();
   }, [fetchSpot]);
 
-  // 3) Compute EM set
-  // Normalize common tenor labels/ids -> canonical day counts to avoid 3M using 1M by accident
-  const normalizeTenorDays = (t: TenorDef): TenorDef => {
-    const id = (t.id ?? "").toLowerCase();
-    const lbl = (t.label ?? "").toUpperCase();
-    if (/(^|-)3m$/.test(id) || lbl === "3M") return { ...t, days: 90 };
-    if (/(^|-)1m$/.test(id) || lbl === "1M") return { ...t, days: 30 };
-    if (/(^|-)1w$/.test(id) || lbl === "1W") return { ...t, days: 7 };
-    if (/(^|-)1d$/.test(id) || lbl === "1D") return { ...t, days: 1 };
-    return t;
-  };
-
+  // 3) Compute EM set + expiry metadata
   const items = useMemo<ExpectedMoveItem[]>(() => {
     const pts = mapTsPoints(tsData?.points ?? []);
-    const arr = tenors.map((t) => {
-      const tt = normalizeTenorDays(t);
-      const tY = tt.days / 365;
-      const iv = ivAtVarianceInterp(pts, tY); // decimal
+    return tenors.map((t) => {
+      const tY = t.days / 365;
+
+      const interp = interpolateIvVarianceWithSource(pts, tY); // { iv, left, right, w }
+      const iv = interp?.iv ?? null; // decimal
+
+      // Pick the "chosen expiry" as the nearer node (by weight),
+      // or synthesize from target days if neither node has a timestamp.
+      const chosen = chooseExpiryForTarget(interp, t.days);
+
       if (spot != null && iv != null) {
         return {
-          id: tt.id,
-          label: tt.label,
-          days: tt.days,
+          id: t.id,
+          label: t.label,
+          days: t.days,
           em: spot * iv * Math.sqrt(tY),
           ivPct: iv * 100,
+          expiryTs: chosen?.ts,
+          expiryISO: chosen?.iso,
+          expiryLabel: chosen?.label,
+          source: {
+            leftTs: interp?.left?.expiryTs,
+            rightTs: interp?.right?.expiryTs,
+            weightRight: interp?.w,
+          },
         };
       }
-      return { id: tt.id, label: tt.label, days: tt.days };
+      return {
+        id: t.id,
+        label: t.label,
+        days: t.days,
+        expiryTs: chosen?.ts,
+        expiryISO: chosen?.iso,
+        expiryLabel: chosen?.label,
+        source: {
+          leftTs: interp?.left?.expiryTs,
+          rightTs: interp?.right?.expiryTs,
+          weightRight: interp?.w,
+        },
+      };
     });
-    // Dev guard to catch accidental duplication (e.g., 3M resolving to 1M)
-    try {
-      const oneM = arr.find(it => /(^|-)1m$/i.test(it.id) || it.label === "1M");
-      const threeM = arr.find(it => /(^|-)3m$/i.test(it.id) || it.label === "3M");
-      if (oneM?.em != null && threeM?.em != null && Math.abs(threeM.em - oneM.em) < 1e-9) {
-        // eslint-disable-next-line no-console
-        console.warn("[useExpectedMove] 3M EM equals 1M EM — check tenor mapping / data fallbacks");
-      }
-    } catch {}
-    return arr;
   }, [tenors, tsData?.points, spot]);
 
   const byId = useMemo(() => {
@@ -121,7 +137,8 @@ export function useExpectedMove(
 
   const loading = tsLoading || spotLoading;
   const error = (tsError as string | null) || spotError || null;
-  // Normalize asOf -> number | null (avoid brittle assertions)
+
+  // Normalize asOf -> number | null
   const tsAsOf: number | null = tsData?.asOf != null ? Number(tsData.asOf) : null;
 
   const refresh = useCallback(async () => {
@@ -136,32 +153,38 @@ export function useExpectedMove(
   };
 }
 
-// ----------------------- Helpers (shared with UI) ----------------------
+/* ------------------------- Helpers ------------------------------------- */
 
-type TsPoint = { tAnnual: number; iv: number };
+type TsPoint = {
+  tAnnual: number;  // years
+  iv: number;       // decimal
+  expiryTs?: number;
+  expiryISO?: string;
+};
 
-/**
- * mapTsPoints
- * Accepts a variety of incoming shapes and returns normalized term points:
- * { tAnnual: number (years), iv: number (decimal) }
- * - Looks for percent IV fields and converts to decimal if needed.
- * - Derives tAnnual from days or expiry timestamps if available.
- */
+// Map various TS point shapes into normalized { tAnnual, iv, expiryTs?, expiryISO? }
 export function mapTsPoints(raw: any[]): TsPoint[] {
   const now = Date.now();
   const DAY_MS = 24 * 3600 * 1000;
   const pts: TsPoint[] = [];
 
   for (const p of raw ?? []) {
-    // IV detection (percent or decimal)
+    // IV detection (decimal or percent)
     const ivCandidates = [
       p?.iv, p?.atmIv, p?.midIv, p?.ivPct, p?.iv_percent, p?.iv_percent_mid,
     ].filter((x: any) => typeof x === "number");
 
     if (!ivCandidates.length) continue;
     let iv = ivCandidates[0] as number;
-    // If clearly a percent (e.g., 45 -> 45%), convert to decimal when > 1
-    if (iv > 1) iv = iv / 100;
+    if (iv > 1) iv = iv / 100; // treat as percent -> decimal
+
+    // expiry fields if present
+    let expiryTs: number | undefined = typeof p?.expiryTs === "number" ? p.expiryTs : undefined;
+    const expiryISO: string | undefined = typeof p?.expiryISO === "string" ? p.expiryISO : undefined;
+    if (expiryTs == null && expiryISO) {
+      const ms = Date.parse(expiryISO);
+      if (Number.isFinite(ms)) expiryTs = ms;
+    }
 
     // tAnnual detection
     let tAnnual: number | undefined =
@@ -172,45 +195,94 @@ export function mapTsPoints(raw: any[]): TsPoint[] {
     }
     if (tAnnual == null && typeof p?.days === "number") {
       tAnnual = p.days / 365;
+      // if we don't have an expiry but do have days, synthesize expiry from now
+      if (expiryTs == null && Number.isFinite(p.days)) {
+        expiryTs = now + p.days * DAY_MS;
+      }
     }
-    if (tAnnual == null && (p?.expiryISO || p?.expiryTs)) {
-      const expiryMs =
-        typeof p?.expiryTs === "number"
-          ? p.expiryTs
-          : new Date(p.expiryISO).getTime();
-      const dt = Math.max(expiryMs - now, 0);
+    if (tAnnual == null && (expiryTs != null)) {
+      const dt = Math.max(expiryTs - now, 0);
       tAnnual = dt / DAY_MS / 365;
     }
 
     if (typeof tAnnual === "number" && isFinite(tAnnual) && tAnnual > 0) {
-      pts.push({ tAnnual, iv });
+      pts.push({ tAnnual, iv, expiryTs, expiryISO });
     }
   }
 
   return pts.sort((a, b) => a.tAnnual - b.tAnnual);
 }
 
-/**
- * Interpolate IV in variance space between points.
- * Returns iv (decimal) at tTarget (years) or null if not possible.
- */
-export function ivAtVarianceInterp(points: TsPoint[], tTarget: number): number | null {
-  const pts = points.filter(p => isFinite(p.tAnnual) && isFinite(p.iv) && p.tAnnual > 0 && p.iv >= 0)
-                    .sort((a, b) => a.tAnnual - b.tAnnual);
-  if (!pts.length || !isFinite(tTarget) || tTarget <= 0) return null;
-  if (tTarget <= pts[0].tAnnual) return pts[0].iv;
-  if (tTarget >= pts[pts.length - 1].tAnnual) return pts[pts.length - 1].iv;
+// Interpolate in total variance V = iv^2 * t, but also return the source nodes
+export function interpolateIvVarianceWithSource(
+  points: TsPoint[],
+  tTarget: number
+): { iv: number | null; left?: TsPoint; right?: TsPoint; w?: number } | null {
+  if (!points.length || !Number.isFinite(tTarget) || tTarget <= 0) {
+    return { iv: null };
+  }
+  const pts = points;
+
+  if (tTarget <= pts[0].tAnnual) {
+    const iv = Math.sqrt((pts[0].iv ** 2 * pts[0].tAnnual) / Math.max(tTarget, 1e-6));
+    return { iv: Number.isFinite(iv) ? iv : null, left: pts[0], right: undefined, w: 0 };
+  }
+  if (tTarget >= pts[pts.length - 1].tAnnual) {
+    const last = pts[pts.length - 1];
+    const iv = Math.sqrt((last.iv ** 2 * last.tAnnual) / tTarget);
+    return { iv: Number.isFinite(iv) ? iv : null, left: last, right: undefined, w: 0 };
+  }
 
   for (let i = 0; i < pts.length - 1; i++) {
     const a = pts[i], b = pts[i + 1];
     if (tTarget >= a.tAnnual && tTarget <= b.tAnnual) {
       const Va = a.iv ** 2 * a.tAnnual;
       const Vb = b.iv ** 2 * b.tAnnual;
-      const w = (tTarget - a.tAnnual) / (b.tAnnual - a.tAnnual);
+      const w = (tTarget - a.tAnnual) / (b.tAnnual - a.tAnnual); // weight of right node
       const Vt = Va + w * (Vb - Va);
       const iv = Math.sqrt(Vt / tTarget);
-      return Number.isFinite(iv) ? iv : null;
+      return { iv: Number.isFinite(iv) ? iv : null, left: a, right: b, w };
     }
   }
-  return null;
+  return { iv: null };
+}
+
+// Convenience: original scalar version if other code calls it
+export function interpolateIvVariance(points: TsPoint[], tTarget: number): number | null {
+  const r = interpolateIvVarianceWithSource(points, tTarget);
+  return r?.iv ?? null;
+}
+
+// Choose a single expiry label for UI (nearest of the bracket nodes).
+function chooseExpiryForTarget(
+  interp: { left?: TsPoint; right?: TsPoint; w?: number } | null | undefined,
+  targetDays: number
+): { ts: number; iso?: string; label: string } | null {
+  const now = Date.now();
+  const DAY_MS = 24 * 3600 * 1000;
+
+  if (!interp) return null;
+
+  // Prefer the nearer node by weight; fall back carefully
+  let ts: number | undefined;
+  let iso: string | undefined;
+
+  if (interp.left?.expiryTs != null && interp.right?.expiryTs != null && typeof interp.w === "number") {
+    // w is weight of the right node; nearer node is (w >= 0.5 ? right : left)
+    const chooseRight = interp.w >= 0.5;
+    ts = chooseRight ? interp.right.expiryTs! : interp.left.expiryTs!;
+    iso = chooseRight ? interp.right.expiryISO : interp.left.expiryISO;
+  } else {
+    ts = interp.left?.expiryTs ?? interp.right?.expiryTs;
+    iso = interp.left?.expiryISO ?? interp.right?.expiryISO;
+  }
+
+  // If we still don't have a timestamp, synthesize from the target tenor
+  if (ts == null) {
+    ts = now + targetDays * DAY_MS;
+  }
+
+  const d = new Date(ts);
+  const label = d.toLocaleDateString(undefined, { day: "2-digit", month: "short" });
+  return { ts, iso, label };
 }
