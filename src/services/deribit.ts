@@ -35,12 +35,14 @@ export type DvolPoint = {
 };
 
 export type Currency = "BTC" | "ETH";
+export type IndexPriceMeta = { price: number; timestamp: number };
 
 // Use Vite dev proxy in development to avoid CORS; fall back to absolute in prod
 const DERIBIT = (typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV)
   ? '/api/v2'
   : 'https://www.deribit.com/api/v2';
 
+const indexTsStore = new Map<string, number>();
 // ---------- Debug logging (toggle at runtime) --------------------------------
 // Turn on in DevTools at any time:
 //   window.__DERIBIT_DEBUG__ = true
@@ -223,7 +225,7 @@ export async function getTicker(instrument_name: string) {
   return p;
 }
 
-export async function getIndexPrice(currency: 'BTC' | 'ETH') {
+export async function getIndexPrice(currency: 'BTC' | 'ETH'): Promise<number> {
   dlog('getIndexPrice called', currency);
   const key = `index:${currency}`;
   const now = Date.now();
@@ -231,7 +233,8 @@ export async function getIndexPrice(currency: 'BTC' | 'ETH') {
   const cached = indexCache.get(key);
   if (cached && now - cached.at < INDEX_TTL) {
     dlog('getIndexPrice: cache hit', key);
-    return cached.data;
+    // timestamp was recorded when we last fetched; leave it as-is on cache hit
+    return cached.data as number;
   }
 
   const running = inflight.get(key) as Promise<number> | undefined;
@@ -244,22 +247,26 @@ export async function getIndexPrice(currency: 'BTC' | 'ETH') {
   const p = (async () => {
     try {
       const index_name = currency === 'BTC' ? 'btc_usd' : 'eth_usd';
-      const r = await dget<{ index_price?: number; price?: number }>(
+      // dget returns the "result" payload from Deribit; include timestamp in the shape
+      const r = await dget<{ index_price?: number; price?: number; timestamp?: number }>(
         '/public/get_index_price',
         { index_name }
       );
 
       const price = (r?.index_price ?? (r as any)?.price) as number | undefined;
+      const ts = (r as any)?.timestamp ?? Date.now();
+
       if (typeof price !== 'number' || !isFinite(price)) {
         throw new Error('Invalid index_price response');
       }
 
       indexCache.set(key, { at: Date.now(), data: price });
+      indexTsStore.set(key, ts); // record timestamp alongside the cached price
       return price;
     } catch (err) {
       if (cached) {
         dlog('getIndexPrice: serve stale after error', String(err));
-        return cached.data;
+        return cached.data as number;
       }
       throw err;
     } finally {
@@ -269,6 +276,13 @@ export async function getIndexPrice(currency: 'BTC' | 'ETH') {
 
   inflight.set(key, p);
   return p;
+}
+
+export async function getIndexPriceMeta(currency: 'BTC' | 'ETH'): Promise<IndexPriceMeta> {
+  const key = `index:${currency}`;
+  const price = await getIndexPrice(currency); // reuses cache/inflight & records timestamp
+  const timestamp = indexTsStore.get(key) ?? Date.now(); // fallback just-in-case
+  return { price, timestamp };
 }
 
 export async function getInstruments(currency: 'BTC' | 'ETH') {

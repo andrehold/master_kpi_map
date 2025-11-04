@@ -19,6 +19,7 @@ import { useTermStructureKink } from "./hooks/useTermStructureKink";
 import { useRealizedVol } from "./hooks/useRealizedVol";
 import ExpectedMoveRibbonCard from "./components/ExpectedMoveRibbonCard";
 import { useRvEmFactor } from "./hooks/useRvEmFactor";
+import { useDeribitIndexPrice } from "./hooks/useDeribitIndexPrice";
 
 /**
  * Master KPI Map – Light layout (Trade Manager style) with Dark Mode ready
@@ -403,6 +404,7 @@ export default function MasterKPIMapDemo() {
   const skewErrorAny   = skew7.error || skew30.error || skew60.error;
 
   const { data: skData, loading: skLoading, error: skError, refresh: refreshSK } = useTermStructureKink("BTC", { pollMs: 0 });
+  const { price: indexPrice, lastUpdated: indexTs, loading: indexLoading, error: indexError } = useDeribitIndexPrice("BTC", 15000);
 
   // Realized Volatility (BTC): 20D daily RV from PERPETUAL closes
   const { rv: rv20d, lastUpdated: rvTs, loading: rvLoading, error: rvError, refresh: refreshRV } = useRealizedVol({ currency: "BTC", windowDays: 20, resolutionSec: 86400, annualizationDays: 365 });
@@ -502,6 +504,11 @@ export default function MasterKPIMapDemo() {
               <span className="px-2 py-1 rounded-lg bg-[var(--surface-900)] border border-[var(--border)] shadow-[var(--shadow)]">
                 Groups <span className="font-mono">{filteredGroups.length}</span>/8
               </span>
+              {indexPrice != null && (
+                <span className="px-2 py-1 rounded-lg bg-[var(--surface-900)] border border-[var(--border)] shadow-[var(--shadow)]" title={indexTs ? `As of ${new Date(indexTs).toLocaleTimeString()}` : undefined}>
+                  BTC <span className="font-mono">{indexPrice != null ? `$${Math.round(indexPrice).toLocaleString()}` : "—"}</span>
+                </span>
+              )}
               {dvolTs && (
                 <span className="px-2 py-1 rounded-lg bg-[var(--surface-900)] border border-[var(--border)] text-xs text-[var(--fg-muted)] shadow-[var(--shadow)]">
                   DVOL {new Date(dvolTs).toLocaleTimeString()}
@@ -517,9 +524,9 @@ export default function MasterKPIMapDemo() {
                   IV TS {new Date(tsData.asOf).toLocaleTimeString()}
                 </span>
               )}
-              {(dvolError || ivrError || tsError || skewErrorAny || skError || rvError) && (
+              {(dvolError || ivrError || tsError || skewErrorAny || skError || rvError || indexError) && (
                 <span className="px-2 py-1 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
-                  {dvolError || ivrError || tsError || skewErrorAny || skError || rvError}
+                  {dvolError || ivrError || tsError || skewErrorAny || skError || rvError || indexError}
                 </span>
               )}
               {skData?.asOf && (
