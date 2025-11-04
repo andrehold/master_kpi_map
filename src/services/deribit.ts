@@ -34,6 +34,8 @@ export type DvolPoint = {
   lowPct?: number;
 };
 
+export type Currency = "BTC" | "ETH";
+
 // Use Vite dev proxy in development to avoid CORS; fall back to absolute in prod
 const DERIBIT = (typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV)
   ? '/api/v2'
@@ -231,7 +233,8 @@ export async function getIndexPrice(currency: 'BTC' | 'ETH') {
     dlog('getIndexPrice: cache hit', key);
     return cached.data;
   }
-  const running = inflight.get(key);
+
+  const running = inflight.get(key) as Promise<number> | undefined;
   if (running) {
     dlog('getIndexPrice: join inflight', key);
     return running;
@@ -241,10 +244,24 @@ export async function getIndexPrice(currency: 'BTC' | 'ETH') {
   const p = (async () => {
     try {
       const index_name = currency === 'BTC' ? 'btc_usd' : 'eth_usd';
-      const r = await dget<{ index_price: number }>('/public/get_index_price', { index_name });
-      const price = (r as any).index_price as number;
+      const r = await dget<{ index_price?: number; price?: number }>(
+        '/public/get_index_price',
+        { index_name }
+      );
+
+      const price = (r?.index_price ?? (r as any)?.price) as number | undefined;
+      if (typeof price !== 'number' || !isFinite(price)) {
+        throw new Error('Invalid index_price response');
+      }
+
       indexCache.set(key, { at: Date.now(), data: price });
       return price;
+    } catch (err) {
+      if (cached) {
+        dlog('getIndexPrice: serve stale after error', String(err));
+        return cached.data;
+      }
+      throw err;
     } finally {
       inflight.delete(key);
     }

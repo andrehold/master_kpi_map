@@ -16,6 +16,7 @@ import { useIVTermStructure } from "./hooks/useIVTermStructure";
 import { useDeribitSkew25D } from './hooks/useDeribitSkew25D';
 import { useTermStructureKink } from "./hooks/useTermStructureKink";
 import { useRealizedVol } from "./hooks/useRealizedVol";
+import ExpectedMoveRibbonCard from "./components/ExpectedMoveRibbonCard";
 
 /**
  * Master KPI Map – Light layout (Trade Manager style) with Dark Mode ready
@@ -115,6 +116,7 @@ const KPI_GROUPS: KPIGroup[] = [
       { id: "em-hit-rate", name: "Hit Rate of Expected Move", strategies: ["Expected Move"], valueType: "percent" },
       { id: "rv-em-factor", name: "Over/Under Pricing Factor (RV ÷ EM)", strategies: ["Expected Move"], valueType: "ratio" },
       { id: "short-horizon-atr", name: "Short-horizon realized σ / intraday ATR vs EM", strategies: ["0DTE Overwrite"], valueType: "sigma" },
+      { id: "em-ribbon", name: "Expected Move Ribbon", strategies: ["Expected Move"], valueType: "custom" },
     ],
   },
   {
@@ -702,6 +704,14 @@ export default function MasterKPIMapDemo() {
                       }
 
                       return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={b} />;
+                    }
+
+                    if (kpi.id === "em-ribbon") {
+                      return (
+                        <div key="em-ribbon" className="col-span-full">
+                          <ExpectedMoveRibbonCard currency="BTC" />
+                        </div>
+                      );
                     }
 
                     return (
