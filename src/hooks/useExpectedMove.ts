@@ -83,48 +83,45 @@ export function useExpectedMove(
     void fetchSpot();
   }, [fetchSpot]);
 
+  const normalizeDays = (days: number, label?: string, id?: string) => {
+    const lid = (id ?? "").toLowerCase();
+    const lbl = (label ?? "").toUpperCase();
+    if (lbl === "3M" || /(^|-)3m$/.test(lid)) return 90;
+    if (lbl === "1M" || /(^|-)1m$/.test(lid)) return 30;
+    if (lbl === "1W" || /(^|-)1w$/.test(lid)) return 7;
+    if (lbl === "1D" || /(^|-)1d$/.test(lid)) return 1;
+    return days;
+  };
+
   // 3) Compute EM set + expiry metadata
   const items = useMemo<ExpectedMoveItem[]>(() => {
     const pts = mapTsPoints(tsData?.points ?? []);
     return tenors.map((t) => {
-      const tY = t.days / 365;
-
-      const interp = interpolateIvVarianceWithSource(pts, tY); // { iv, left, right, w }
-      const iv = interp?.iv ?? null; // decimal
-
-      // Pick the "chosen expiry" as the nearer node (by weight),
-      // or synthesize from target days if neither node has a timestamp.
-      const chosen = chooseExpiryForTarget(interp, t.days);
-
+      const days = normalizeDays(t.days, t.label, t.id);
+      const tY = days / 365;
+  
+      const interp = interpolateIvVarianceWithSource(pts, tY);
+      const iv = interp?.iv ?? null;
+  
+      const chosen = chooseExpiryForTarget(interp, days);
+  
       if (spot != null && iv != null) {
         return {
-          id: t.id,
-          label: t.label,
-          days: t.days,
+          id: t.id, label: t.label, days,
           em: spot * iv * Math.sqrt(tY),
           ivPct: iv * 100,
           expiryTs: chosen?.ts,
           expiryISO: chosen?.iso,
           expiryLabel: chosen?.label,
-          source: {
-            leftTs: interp?.left?.expiryTs,
-            rightTs: interp?.right?.expiryTs,
-            weightRight: interp?.w,
-          },
+          source: { leftTs: interp?.left?.expiryTs, rightTs: interp?.right?.expiryTs, weightRight: interp?.w },
         };
       }
       return {
-        id: t.id,
-        label: t.label,
-        days: t.days,
+        id: t.id, label: t.label, days,
         expiryTs: chosen?.ts,
         expiryISO: chosen?.iso,
         expiryLabel: chosen?.label,
-        source: {
-          leftTs: interp?.left?.expiryTs,
-          rightTs: interp?.right?.expiryTs,
-          weightRight: interp?.w,
-        },
+        source: { leftTs: interp?.left?.expiryTs, rightTs: interp?.right?.expiryTs, weightRight: interp?.w },
       };
     });
   }, [tenors, tsData?.points, spot]);
@@ -218,26 +215,32 @@ export function interpolateIvVarianceWithSource(
   points: TsPoint[],
   tTarget: number
 ): { iv: number | null; left?: TsPoint; right?: TsPoint; w?: number } | null {
-  if (!points.length || !Number.isFinite(tTarget) || tTarget <= 0) {
-    return { iv: null };
-  }
-  const pts = points;
+  if (!Number.isFinite(tTarget) || tTarget <= 0) return { iv: null };
 
+  const pts = (points ?? [])
+    .filter(p =>
+      typeof p?.tAnnual === "number" && isFinite(p.tAnnual) && p.tAnnual > 0 &&
+      typeof p?.iv === "number" && isFinite(p.iv) && p.iv >= 0
+    )
+    .sort((a, b) => a.tAnnual - b.tAnnual);
+
+  if (!pts.length) return { iv: null };
+
+  // ✅ Flat IV extrapolation outside the curve (don’t damp long-end IV)
   if (tTarget <= pts[0].tAnnual) {
-    const iv = Math.sqrt((pts[0].iv ** 2 * pts[0].tAnnual) / Math.max(tTarget, 1e-6));
-    return { iv: Number.isFinite(iv) ? iv : null, left: pts[0], right: undefined, w: 0 };
+    return { iv: pts[0].iv, left: pts[0], right: undefined, w: 0 };
   }
   if (tTarget >= pts[pts.length - 1].tAnnual) {
     const last = pts[pts.length - 1];
-    const iv = Math.sqrt((last.iv ** 2 * last.tAnnual) / tTarget);
-    return { iv: Number.isFinite(iv) ? iv : null, left: last, right: undefined, w: 0 };
+    return { iv: last.iv, left: last, right: undefined, w: 0 };
   }
 
+  // Inside the curve: linear in total variance
   for (let i = 0; i < pts.length - 1; i++) {
     const a = pts[i], b = pts[i + 1];
     if (tTarget >= a.tAnnual && tTarget <= b.tAnnual) {
-      const Va = a.iv ** 2 * a.tAnnual;
-      const Vb = b.iv ** 2 * b.tAnnual;
+      const Va = a.iv * a.iv * a.tAnnual;
+      const Vb = b.iv * b.iv * b.tAnnual;
       const w = (tTarget - a.tAnnual) / (b.tAnnual - a.tAnnual); // weight of right node
       const Vt = Va + w * (Vb - Va);
       const iv = Math.sqrt(Vt / tTarget);
@@ -246,6 +249,7 @@ export function interpolateIvVarianceWithSource(
   }
   return { iv: null };
 }
+
 
 // Convenience: original scalar version if other code calls it
 export function interpolateIvVariance(points: TsPoint[], tTarget: number): number | null {

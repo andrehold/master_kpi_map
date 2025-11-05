@@ -80,7 +80,22 @@ export function useIVTermStructure(options: UseIVTermStructureOptions = {}) {
       }
 
       // 3) choose next expiries in time order
-      const expiries = Array.from(groups.keys()).sort((a, b) => a - b).slice(0, Math.max(1, maxExpiries));
+      // 3) choose expiries (prefer last-in-month — e.g., monthly over earlier weeklies)
+      const sorted = Array.from(groups.keys()).sort((a, b) => a - b);
+
+      // collapse to last expiry per calendar month (UTC)
+      const byMonth = new Map<string, number>();
+      for (const ts of sorted) {
+        const d = new Date(ts);
+        const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+        const prev = byMonth.get(key);
+        if (prev == null || ts > prev) byMonth.set(key, ts); // keep latest in that month
+      }
+
+      // take earliest N months
+      const expiries = Array.from(byMonth.values())
+        .sort((a, b) => a - b)
+        .slice(0, Math.max(1, maxExpiries));
 
       const points: IVPoint[] = [];
 

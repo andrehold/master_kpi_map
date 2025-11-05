@@ -509,29 +509,9 @@ export default function MasterKPIMapDemo() {
                   BTC <span className="font-mono">{indexPrice != null ? `$${Math.round(indexPrice).toLocaleString()}` : "—"}</span>
                 </span>
               )}
-              {dvolTs && (
-                <span className="px-2 py-1 rounded-lg bg-[var(--surface-900)] border border-[var(--border)] text-xs text-[var(--fg-muted)] shadow-[var(--shadow)]">
-                  DVOL {new Date(dvolTs).toLocaleTimeString()}
-                </span>
-              )}
-              {ivrTs && (
-                <span className="px-2 py-1 rounded-lg bg-[var(--surface-900)] border border-[var(--border)] text-xs text-[var(--fg-muted)] shadow-[var(--shadow)]">
-                  IVR {new Date(ivrTs).toLocaleDateString()}
-                </span>
-              )}
-              {tsData?.asOf && (
-                <span className="px-2 py-1 rounded-lg bg-[var(--surface-900)] border border-[var(--border)] text-xs text-[var(--fg-muted)] shadow-[var(--shadow)]">
-                  IV TS {new Date(tsData.asOf).toLocaleTimeString()}
-                </span>
-              )}
               {(dvolError || ivrError || tsError || skewErrorAny || skError || rvError || indexError) && (
                 <span className="px-2 py-1 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
                   {dvolError || ivrError || tsError || skewErrorAny || skError || rvError || indexError}
-                </span>
-              )}
-              {skData?.asOf && (
-                <span className="px-2 py-1 rounded-lg bg-[var(--surface-900)] border border-[var(--border)] text-xs text-[var(--fg-muted)] shadow-[var(--shadow)]">
-                  0–3D Kink {new Date(skData.asOf).toLocaleTimeString()}
                 </span>
               )}
             </div>
