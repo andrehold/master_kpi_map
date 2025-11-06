@@ -609,17 +609,13 @@ export default function MasterKPIMapDemo() {
                         tsData.label === "insufficient"
                           ? "Insufficient"
                           : tsData.label[0].toUpperCase() + tsData.label.slice(1);
-                    
                       const premiumPct =
                         tsData.termPremium != null ? (tsData.termPremium * 100) : null;
                       const sign = premiumPct != null && premiumPct >= 0 ? "+" : "";
-                    
                       value = labelTitle + (premiumPct != null ? ` (${sign}${premiumPct.toFixed(1)}%)` : "");
-                      // meta: show slope and sample window size
                       meta = tsData.slopePerYear != null
                         ? `Slope ${(tsData.slopePerYear * 100).toFixed(2)}%/yr · n=${tsData.n}`
                         : `n=${tsData.n}`;
-                      // extra badge: front→back expiries
                       if (tsData.points.length >= 2) {
                         const first = tsData.points[0]?.expiryISO;
                         const last = tsData.points[tsData.points.length - 1]?.expiryISO;
@@ -628,7 +624,6 @@ export default function MasterKPIMapDemo() {
                         extraBadge = "Awaiting data";
                       }
                     }
-                    // Skew (25Δ Risk Reversal): RR = IV(25Δ Call) − IV(25Δ Put)  [vol points]
                     if (kpi.id === "skew-25d-rr") {
                       const tenors = [
                         { key: "7d",  label: "BTC 7D",  s: skew7  },
@@ -641,7 +636,6 @@ export default function MasterKPIMapDemo() {
                             let v = samples[kpi.id];
                             let m: string | undefined = undefined;
                             let b: string | null = null;
-                    
                             if (s?.skew != null) {
                               const vp = s.skew * 100; // vol points
                               const sign = vp >= 0 ? "+" : "";
@@ -663,7 +657,6 @@ export default function MasterKPIMapDemo() {
                             } else {
                               m = label;
                             }
-                    
                             return (
                               <KpiCard
                                 key={`${kpi.id}-${key}`}
@@ -677,12 +670,10 @@ export default function MasterKPIMapDemo() {
                         </>
                       );
                     }
-
                     if (kpi.id === "ts-kink") {
                       let v = samples[kpi.id];
                       let m: string | undefined = undefined;
                       let b: string | null = null;
-
                       if (skLoading) {
                         v = "…";
                         m = "loading";
@@ -694,8 +685,6 @@ export default function MasterKPIMapDemo() {
                         const sign = vp >= 0 ? "+" : "";
                         v = `${sign}${vp.toFixed(2)}%`;
                         m = `0DTE − mean(1–3DTE)${skData.indexPrice ? ` · S ${Math.round(skData.indexPrice)}` : ""}`;
-
-                        // tiny extra badge, like IVR’s IVP badge
                         const iv0 = skData.iv0dte != null ? (skData.iv0dte * 100).toFixed(1) : "—";
                         const m13 = skData.mean1to3 != null ? (skData.mean1to3 * 100).toFixed(1) : "—";
                         const ratio = skData.kinkRatio != null ? `${skData.kinkRatio.toFixed(2)}×` : null;
@@ -703,27 +692,20 @@ export default function MasterKPIMapDemo() {
                       } else {
                         m = "Awaiting data";
                       }
-
                       return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={b} />;
                     }
-
                     if (kpi.id === "rv-em-factor") {
-                      const TENOR_DAYS = 20; // choose your tenor (match your RV window)
+                      const TENOR_DAYS = 20;
                       const { value: ratio, rvAnn, ivAnn, loading, error } = useRvEmFactor({ currency: "BTC", days: TENOR_DAYS });
-                    
                       const v   = loading ? "…" : (ratio != null ? `${ratio.toFixed(2)}×` : "—");
                       const m   = loading ? "loading" : (error ? "error" : `BTC ${TENOR_DAYS}D · RV ÷ IV`);
                       const bad = (rvAnn != null && ivAnn != null) ? `IV ${(ivAnn * 100).toFixed(1)} • RV ${(rvAnn * 100).toFixed(1)}` : null;
-                    
                       return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={bad} />;
                     }
-
-                    // NEW: Funding KPI wiring
                     if (kpi.id === "funding") {
                       let v = samples[kpi.id];
                       let m: string | undefined = undefined;
                       let b: string | null = null;
-
                       if (fundingLoading) {
                         v = "…";
                         m = "loading";
@@ -735,12 +717,11 @@ export default function MasterKPIMapDemo() {
                         m = fundingTs ? `Deribit 8h · ${new Date(fundingTs).toLocaleTimeString()}` : "Deribit 8h";
                         if (avg7d8h != null) b = `7d avg ${(avg7d8h * 100).toFixed(3)}%`;
                       } else {
+                        v = "—";
                         m = "Awaiting data";
                       }
-
                       return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={b} />;
                     }
-
                     if (kpi.id === "em-ribbon") {
                       return (
                         <div key="em-ribbon" className="col-span-full">
@@ -748,11 +729,11 @@ export default function MasterKPIMapDemo() {
                         </div>
                       );
                     }
-
                     return (
                       <KpiCard key={kpi.id} kpi={kpi} value={value} meta={meta} extraBadge={extraBadge} />
                     );
-                  })}
+                  })
+                }
                 </div>
               )}
             </section>
