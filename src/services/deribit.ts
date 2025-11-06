@@ -148,7 +148,7 @@ const instrCache  = new Map<string, CacheEntry<any>>();
 const inflight = new Map<string, Promise<any>>();
 
 // ---------- Low-level GET with timeout + retry/backoff ----------------------
-async function dget<T>(path: string, params: Record<string, any>) {
+export async function dget<T>(path: string, params: Record<string, any>) {
   const qs = new URLSearchParams(params as any).toString();
   const url = `${DERIBIT}${path}?${qs}`;
 

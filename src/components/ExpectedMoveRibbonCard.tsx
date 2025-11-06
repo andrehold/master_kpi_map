@@ -1,3 +1,4 @@
+// src/components/ExpectedMoveRibbonCard.tsx
 import React, { useMemo, useState } from "react";
 import MetricRibbonCard from "./MetricRibbonCard";
 import type { RibbonItem } from "./MetricRibbon";
@@ -17,36 +18,50 @@ export default function ExpectedMoveRibbonCard({
   title = "Expected Move",
   className,
 }: ExpectedMoveRibbonCardProps) {
-  const { data, loading, error, refresh } = useExpectedMove({ currency });
+  // Uses curated shortlist by default (per the updated hook)
+  const { indexPrice, em, points, asOf, loading, error, reload } = useExpectedMove({ currency });
   const [mode, setMode] = useState<Mode>("abs");
 
   const items: RibbonItem[] = useMemo(() => {
-    const s = typeof data.spot === "number" && isFinite(data.spot) ? data.spot : null;
-    return data.items.map((it) => {
+    const s = typeof indexPrice === "number" && isFinite(indexPrice) && indexPrice > 0 ? indexPrice : null;
+
+    // Pre-sort points by DTE for nearest-expiry lookup
+    const pts = [...(points ?? [])].sort((a, b) => a.dteDays - b.dteDays);
+
+    return (em ?? []).map((row) => {
+      const id = `d${row.days}`;
+      const label = formatHorizon(row.days);
+
+      // Value
       let value: string | undefined;
-      if (typeof it.em === "number") {
-        if (mode === "abs") {
-          value = `± ${formatNumber(it.em, it.days >= 30 ? 0 : 0)}`;
-        } else {
-          value = s && s > 0 ? `± ${(it.em / s * 100).toFixed(2)}%` : undefined;
-        }
+      if (mode === "abs" && typeof row.abs === "number") {
+        value = `± ${formatNumber(row.abs, 0)}`;
+      } else if (mode === "pct" && typeof row.pct === "number") {
+        value = `± ${(row.pct * 100).toFixed(2)}%`;
       }
-      const badge = typeof it.ivPct === "number" ? `IV ${it.label} ${it.ivPct.toFixed(1)}%` : undefined;
+
+      // Badge: IV at this horizon (decimal -> pct with 1dp)
+      const badge = typeof row.iv === "number" ? `IV ${label} ${(row.iv * 100).toFixed(1)}%` : undefined;
+
+      // Nearest expiry to this horizon (for transparency)
+      const nearest = nearestExpiryForDays(pts, row.days);
+      const sqrtT = Math.sqrt(Math.max(0, row.days) / 365);
       const footnote =
-        `S × IV × √t · √t ${(Math.sqrt(it.days / 365)).toFixed(3)}` +
-        (it.expiryTs
-          ? ` · Exp ${it.expiryLabel ?? new Date(it.expiryTs).toLocaleDateString(undefined, { day: "2-digit", month: "short" })}`
+        `S × IV × √t · √t ${sqrtT.toFixed(3)}` +
+        (nearest
+          ? ` · Exp ${nearest.expiryLabel}`
           : "");
-      return { id: it.id, label: it.label, value, badge, footnote };
+
+      return { id, label, value, badge, footnote };
     });
-  }, [data.items, data.spot, mode]);
+  }, [em, points, indexPrice, mode]);
 
   const headerChips = useMemo(() => {
     const chips: string[] = [];
-    if (typeof data.spot === "number" && isFinite(data.spot)) chips.push(`Spot ${formatNumber(data.spot)}`);
-    if (data.tsAsOf) chips.push(`IV TS ${new Date(data.tsAsOf).toLocaleTimeString()}`);
+    if (typeof indexPrice === "number" && isFinite(indexPrice)) chips.push(`Spot ${formatNumber(indexPrice)}`);
+    if (asOf) chips.push(`IV TS ${new Date(asOf).toLocaleTimeString()}`);
     return chips;
-  }, [data.spot, data.tsAsOf]);
+  }, [indexPrice, asOf]);
 
   const controls = (
     <div className="inline-flex text-xs rounded-lg border border-[var(--border)] bg-[var(--surface-900)]">
@@ -69,7 +84,7 @@ export default function ExpectedMoveRibbonCard({
         % of Spot
       </button>
       <button
-        onClick={refresh}
+        onClick={reload}
         className="ml-2 text-xs px-2 py-1 rounded-md border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-800)]"
         title="Refresh spot + IV TS"
       >
@@ -86,12 +101,38 @@ export default function ExpectedMoveRibbonCard({
       loading={loading}
       error={error}
       headerChips={headerChips}
+      // Clarified helper text to match the new hook (linear IV interpolation)
+      helperText="S × IV × √t · IV interpolated linearly across DTE"
       controls={controls}
-      helperText="S × IV × √t · IV interpolated in variance space"
     />
   );
 }
 
+function formatHorizon(days: number) {
+  if (days === 1) return "1D";
+  if (days === 7) return "1W";
+  if (days === 30) return "30D";
+  return `${days}D`;
+}
+
 function formatNumber(n: number, decimals = 0) {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: decimals }).format(n);
+}
+
+function nearestExpiryForDays(
+  points: { dteDays: number; expiryTs: number }[],
+  days: number
+): { expiryLabel: string } | null {
+  if (!points.length) return null;
+  let best = points[0];
+  let bestDiff = Math.abs(points[0].dteDays - days);
+  for (let i = 1; i < points.length; i++) {
+    const diff = Math.abs(points[i].dteDays - days);
+    if (diff < bestDiff) {
+      best = points[i];
+      bestDiff = diff;
+    }
+  }
+  const label = new Date(best.expiryTs).toLocaleDateString(undefined, { day: "2-digit", month: "short" });
+  return { expiryLabel: label };
 }

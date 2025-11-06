@@ -20,6 +20,7 @@ import { useRealizedVol } from "./hooks/useRealizedVol";
 import ExpectedMoveRibbonCard from "./components/ExpectedMoveRibbonCard";
 import { useRvEmFactor } from "./hooks/useRvEmFactor";
 import { useDeribitIndexPrice } from "./hooks/useDeribitIndexPrice";
+import { useDeribitFunding } from "./hooks/useDeribitFunding";
 
 /**
  * Master KPI Map – Light layout (Trade Manager style) with Dark Mode ready
@@ -409,6 +410,9 @@ export default function MasterKPIMapDemo() {
   // Realized Volatility (BTC): 20D daily RV from PERPETUAL closes
   const { rv: rv20d, lastUpdated: rvTs, loading: rvLoading, error: rvError, refresh: refreshRV } = useRealizedVol({ currency: "BTC", windowDays: 20, resolutionSec: 86400, annualizationDays: 365 });
 
+  // NEW: Funding (BTC perpetual)
+  const { current8h, avg7d8h, zScore, updatedAt: fundingTs, loading: fundingLoading, error: fundingError, refresh: refreshFunding } = useDeribitFunding("BTC-PERPETUAL");
+
   useEffect(() => { setSamples(buildSamples()); }, []);
 
   const filteredGroups = useMemo(() => {
@@ -453,12 +457,14 @@ export default function MasterKPIMapDemo() {
     setIsUpdating(true);
     console.time("update");
     try {
-      // 1) Light KPIs first: DVOL → IVR → RV
+      // 1) Light KPIs first: DVOL → IVR → RV → Funding
       try { await refreshDvol(); } catch {}
       await new Promise(r => setTimeout(r, 120));
       try { await refreshIvr(); } catch {}
       await new Promise(r => setTimeout(r, 120));
       try { await refreshRV(); } catch {}
+      await new Promise(r => setTimeout(r, 120));
+      try { await refreshFunding(); } catch {}
 
       // 2) Then IV Term Structure & Kink (heavier)
       await new Promise(r => setTimeout(r, 150));
@@ -491,7 +497,7 @@ export default function MasterKPIMapDemo() {
               <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3l8 4-8 4-8-4 8-4Z"/><path d="M4 11l8 4 8-4"/><path d="M4 17l8 4 8-4"/></svg>
             </div>
             <div>
-              <h1 className="text-base font-semibold leading-tight">Master KPI Map</h1>
+              <h1 className="text;base font-semibold leading-tight">Master KPI Map</h1>
               <p className="text-xs text-[var(--fg-muted)] -mt-0.5">Across All Strategies</p>
             </div>
           </div>
@@ -509,9 +515,9 @@ export default function MasterKPIMapDemo() {
                   BTC <span className="font-mono">{indexPrice != null ? `$${Math.round(indexPrice).toLocaleString()}` : "—"}</span>
                 </span>
               )}
-              {(dvolError || ivrError || tsError || skewErrorAny || skError || rvError || indexError) && (
+              {(dvolError || ivrError || tsError || skewErrorAny || skError || rvError || indexError || fundingError) && (
                 <span className="px-2 py-1 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
-                  {dvolError || ivrError || tsError || skewErrorAny || skError || rvError || indexError}
+                  {dvolError || ivrError || tsError || skewErrorAny || skError || rvError || indexError || fundingError}
                 </span>
               )}
             </div>
@@ -520,14 +526,14 @@ export default function MasterKPIMapDemo() {
               <RefreshCw className="w-4 h-4" /> Samples
             </button>
 
-            {/* Update: refresh DVOL + IVR/IVP */}
+            {/* Update: refresh DVOL + IVR/IVP + RV + Funding */}
             <button
               onClick={refreshLive}
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)] disabled:opacity-60"
-              disabled={dvolLoading || ivrLoading || tsLoading || skewLoadingAny || skLoading}
-              title="Update DVOL + IVR + IV Term Structure from Deribit"
+              disabled={dvolLoading || ivrLoading || tsLoading || skewLoadingAny || skLoading || fundingLoading}
+              title="Update DVOL + IVR + RV + Funding + IV Term Structure from Deribit"
             >
-              <Cloud className={`w-4 h-4 ${(dvolLoading || ivrLoading || tsLoading || skewLoadingAny || skLoading) ? "animate-spin" : ""}`} />
+              <Cloud className={`w-4 h-4 ${(dvolLoading || ivrLoading || tsLoading || skewLoadingAny || skLoading || fundingLoading) ? "animate-spin" : ""}`} />
               Update
             </button>
 
@@ -710,6 +716,29 @@ export default function MasterKPIMapDemo() {
                       const bad = (rvAnn != null && ivAnn != null) ? `IV ${(ivAnn * 100).toFixed(1)} • RV ${(rvAnn * 100).toFixed(1)}` : null;
                     
                       return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={bad} />;
+                    }
+
+                    // NEW: Funding KPI wiring
+                    if (kpi.id === "funding") {
+                      let v = samples[kpi.id];
+                      let m: string | undefined = undefined;
+                      let b: string | null = null;
+
+                      if (fundingLoading) {
+                        v = "…";
+                        m = "loading";
+                      } else if (fundingError) {
+                        v = "—";
+                        m = "error";
+                      } else if (current8h != null) {
+                        v = `${(current8h * 100).toFixed(3)}%`;
+                        m = fundingTs ? `Deribit 8h · ${new Date(fundingTs).toLocaleTimeString()}` : "Deribit 8h";
+                        if (avg7d8h != null) b = `7d avg ${(avg7d8h * 100).toFixed(3)}%`;
+                      } else {
+                        m = "Awaiting data";
+                      }
+
+                      return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={b} />;
                     }
 
                     if (kpi.id === "em-ribbon") {
