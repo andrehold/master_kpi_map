@@ -5,109 +5,78 @@ import { buildAtmIvPoints, type IVPoint, type AtmSelection } from "../lib/atmIv"
 /**
  * Expected Move (EM) hook
  *
- * - Collects ATM IV points via shared lib (curated by default).
- * - Interpolates IV across DTE to estimate per-horizon IV.
- * - Computes 1σ expected move (percent and absolute) for each horizon:
- *      EM%  = IV * sqrt(days / 365)
- *      EM$  = spot * IV * sqrt(days / 365)
+ * EM%  = IV * sqrt(days / 365)
+ * EM$  = spot * EM%
  *
- * IVs are decimals (e.g., 0.452 = 45.2%).
+ * IV is a decimal (0.452 = 45.2%). Normalization happens in lib/atmIv.
  */
 
-const DAY_MS = 86_400_000;
-
-export type HorizonSpec = number; // days, e.g. 1, 7, 30
+export type HorizonSpec = number; // days, e.g., 1, 7, 30, 90
 
 export type ExpectedMovePoint = {
-  days: number;        // horizon in days
-  iv: number | null;   // interpolated decimal IV used for EM at this horizon
-  pct: number | null;  // expected move in percent (decimal, e.g. 0.05 = 5%)
-  abs: number | null;  // expected move in price units (spot * pct)
+  days: number;
+  iv: number | null;   // decimal IV used at this horizon
+  pct: number | null;  // decimal pct move (e.g., 0.05 = 5%)
+  abs: number | null;  // absolute move in price units
 };
 
 export type UseExpectedMoveOptions = {
   currency?: "BTC" | "ETH";
+  horizons?: HorizonSpec[];     // default [1, 7, 30]
+  refreshMs?: number;           // polling; default 0
 
-  // Horizons to compute EM for (in days)
-  horizons?: HorizonSpec[];     // default: [1, 7, 30]
+  // Guardrails for ATM collection
+  minDteHours?: number;         // default 12
+  bandPct?: number;             // default 0
 
-  // Data refresh (ms); 0 = no polling
-  refreshMs?: number;           // default: 0
+  // Selection of expiries (EM: keep "curated")
+  selection?: AtmSelection;     // default "curated"
 
-  // Guardrails for collecting ATM IV points
-  minDteHours?: number;         // default: 12
-  bandPct?: number;             // default: 0 (no band)
+  // Curated params
+  maxExpiries?: number;         // default 8
+  nearDays?: number;            // default 14
 
-  // Selection of expiries: keep "curated" for EM by default
-  selection?: AtmSelection;     // "curated" | "all" (default "curated")
-
-  // Curated mode params
-  maxExpiries?: number;         // default: 8
-  nearDays?: number;            // default: 14
-
-  // "All" mode params (not typical for EM, but supported)
-  minDteDays?: number;          // default: 2
-  maxDteDays?: number;          // default: 400
-  maxAllExpiries?: number;      // default: 48
+  // "All" params (supported, not typical for EM)
+  minDteDays?: number;          // default 2
+  maxDteDays?: number;          // default 400
+  maxAllExpiries?: number;      // default 48
 };
 
 export type UseExpectedMoveState = {
   asOf: number | null;
   currency: "BTC" | "ETH";
   indexPrice: number | null;
-  points: IVPoint[];              // ATM IV curve used
-  em: ExpectedMovePoint[];        // EM across horizons
+  points: IVPoint[];
+  em: ExpectedMovePoint[];
   loading: boolean;
   error: string | null;
   reload: () => void;
 };
 
-/** Math helpers */
-function clamp(x: number, lo: number, hi: number) {
-  return Math.max(lo, Math.min(hi, x));
-}
-
 function sqrtYearFrac(days: number) {
   return Math.sqrt(Math.max(0, days) / 365);
 }
 
-function interpLinear(x0: number, y0: number, x1: number, y1: number, x: number) {
-  if (x1 === x0) return y0; // degenerate, but avoid divide-by-zero
-  const t = (x - x0) / (x1 - x0);
-  return y0 + t * (y1 - y0);
-}
-
-/**
- * Interpolate IV at a given horizon (days) from sorted IV points by dteDays.
- * - If outside range, clamps to nearest endpoint.
- * - Returns null if not enough data.
- */
+/** Linear IV interp across DTE; clamps to ends; returns null if not enough data. */
 function ivAtDays(pointsSorted: IVPoint[], days: number): number | null {
-  if (!pointsSorted.length) return null;
-
-  // Ensure sorted (defensive)
   const pts = [...pointsSorted].sort((a, b) => a.dteDays - b.dteDays);
+  if (!pts.length) return null;
 
-  // Clamp outside range
   if (days <= pts[0].dteDays) return pts[0].iv ?? null;
   if (days >= pts[pts.length - 1].dteDays) return pts[pts.length - 1].iv ?? null;
 
-  // Find bracketing segment
   for (let i = 0; i < pts.length - 1; i++) {
     const a = pts[i];
     const b = pts[i + 1];
     if (days >= a.dteDays && days <= b.dteDays) {
       if (a.iv == null || b.iv == null) return null;
-      return interpLinear(a.dteDays, a.iv, b.dteDays, b.iv, days);
+      const t = (days - a.dteDays) / (b.dteDays - a.dteDays);
+      return a.iv + t * (b.iv - a.iv);
     }
   }
   return null;
 }
 
-/**
- * Compute Expected Move across horizons for a given spot and IV curve.
- * Returns percent (decimal) and absolute move.
- */
 function computeExpectedMove(
   spot: number | null | undefined,
   pointsSorted: IVPoint[],
@@ -116,11 +85,9 @@ function computeExpectedMove(
   const s = typeof spot === "number" && isFinite(spot) && spot > 0 ? spot : null;
   return horizons.map((d) => {
     const iv = ivAtDays(pointsSorted, d);
-    if (iv == null) {
-      return { days: d, iv: null, pct: null, abs: null };
-    }
+    if (iv == null) return { days: d, iv: null, pct: null, abs: null };
     const factor = sqrtYearFrac(d);
-    const pct = iv * factor;     // decimal percent
+    const pct = iv * factor;
     const abs = s != null ? s * pct : null;
     return { days: d, iv, pct, abs };
   });
@@ -131,18 +98,13 @@ export function useExpectedMove({
   horizons = [1, 7, 30],
   refreshMs = 0,
 
-  // Guardrails for ATM collection
   minDteHours = 12,
   bandPct = 0,
 
-  // Selection
   selection = "curated",
-
-  // Curated params
   maxExpiries = 8,
   nearDays = 14,
 
-  // "All" params
   minDteDays = 2,
   maxDteDays = 400,
   maxAllExpiries = 48,
@@ -155,9 +117,7 @@ export function useExpectedMove({
   const timer = useRef<number | null>(null);
 
   const horizonsNorm = useMemo(() => {
-    // Defensive copy + numeric cleanup
-    const hs = Array.from(new Set(horizons.map((d) => Math.max(0, Math.floor(d)))));
-    hs.sort((a, b) => a - b);
+    const hs = Array.from(new Set(horizons.map((d) => Math.max(0, Math.floor(d))))).sort((a, b) => a - b);
     return hs;
   }, [horizons]);
 
@@ -185,13 +145,9 @@ export function useExpectedMove({
       setIndexPrice(indexPrice);
       setPoints(points);
     } catch (e: any) {
-      if (!signal?.aborted) {
-        setError(e?.message ?? String(e));
-      }
+      if (!signal?.aborted) setError(e?.message ?? String(e));
     } finally {
-      if (!signal?.aborted) {
-        setLoading(false);
-      }
+      if (!signal?.aborted) setLoading(false);
     }
   }
 
@@ -229,20 +185,9 @@ export function useExpectedMove({
     };
   }, [refreshMs, currency, selection]);
 
-  const em = useMemo(() => {
-    return computeExpectedMove(indexPrice, points, horizonsNorm);
-  }, [indexPrice, points, horizonsNorm]);
+  const em = useMemo(() => computeExpectedMove(indexPrice, points, horizonsNorm), [indexPrice, points, horizonsNorm]);
 
   const reload = () => run();
 
-  return {
-    asOf,
-    currency,
-    indexPrice,
-    points,
-    em,
-    loading,
-    error,
-    reload,
-  };
+  return { asOf, currency, indexPrice, points, em, loading, error, reload };
 }

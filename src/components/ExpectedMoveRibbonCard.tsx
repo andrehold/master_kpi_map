@@ -18,8 +18,11 @@ export default function ExpectedMoveRibbonCard({
   title = "Expected Move",
   className,
 }: ExpectedMoveRibbonCardProps) {
-  // Uses curated shortlist by default (per the updated hook)
-  const { indexPrice, em, points, asOf, loading, error, reload } = useExpectedMove({ currency });
+  // Ask for 1D, 1W, 30D, 3M
+  const { indexPrice, em, points, asOf, loading, error, reload } = useExpectedMove({
+    currency,
+    horizons: [1, 7, 30, 90],
+  });
   const [mode, setMode] = useState<Mode>("abs");
 
   const items: RibbonItem[] = useMemo(() => {
@@ -37,20 +40,22 @@ export default function ExpectedMoveRibbonCard({
       if (mode === "abs" && typeof row.abs === "number") {
         value = `± ${formatNumber(row.abs, 0)}`;
       } else if (mode === "pct" && typeof row.pct === "number") {
+        // pct is decimal; show 2dp
         value = `± ${(row.pct * 100).toFixed(2)}%`;
       }
 
-      // Badge: IV at this horizon (decimal -> pct with 1dp)
-      const badge = typeof row.iv === "number" ? `IV ${label} ${(row.iv * 100).toFixed(1)}%` : undefined;
+      // Badge: IV at this horizon (decimal -> %)
+      const badge =
+        typeof row.iv === "number"
+          ? `IV ${label} ${(row.iv * 100).toFixed(1)}%`
+          : undefined;
 
       // Nearest expiry to this horizon (for transparency)
       const nearest = nearestExpiryForDays(pts, row.days);
       const sqrtT = Math.sqrt(Math.max(0, row.days) / 365);
       const footnote =
         `S × IV × √t · √t ${sqrtT.toFixed(3)}` +
-        (nearest
-          ? ` · Exp ${nearest.expiryLabel}`
-          : "");
+        (nearest ? ` · Exp ${nearest.expiryLabel}` : "");
 
       return { id, label, value, badge, footnote };
     });
@@ -101,7 +106,6 @@ export default function ExpectedMoveRibbonCard({
       loading={loading}
       error={error}
       headerChips={headerChips}
-      // Clarified helper text to match the new hook (linear IV interpolation)
       helperText="S × IV × √t · IV interpolated linearly across DTE"
       controls={controls}
     />
@@ -112,6 +116,7 @@ function formatHorizon(days: number) {
   if (days === 1) return "1D";
   if (days === 7) return "1W";
   if (days === 30) return "30D";
+  if (days === 90) return "3M";
   return `${days}D`;
 }
 

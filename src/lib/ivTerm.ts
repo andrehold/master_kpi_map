@@ -1,6 +1,6 @@
 // src/lib/ivTerm.ts
 // Keep this in sync with `useIVTermStructure`'s IVPoint shape
-import type { IVPoint } from "../hooks/useIVTermStructure";
+import type { IVPoint } from "./atmIv";
 
 export type IVTermStructureLabel =
   | "contango"
