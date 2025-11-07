@@ -24,6 +24,7 @@ export type DeribitTicker = {
   best_bid_price?: number;
   best_ask_price?: number;
   last_price?: number;
+  mark_price?: number;
 };
 
 export type DvolPoint = {

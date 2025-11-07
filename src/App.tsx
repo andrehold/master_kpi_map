@@ -30,6 +30,7 @@ export default function MasterKPIMapDemo() {
   const [samples, setSamples] = useState<Samples>(() => buildSamples(KPI_GROUPS));
   const [theme, setTheme] = useState<ThemeKey>("light");
   const [isUpdating, setIsUpdating] = useState(false);
+  const RVEM_TENOR_DAYS = 20;
 
   // Live data (BTC by default)
   const { valuePct: dvolPct, lastUpdated: dvolTs, loading: dvolLoading, error: dvolError, refresh: refreshDvol } = useDeribitDvol("BTC");
@@ -51,6 +52,13 @@ export default function MasterKPIMapDemo() {
   const skewErrorAny   = skew7.error || skew30.error || skew60.error;
 
   const { data: skData, loading: skLoading, error: skError, refresh: refreshSK } = useTermStructureKink("BTC", { pollMs: 0 });
+  const {
+    value: rvemRatio,
+    rvAnn,
+    ivAnn,
+    loading: rvemLoading,
+    error: rvemError,
+  } = useRvEmFactor({ currency: "BTC", days: RVEM_TENOR_DAYS });
   const { price: indexPrice, lastUpdated: indexTs, loading: indexLoading, error: indexError } = useDeribitIndexPrice("BTC", 15000);
 
   // RV 20D (BTC)
@@ -68,7 +76,8 @@ export default function MasterKPIMapDemo() {
     return KPI_GROUPS.map((group) => {
       const kpis = group.kpis.filter((k) => {
         const matchesText = !q || k.name.toLowerCase().includes(q) || k.id.toLowerCase().includes(q);
-        const matchesStrategy = activeStrategies.length === 0 || activeStrategies.some((s) => k.strategies.includes(s));
+        const matchesStrategy = activeStrategies.length === 0 || activeStrategies.some((s) => (k.strategies ?? []).includes(s));
+
         return matchesText && matchesStrategy;
       });
       return { ...group, kpis };
@@ -260,11 +269,12 @@ export default function MasterKPIMapDemo() {
                       return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={b} />;
                     }
                     if (kpi.id === "rv-em-factor") {
-                      const TENOR_DAYS = 20;
-                      const { value: ratio, rvAnn, ivAnn, loading, error } = useRvEmFactor({ currency: "BTC", days: TENOR_DAYS });
-                      const v   = loading ? "…" : (ratio != null ? `${ratio.toFixed(2)}×` : "—");
-                      const m   = loading ? "loading" : (error ? "error" : `BTC ${TENOR_DAYS}D · RV ÷ IV`);
-                      const bad = (rvAnn != null && ivAnn != null) ? `IV ${(ivAnn * 100).toFixed(1)} • RV ${(rvAnn * 100).toFixed(1)}` : null;
+                      const v   = rvemLoading ? "…" : (rvemRatio != null ? `${rvemRatio.toFixed(2)}×` : "—");
+                      const m   = rvemLoading ? "loading" : (rvemError ? "error" : `BTC ${RVEM_TENOR_DAYS}D · RV ÷ IV`);
+                      const bad = (rvAnn != null && ivAnn != null)
+                        ? `IV ${(ivAnn * 100).toFixed(1)} • RV ${(rvAnn * 100).toFixed(1)}`
+                        : null;
+                    
                       return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={bad} />;
                     }
                     if (kpi.id === "funding") {
