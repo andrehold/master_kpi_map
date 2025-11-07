@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { TokenStyles, TOKENS, ThemeKey } from "./theme/tokens";
-import HeaderBar from "./components/ui/headerBar";
+import HeaderBar from "./components/ui/HeaderBar";
 import ControlsBar from "./components/ui/ControlsBar";
 import GroupHeader from "./components/ui/GroupHeader";
 import KpiCard from "./components/ui/KpiCard";
@@ -18,6 +18,7 @@ import { useRealizedVol } from "./hooks/useRealizedVol";
 import { useRvEmFactor } from "./hooks/useRvEmFactor";
 import { useDeribitIndexPrice } from "./hooks/useDeribitIndexPrice";
 import { useDeribitFunding } from "./hooks/useDeribitFunding";
+import { useDeribitBasis } from "./hooks/useDeribitBasis";
 
 export default function MasterKPIMapDemo() {
   const [search, setSearch] = useState("");
@@ -60,6 +61,15 @@ export default function MasterKPIMapDemo() {
     error: rvemError,
   } = useRvEmFactor({ currency: "BTC", days: RVEM_TENOR_DAYS });
   const { price: indexPrice, lastUpdated: indexTs, loading: indexLoading, error: indexError } = useDeribitIndexPrice("BTC", 15000);
+  const {
+    basisPct: basisPctPerp,
+    basisAbs: basisAbsPerp,
+    annualizedPct: basisAnnPerp, // will be null for PERPETUAL
+    lastUpdated: basisTs,
+    loading: basisLoading,
+    error: basisError,
+    refresh: refreshBasis,
+  } = useDeribitBasis("BTC", "BTC-PERPETUAL", 15000);
 
   // RV 20D (BTC)
   const { rv: rv20d, lastUpdated: rvTs, loading: rvLoading, error: rvError, refresh: refreshRV } =
@@ -121,6 +131,8 @@ export default function MasterKPIMapDemo() {
       try { await refreshRV(); } catch {}
       await new Promise(r => setTimeout(r, 120));
       try { await refreshFunding(); } catch {}
+      try { await refreshBasis(); } catch {}
+      await new Promise(r => setTimeout(r, 120));
 
       await new Promise(r => setTimeout(r, 150));
       try { await refreshTerm(); } catch {}
@@ -296,6 +308,31 @@ export default function MasterKPIMapDemo() {
                           <ExpectedMoveRibbonCard currency="BTC" />
                         </div>
                       );
+                    }
+                    if (kpi.id === "spot-perp-basis") {
+                      let v = samples[kpi.id];
+                      let m: string | undefined = undefined;
+                      let b: string | null = null;
+                    
+                      if (basisLoading) {
+                        v = "…"; m = "loading";
+                      } else if (basisError) {
+                        v = "—"; m = "error";
+                      } else if (basisPctPerp != null) {
+                        const pct = basisPctPerp * 100;
+                        const sign = pct >= 0 ? "+" : "";
+                        v = `${sign}${pct.toFixed(2)}%`;
+                        m = basisTs ? `BTC spot vs perp · ${new Date(basisTs).toLocaleTimeString()}` : "BTC spot vs perp";
+                    
+                        if (basisAbsPerp != null && Number.isFinite(basisAbsPerp)) {
+                          const abs = basisAbsPerp;
+                          b = `Δ ${abs >= 0 ? `+$${abs.toFixed(2)}` : `-$${Math.abs(abs).toFixed(2)}`}`;
+                        }
+                      } else {
+                        v = "—"; m = "Awaiting data";
+                      }
+                    
+                      return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={b} />;
                     }
                     return <KpiCard key={kpi.id} kpi={kpi} value={value} meta={meta} extraBadge={extraBadge} />;
                   })}
