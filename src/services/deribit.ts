@@ -3,6 +3,8 @@
 // Centralizes retries, timeouts, caching, and optional console debugging.
 
 // ---------- Types ------------------------------------------------------------
+export type Currency = "BTC" | "ETH";
+
 export type DeribitInstrument = {
   instrument_name: string;
   is_active: boolean;
@@ -20,7 +22,7 @@ export type DeribitInstrument = {
 export type DeribitTicker = {
   instrument_name: string;
   mark_iv?: number; // can be percent (45.8) or decimal (0.458)
-  greeks?: { delta?: number };
+  greeks?: { delta?: number; gamma?: number };
   best_bid_price?: number;
   best_ask_price?: number;
   last_price?: number;
@@ -35,8 +37,15 @@ export type DvolPoint = {
   lowPct?: number;
 };
 
-export type Currency = "BTC" | "ETH";
-export type IndexPriceMeta = { price: number; timestamp: number };
+export type BookSummaryRow = {
+  instrument_name: string;
+  open_interest?: number;
+};
+
+export type IndexPriceMeta = { 
+  price: number; 
+  timestamp: number 
+};
 
 // Use Vite dev proxy in development to avoid CORS; fall back to absolute in prod
 const DERIBIT = (typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV)
@@ -321,6 +330,24 @@ export async function getInstruments(currency: 'BTC' | 'ETH') {
   return p;
 }
 
+export async function getBookSummaryByCurrency(
+  currency: 'BTC' | 'ETH'
+): Promise<Map<string, number>> {
+  const res = await dget<{ result?: BookSummaryRow[]; }>(
+    '/public/get_book_summary_by_currency',
+    { currency, kind: 'option' }
+  );
+  const rows: BookSummaryRow[] = (res as any)?.result ?? (res as any) ?? [];
+  const map = new Map<string, number>();
+  for (const r of rows) {
+    if (r && r.instrument_name && typeof r.open_interest === 'number') {
+      map.set(r.instrument_name, r.open_interest);
+    }
+  }
+  return map;
+}
+
+
 // ---------- DVOL (volatility index) history ---------------------------------
 /**
  * Fetch DVOL history for a currency.
@@ -427,4 +454,19 @@ export async function fetchPerpHistory(
     .filter(p => Number.isFinite(p.ts) && Number.isFinite(p.close as any))
     .sort((a, b) => a.ts - b.ts)
     .slice(-limit);
+}
+
+// ---------- Additional Helper -------
+
+export async function getContractSize(instrument_name: string): Promise<number> {
+  try {
+    const r = await dget<{ contract_size?: number }>(
+      '/public/get_contract_size',
+      { instrument_name }
+    );
+    const cs = (r as any)?.contract_size;
+    return (typeof cs === 'number' && isFinite(cs) && cs > 0) ? cs : 1;
+  } catch {
+    return 1; // Deribit options are effectively 1 underlying per contract
+  }
 }

@@ -19,6 +19,7 @@ import { useRvEmFactor } from "./hooks/useRvEmFactor";
 import { useDeribitIndexPrice } from "./hooks/useDeribitIndexPrice";
 import { useDeribitFunding } from "./hooks/useDeribitFunding";
 import { useDeribitBasis } from "./hooks/useDeribitBasis";
+import GammaWallsCard from "./components/ui/GammaWallsCard";
 
 // ▼ Add guidance UI
 import { GuidanceSwitch, KpiGuidance } from "./components/ui/Guidance";
@@ -365,6 +366,11 @@ export default function MasterKPIMapDemo() {
                     
                       return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={b} />;
                     }
+
+                    if (kpi.id === "gamma-walls") {
+                      return <GammaWallsCard key={kpi.id} kpi={kpi} />;
+                    }
+
                     return <KpiCard key={kpi.id} kpi={kpi} value={value} meta={meta} extraBadge={extraBadge} />;
                   })}
                 </div>
