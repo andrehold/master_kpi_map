@@ -17,16 +17,24 @@ export default function KpiCard({
 }) {
   return (
     <div className="group rounded-2xl border border-[var(--border)] bg-[var(--surface-950)] p-4 shadow-[var(--shadow)] hover:border-[var(--brand-500)]/30 transition">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="text-[var(--fg)] font-medium leading-snug">
-            {kpi.name}
-            <KpiInfo id={kpi.id} description={kpi.description} />
+      {/* Header: name | value */}
+      <div className="grid grid-cols-[1fr_auto] items-start gap-x-4">
+        {/* KPI Name + Info */}
+        <div className="text-[var(--fg)] font-medium leading-snug">
+          {kpi.name}
+          <KpiInfo id={kpi.id} description={kpi.description} />
+        </div>
+
+        {/* Value */}
+        <div className="text-right">
+          <div className="text-xl font-semibold tabular-nums font-mono text-[var(--fg)]">
+            {value}
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-xl font-semibold tabular-nums font-mono text-[var(--fg)]">{value}</div>
-          <div className="mt-1 flex items-center gap-1 justify-end">
+
+        {/* Full-width row below the KPI name for chip + meta */}
+        {(extraBadge || meta) && (
+          <div className="col-span-2 mt-1 flex w-full flex-wrap items-center gap-1">
             {extraBadge ? <Badge>{extraBadge}</Badge> : null}
             {meta ? (
               <div className="text-[10px] text-[var(--fg-muted)] flex items-center gap-1">
@@ -35,8 +43,10 @@ export default function KpiCard({
               </div>
             ) : null}
           </div>
-        </div>
+        )}
       </div>
+
+      {/* Strategies */}
       <div className="mt-3 flex flex-wrap gap-1.5">
         {kpi.strategies.map((s) => (
           <span
@@ -47,6 +57,8 @@ export default function KpiCard({
           </span>
         ))}
       </div>
+
+      {/* Footer (optional) */}
       {footer ? <div className="mt-3">{footer}</div> : null}
     </div>
   );
