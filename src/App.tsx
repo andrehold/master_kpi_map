@@ -21,7 +21,7 @@ import { useDeribitFunding } from "./hooks/useDeribitFunding";
 import { useDeribitBasis } from "./hooks/useDeribitBasis";
 
 // ▼ Add guidance UI
-import { GuidanceSwitch, KpiGuidance } from "./components/ui/guidance";
+import { GuidanceSwitch, KpiGuidance } from "./components/ui/Guidance";
 
 export default function MasterKPIMapDemo() {
   const [search, setSearch] = useState("");
