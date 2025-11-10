@@ -1,5 +1,3 @@
-import * as React from "react";
-
 type Props = {
   data: number[];              // y-values in order
   width?: number;              // px
