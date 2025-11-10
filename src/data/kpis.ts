@@ -1,3 +1,5 @@
+import type { BandBaseIds } from "../kpi/bands.base";
+
 export const STRATEGIES = [
     "Expected Move",
     "Range-Bound Premium",
@@ -9,6 +11,14 @@ export const STRATEGIES = [
   ] as const;
   
   export type Strategy = typeof STRATEGIES[number];
+
+  export type KpiMeta = {
+    id: string;
+    title: string;
+    strategies?: string[];
+    valueType?: "percent" | "raw" | "ratio";
+    guidanceKey?: BandBaseIds; // <- link to bands (optional)
+  };
   
   export type KPIValueType =
     | "percent"
@@ -35,6 +45,39 @@ export const STRATEGIES = [
     title: string;
     kpis: KPIDef[];
   }
+
+  export const KPIS: KpiMeta[] = [
+    { id: "ivr", title: "IV Rank (1y)", valueType: "percent", guidanceKey: "ivr" },
+    { id: "atm-iv", title: "ATM IV", valueType: "percent", guidanceKey: "atm_iv" },
+    { id: "term-structure", title: "Term Structure", guidanceKey: "term_structure_spread" },
+    { id: "skew", title: "25Δ Risk Reversal", guidanceKey: "skew_rr25" },
+    { id: "vol-of-vol", title: "Vol of Vol", guidanceKey: "vol_of_vol" },
+    { id: "iv-rv", title: "IV – RV Spread", guidanceKey: "iv_rv_spread" },
+    { id: "em-hit-rate", title: "EM Hit Rate (90d)", valueType: "percent", guidanceKey: "em_hit_rate_90d" },
+    { id: "rv-em", title: "RV ÷ EM", valueType: "ratio", guidanceKey: "rv_em_ratio" },
+    { id: "vix", title: "VIX", guidanceKey: "vix" },
+    { id: "vvix", title: "VVIX", guidanceKey: "vvix" },
+    { id: "funding", title: "Funding Rate (ann.)", valueType: "percent", guidanceKey: "funding_rate_annualized" },
+    { id: "event-window", title: "Macro Event Window", guidanceKey: "macro_event_tminus_days" },
+    { id: "spread", title: "Bid–Ask Spread %", valueType: "percent", guidanceKey: "bid_ask_spread_pct" },
+    { id: "tob-depth", title: "TOB Depth", guidanceKey: "tob_depth_contracts" },
+    { id: "oi-concentration", title: "OI Concentration %", valueType: "percent", guidanceKey: "oi_concentration_pct" },
+    { id: "condor-credit", title: "Condor Credit % of EM", valueType: "percent", guidanceKey: "condor_credit_pct_of_em" },
+    { id: "maxloss-credit", title: "Max Loss ÷ Credit", valueType: "ratio", guidanceKey: "maxloss_credit_ratio" },
+    { id: "pnl-vs-credit", title: "PnL vs Credit %", valueType: "percent", guidanceKey: "pnl_vs_credit_pct" },
+    { id: "delta-exposure", title: "Delta Exposure % NAV", valueType: "percent", guidanceKey: "delta_exposure_pct_nav" },
+    { id: "gamma-theta", title: "Gamma ÷ Theta", valueType: "ratio", guidanceKey: "gamma_theta_ratio" },
+    { id: "fill-ratio", title: "Fill Ratio %", valueType: "percent", guidanceKey: "fill_ratio_pct" },
+    { id: "arrival-slippage", title: "Arrival Slippage", guidanceKey: "arrival_slippage_ticks" },
+    { id: "breakage", title: "Breakage Rate %", valueType: "percent", guidanceKey: "breakage_rate_pct" },
+    { id: "capital-util", title: "Capital Util % NAV", valueType: "percent", guidanceKey: "capital_utilization_pct_nav" },
+    { id: "edge-capture", title: "Edge Capture %", valueType: "percent", guidanceKey: "edge_realized_pct" },
+    { id: "drawdown", title: "Drawdown % NAV", valueType: "percent", guidanceKey: "drawdown_pct_nav" },
+    { id: "box-spread", title: "Box Financing Spread (bps)", guidanceKey: "box_financing_spread_bps" },
+    { id: "box-slippage", title: "Box Slippage (ticks)", guidanceKey: "slippage_budget_ticks_4legs" },
+    { id: "basis", title: "Spot–Perp Basis (ann. %)", valueType: "percent", guidanceKey: "basis_spread_annualized_pct" },
+    { id: "ts-kink", title: "Term Structure Kink (abs)", guidanceKey: "term_structure_kink_abs" }
+  ];
   
   export const KPI_GROUPS: KPIGroup[] = [
     {

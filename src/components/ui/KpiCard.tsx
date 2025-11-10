@@ -7,11 +7,13 @@ export default function KpiCard({
   value,
   meta,
   extraBadge,
+  footer,
 }: {
   kpi: KPIDef;
   value: string;
   meta?: string;
   extraBadge?: string | null;
+  footer?: React.ReactNode;
 }) {
   return (
     <div className="group rounded-2xl border border-[var(--border)] bg-[var(--surface-950)] p-4 shadow-[var(--shadow)] hover:border-[var(--brand-500)]/30 transition">
@@ -45,6 +47,7 @@ export default function KpiCard({
           </span>
         ))}
       </div>
+      {footer ? <div className="mt-3">{footer}</div> : null}
     </div>
   );
 }

@@ -20,6 +20,9 @@ import { useDeribitIndexPrice } from "./hooks/useDeribitIndexPrice";
 import { useDeribitFunding } from "./hooks/useDeribitFunding";
 import { useDeribitBasis } from "./hooks/useDeribitBasis";
 
+// ▼ Add guidance UI
+import { GuidanceSwitch, KpiGuidance } from "./components/ui/guidance";
+
 export default function MasterKPIMapDemo() {
   const [search, setSearch] = useState("");
   const [activeStrategies, setActiveStrategies] = useState<Strategy[]>([]);
@@ -32,6 +35,7 @@ export default function MasterKPIMapDemo() {
   const [theme, setTheme] = useState<ThemeKey>("light");
   const [isUpdating, setIsUpdating] = useState(false);
   const RVEM_TENOR_DAYS = 20;
+  const locale = "en"; // adjust or wire to your i18n state
 
   // Live data (BTC by default)
   const { valuePct: dvolPct, lastUpdated: dvolTs, loading: dvolLoading, error: dvolError, refresh: refreshDvol } = useDeribitDvol("BTC");
@@ -180,6 +184,11 @@ export default function MasterKPIMapDemo() {
           toggleStrategy={toggleStrategy}
         />
 
+        {/* Global guidance mini-bar toggle */}
+        <div className="flex justify-end mb-2">
+          <GuidanceSwitch />
+        </div>
+
         <div className="space-y-4">
           {filteredGroups.map((group) => (
             <section key={group.id}>
@@ -195,11 +204,33 @@ export default function MasterKPIMapDemo() {
                       value = `${dvolPct.toFixed(1)}%`;
                       meta = "DVOL 30D (proxy)";
                     }
+
                     if (kpi.id === "ivr" && ivr != null) {
                       value = `${ivr}`;
                       meta = "DVOL-based IVR";
                       if (ivp != null) extraBadge = `IVP ${ivp}`;
+
+                      // Wrap IVR card with guidance UI underneath
+                      return (
+                        <div key={kpi.id} className="space-y-2">
+                          <KpiCard
+                            key={kpi.id}
+                            kpi={kpi}
+                            value={value}
+                            meta={meta}
+                            extraBadge={extraBadge}
+                            footer={
+                              <KpiGuidance
+                                kpiId="ivr"
+                                value={typeof ivr === "number" ? ivr : null}
+                                locale="en"
+                              />
+                            }
+                          />
+                        </div>
+                      );
                     }
+
                     if (kpi.id === "rv" && rv20d != null) {
                       value = `${(rv20d * 100).toFixed(1)}%`;
                       meta = rvTs ? `20D RV · ${new Date(rvTs).toLocaleDateString()}` : "20D RV";

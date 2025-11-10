@@ -1,0 +1,311 @@
+{
+    "ivr": {
+      "title": "IV Rank / Percentile (1y lookback)",
+      "description": "Corridors for IVR to guide short/long vol posture.",
+      "bands": {
+        "low":  { "label": "<20%",   "guidance": "Avoid naked shorts (vol cheap, poor RR)." },
+        "mid":  { "label": "30–70%", "guidance": "Preferred zone (balanced carry)." },
+        "high": { "label": "≥80%",   "guidance": "Avoid adding shorts; hedge—elevated panic risk." }
+      }
+    },
+  
+    "atm_iv": {
+      "title": "ATM Implied Volatility (absolute)",
+      "description": "Absolute ATM IV level for the underlying (majors vs equities differ).",
+      "bands": {
+        "cheap":  { "label": "<20% (crypto) / <15% (equities)", "guidance": "Cheap vol; prefer defined-risk spreads/calendars over naked shorts." },
+        "normal": { "label": "20–40%", "guidance": "Normal regime; condors/strangles attractive with prudent widths." },
+        "stress": { "label": "≥50%", "guidance": "Stress regime; consider exiting/reducing short premium and add hedges." }
+      }
+    },
+  
+    "term_structure_spread": {
+      "title": "Term Structure (Back − Front IV, vol pts)",
+      "description": "Positive = contango (front < back). Negative = backwardation (front > back).",
+      "bands": {
+        "backwardation": { "label": "< −2 vol pts", "guidance": "Backwardation: crash/stress conditions—avoid short vol or hedge actively." },
+        "flat":          { "label": "≈ −2 to +1",   "guidance": "Flat: neutral carry environment; size conservatively." },
+        "contango":      { "label": "≥ +1 vol pt",  "guidance": "Contango: safer carry environment; short-vol structures favored." }
+      }
+    },
+  
+    "skew_rr25": {
+      "title": "Skew (25Δ Risk Reversal, Call − Put, vol pts)",
+      "description": "Sign and magnitude of RR guide wing selection and overwrites.",
+      "bands": {
+        "puts_rich": { "label": "< −5", "guidance": "Puts rich: overweight put wings; avoid excessive downside short gamma." },
+        "balanced":  { "label": "−5 to +5", "guidance": "Balanced: symmetric structures appropriate." },
+        "calls_rich": { "label": "> +5", "guidance": "Calls rich: favor call overwrites or upside-biased spreads." }
+      }
+    },
+  
+    "vol_of_vol": {
+      "title": "Vol-of-Vol (e.g., VVIX/MOVE proxy)",
+      "description": "Higher levels imply faster IV changes and larger tail risk.",
+      "bands": {
+        "calm":     { "label": "<80", "guidance": "Calm: stable surface; carry safer." },
+        "normal":   { "label": "80–120", "guidance": "Normal: standard sizing." },
+        "stressed": { "label": "≥120", "guidance": "Stressed regime; reduce size and consider hedges." }
+      }
+    },
+  
+    "iv_rv_spread": {
+      "title": "IV − RV Spread (vol pts)",
+      "description": "Positive values indicate implied > realized; potential carry edge.",
+      "bands": {
+        "no_edge":    { "label": "< 0",  "guidance": "No edge: avoid adding short premium; consider long-vol structures." },
+        "weak_edge":  { "label": "0 to +5", "guidance": "Weak edge: neutral/light carry; wait for better pricing." },
+        "carry_edge": { "label": "+5 to +15", "guidance": "Carry edge present: short premium acceptable with risk controls." },
+        "rich_vol":   { "label": "> +15", "guidance": "Rich vol: strong shorting opportunity (mind RV trend and events)." }
+      }
+    },
+  
+    "em_hit_rate_90d": {
+      "title": "Hit Rate of Expected Move (90d rolling)",
+      "description": "Share of sessions staying within the daily expected move.",
+      "bands": {
+        "overpriced_long_edge": { "label": "<50%", "guidance": "EM overpriced: edge to long vol; avoid large short premium." },
+        "balanced":             { "label": "60–70%", "guidance": "Balanced regime: carry acceptable with prudent risk." },
+        "sell_premium":         { "label": "≥75%", "guidance": "EM overpriced: favorable for selling premium." }
+      }
+    },
+  
+    "rv_em_ratio": {
+      "title": "RV ÷ EM (ratio)",
+      "description": "Compares realized volatility to expected move.",
+      "bands": {
+        "em_overpriced":  { "label": "<0.8", "guidance": "EM overpriced → short vol edge; prefer defined-risk shorts." },
+        "neutral":        { "label": "0.8–1.2", "guidance": "Neutral: maintain standard sizing or diversify structures." },
+        "em_underpriced": { "label": ">1.2", "guidance": "EM underpriced: riskier to sell premium; consider long gamma." }
+      }
+    },
+  
+    "vix": {
+      "title": "VIX (level)",
+      "description": "Equity volatility index regime markers.",
+      "bands": {
+        "calm":     { "label": "<15", "guidance": "Calm: carry-friendly; beware complacency." },
+        "normal":   { "label": "15–25", "guidance": "Normal: standard sizing." },
+        "stressed": { "label": "≥25", "guidance": "Stressed: avoid heavy short gamma; tighten risk." }
+      }
+    },
+  
+    "vvix": {
+      "title": "VVIX (level)",
+      "description": "Vol-of-vol for the S&P 500 options surface.",
+      "bands": {
+        "stable": { "label": "<80", "guidance": "Stable: routine adjustments; carry safer." },
+        "normal": { "label": "80–120", "guidance": "Normal: standard risk budgets." },
+        "stress": { "label": "≥120", "guidance": "Stress: reduce exposure; hedge tail risk." }
+      }
+    },
+  
+    "funding_rate_annualized": {
+      "title": "Funding Rate (perps, annualized)",
+      "description": "Crowding proxy in perpetual futures; extremes imply squeeze/bounce risk.",
+      "bands": {
+        "crowded_shorts": { "label": "< −10%", "guidance": "Crowded shorts: bounce risk—consider contrarian bias or reduce shorts." },
+        "neutral_low":    { "label": "−10% to −5%", "guidance": "Mild short bias; neutral overall." },
+        "neutral":        { "label": "−5% to +5%", "guidance": "Neutral positioning." },
+        "watch_longs":    { "label": "+5% to +10%", "guidance": "Long bias building; monitor for squeeze conditions." },
+        "crowded_longs":  { "label": "> +10%", "guidance": "Crowded longs: squeeze risk—avoid chasing; consider hedges." }
+      }
+    },
+  
+    "macro_event_tminus_days": {
+      "title": "Macro Event Window (days to event)",
+      "description": "Fed/CPI/NFP/ETF rulings—event premium affects carry and gap risk.",
+      "bands": {
+        "avoid_new_shorts": { "label": "≤1 day", "guidance": "Avoid initiating new shorts within T–1; carry unreliable." },
+        "caution_window":   { "label": "2–3 days", "guidance": "Caution: lighten size or use defined risk ahead of event." },
+        "normal":           { "label": "≥3 days", "guidance": "Normal operations; event risk still on the calendar." }
+      }
+    },
+  
+    "bid_ask_spread_pct": {
+      "title": "Bid–Ask Spread (as % of premium)",
+      "description": "Execution friction on options legs.",
+      "bands": {
+        "healthy": { "label": "<0.5%", "guidance": "Healthy: good execution quality." },
+        "caution": { "label": "0.5–1%", "guidance": "Caution: expect some slippage; tighten entry/exit rules." },
+        "avoid":   { "label": ">1%", "guidance": "Avoid scaling; liquidity thin and fills costly." }
+      }
+    },
+  
+    "tob_depth_contracts": {
+      "title": "TOB Depth (contracts per strike)",
+      "description": "Top-of-book contract depth indicates liquidity to absorb sizing.",
+      "bands": {
+        "illiquid": { "label": "<20", "guidance": "Illiquid: avoid big trades." },
+        "light":    { "label": "20–50", "guidance": "Light sizing only; stagger orders." },
+        "safe":     { "label": "≥50", "guidance": "Safe depth: standard sizing permissible." }
+      }
+    },
+  
+    "oi_concentration_pct": {
+      "title": "Open Interest Concentration (single strike, % of OI)",
+      "description": "High concentration increases pin/gamma risk into expiry.",
+      "bands": {
+        "normal":    { "label": "<20%", "guidance": "Normal distribution of OI." },
+        "elevated":  { "label": "20–30%", "guidance": "Elevated: watch for pin dynamics." },
+        "pin_risk":  { "label": "30–40%", "guidance": "High pin risk; manage gamma and rolls." },
+        "very_high": { "label": "≥40%", "guidance": "Very high concentration: strong pin risk—adjust positioning." }
+      }
+    },
+  
+    "condor_credit_pct_of_em": {
+      "title": "Condor Credit (% of EM)",
+      "description": "Credit relative to expected move gauges risk/reward.",
+      "bands": {
+        "poor_rr":   { "label": "<20%", "guidance": "Poor RR: avoid deployment or widen wings cheaply." },
+        "ok":        { "label": "20–25%", "guidance": "Borderline: only with other favorable signals." },
+        "healthy":   { "label": "25–35%", "guidance": "Healthy premium: attractive setup." },
+        "very_rich": { "label": "≥40%", "guidance": "Very rich: excellent—validate with RV/EM and events." }
+      }
+    },
+  
+    "maxloss_credit_ratio": {
+      "title": "Max Loss ÷ Credit (ratio)",
+      "description": "Lower is better; reflects payoff asymmetry.",
+      "bands": {
+        "acceptable":  { "label": "<3:1", "guidance": "Acceptable asymmetry." },
+        "borderline":  { "label": "3–5:1", "guidance": "Borderline: reduce size or improve strikes." },
+        "unattractive": { "label": ">5:1", "guidance": "Unattractive unless well-hedged." }
+      }
+    },
+  
+    "pnl_vs_credit_pct": {
+      "title": "PnL vs Premium Collected (% of credit)",
+      "description": "Realized PnL relative to initial credit.",
+      "bands": {
+        "stop_out":      { "label": "≤ −150%", "guidance": "Hard stop: cut position." },
+        "drawdown":      { "label": "−150% to 0%", "guidance": "Drawdown: manage risk; consider adjustments or exit." },
+        "in_progress":   { "label": "0–50%", "guidance": "In progress: consider partials or manage at targets." },
+        "target_reached": { "label": "≥ +50%", "guidance": "Target reached: close early to lock gains." }
+      }
+    },
+  
+    "delta_exposure_pct_nav": {
+      "title": "Delta Exposure (% of NAV equivalent)",
+      "description": "Absolute delta exposure vs NAV proxy.",
+      "bands": {
+        "neutral":   { "label": "≤10%", "guidance": "Neutral delta exposure." },
+        "rebalance": { "label": "10–20%", "guidance": "Rebalance or hedge." },
+        "hedge":     { "label": ">20%", "guidance": "Hedge or reduce directional risk." }
+      }
+    },
+  
+    "gamma_theta_ratio": {
+      "title": "Gamma Risk ÷ Daily Theta (ratio)",
+      "description": "Gamma risk relative to daily carry.",
+      "bands": {
+        "safe":     { "label": "<1×", "guidance": "Safe: gamma risk within daily theta." },
+        "elevated": { "label": "1–2×", "guidance": "Elevated: monitor intraday; reduce if volatility rises." },
+        "high":     { "label": ">2×", "guidance": "High: adjust or hedge; risk exceeds daily carry." }
+      }
+    },
+  
+    "fill_ratio_pct": {
+      "title": "Fill Ratio (%)",
+      "description": "Execution quality across submitted orders.",
+      "bands": {
+        "issues":   { "label": "<70%", "guidance": "Execution issues: investigate routing/venues." },
+        "friction": { "label": "70–90%", "guidance": "Friction: tighten price bands or use smart-order logic." },
+        "healthy":  { "label": "≥90%", "guidance": "Healthy: good process/venues." }
+      }
+    },
+  
+    "arrival_slippage_ticks": {
+      "title": "Arrival Slippage (ticks per leg)",
+      "description": "Price impact vs arrival for each leg.",
+      "bands": {
+        "excellent": { "label": "<0.5", "guidance": "Excellent routing and liquidity." },
+        "normal":    { "label": "0.5–1", "guidance": "Normal: acceptable cost." },
+        "costly":    { "label": ">1", "guidance": "Costly: re-evaluate routing or timing." }
+      }
+    },
+  
+    "breakage_rate_pct": {
+      "title": "Breakage Rate (% of multi-leg orders)",
+      "description": "Share of complex orders that fail to complete as a package.",
+      "bands": {
+        "acceptable":     { "label": "<5%", "guidance": "Acceptable workflow." },
+        "workflow_issue": { "label": "5–10%", "guidance": "Workflow issue: refine legging/venues." },
+        "problematic":    { "label": ">10%", "guidance": "Problematic: address process—edge likely eroded." }
+      }
+    },
+  
+    "capital_utilization_pct_nav": {
+      "title": "Capital Utilization (% of NAV)",
+      "description": "Total capital at risk across structures.",
+      "bands": {
+        "conservative": { "label": "<30%", "guidance": "Conservative usage." },
+        "normal":       { "label": "30–50%", "guidance": "Normal usage." },
+        "aggressive":   { "label": "50–70%", "guidance": "Aggressive: stress-test exposures." },
+        "very_high":    { "label": "≥70%", "guidance": "Very high: reduce risk; preserve optionality." }
+      }
+    },
+  
+    "edge_realized_pct": {
+      "title": "Locked vs Realized Edge Capture (%)",
+      "description": "How much of the theoretical edge you actually keep.",
+      "bands": {
+        "low":       { "label": "<60%", "guidance": "Low: execution slippage too high—review process." },
+        "drag":      { "label": "60–80%", "guidance": "Drag: incremental improvements needed." },
+        "efficient": { "label": "≥80%", "guidance": "Efficient capture: process working well." }
+      }
+    },
+  
+    "drawdown_pct_nav": {
+      "title": "Drawdown (% of NAV)",
+      "description": "Strategy drawdown thresholds for governance.",
+      "bands": {
+        "ok":               { "label": "<5%", "guidance": "OK: continue with monitoring." },
+        "review":           { "label": "5–10%", "guidance": "Review: recalibrate sizing and risk." },
+        "stop_recalibrate": { "label": ">10%", "guidance": "Stop trading; recalibrate before resuming." }
+      }
+    },
+  
+    "box_financing_spread_bps": {
+      "title": "Implied Financing − Funding Costs (bps, annualized)",
+      "description": "Net spread after funding vs implied; higher is better.",
+      "bands": {
+        "no_trade":  { "label": "<0 bps", "guidance": "No trade: spread negative after costs." },
+        "min_edge":  { "label": "0–5 bps", "guidance": "Minimum edge: may not cover slippage." },
+        "ok_edge":   { "label": "5–20 bps", "guidance": "Acceptable: consider trade if liquidity supports." },
+        "attractive": { "label": ">20 bps", "guidance": "Attractive: proceed with standard checks." }
+      }
+    },
+  
+    "slippage_budget_ticks_4legs": {
+      "title": "Slippage Budget (ticks across 4 legs)",
+      "description": "Total tolerable slippage for a box/complex before edge erodes.",
+      "bands": {
+        "tolerable":  { "label": "≤3 ticks", "guidance": "Tolerable: proceed." },
+        "tight":      { "label": "3–5 ticks", "guidance": "Tight: monitor fills closely." },
+        "edge_erased": { "label": ">5 ticks", "guidance": "Edge likely erased: abort or re-route." }
+      }
+    },
+  
+    "basis_spread_annualized_pct": {
+      "title": "Spot–Perp / Futures Basis (annualized %)",
+      "description": "Annualized basis between spot and perp/futures.",
+      "bands": {
+        "negative":  { "label": "<0%", "guidance": "Negative basis: unwind risk or long-basis opportunity with caution." },
+        "low":       { "label": "0–5%", "guidance": "Low carry: selective deployment." },
+        "good":      { "label": "5–15%", "guidance": "Good carry: deploy with standard risk checks." },
+        "very_rich": { "label": ">15%", "guidance": "Very rich: attractive—watch funding/liquidity." }
+      }
+    },
+  
+    "term_structure_kink_abs": {
+      "title": "Term Structure Kink (abs, vol pts)",
+      "description": "Local curvature vs smooth fit; large kinks often coincide with stress/regime change.",
+      "bands": {
+        "flat":   { "label": "<3", "guidance": "Flat: smooth term structure; signals align with carry." },
+        "curved": { "label": "3–10", "guidance": "Curved: caution; prefer defined-risk or smaller sizing." },
+        "kinked": { "label": ">10", "guidance": "Kinked: potential stress; avoid aggressive short vol." }
+      }
+    }
+  }
+  
