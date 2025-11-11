@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { TokenStyles, TOKENS, ThemeKey } from "./theme/tokens";
 import HeaderBar from "./components/ui/HeaderBar";
 import ControlsBar from "./components/ui/ControlsBar";
@@ -158,6 +158,9 @@ export default function MasterKPIMapDemo() {
 
   const loadingAny = dvolLoading || ivrLoading || tsLoading || skewLoadingAny || skLoading || fundingLoading;
 
+  // Store drawer refs by KPI id (used to open the drawer from the card info button)
+  const guidanceRefs = useRef<Record<string, any>>({});
+
   return (
     <div data-theme="tm" style={{ colorScheme: TOKENS[theme].colorScheme as any }} className="min-h-screen bg-[var(--bg)] text-[var(--fg)]">
       <TokenStyles theme={theme} />
@@ -220,11 +223,15 @@ export default function MasterKPIMapDemo() {
                             value={value}
                             meta={meta}
                             extraBadge={extraBadge}
+                            onInfoClick={() => guidanceRefs.current["ivr"]?.openInfo?.()}
                             footer={
                               <KpiGuidance
+                                ref={(el) => { guidanceRefs.current["ivr"] = el; }}
+                                trigger="external"
                                 kpiId="ivr"
                                 value={typeof ivr === "number" ? ivr : null}
-                                locale="en"
+                                locale={locale}
+                                infoKey="ivr"
                               />
                             }
                           />

@@ -8,21 +8,37 @@ export default function KpiCard({
   meta,
   extraBadge,
   footer,
+  onInfoClick, // NEW
 }: {
   kpi: KPIDef;
   value: string;
   meta?: string;
   extraBadge?: string | null;
   footer?: React.ReactNode;
+  onInfoClick?: () => void; // NEW
 }) {
   return (
     <div className="group rounded-2xl border border-[var(--border)] bg-[var(--surface-950)] p-4 shadow-[var(--shadow)] hover:border-[var(--brand-500)]/30 transition">
       {/* Header: name | value */}
       <div className="grid grid-cols-[1fr_auto] items-start gap-x-4">
         {/* KPI Name + Info */}
-        <div className="text-[var(--fg)] font-medium leading-snug">
-          {kpi.name}
-          <KpiInfo id={kpi.id} description={kpi.description} />
+        <div className="text-[var(--fg)] font-medium leading-snug flex items-center gap-1">
+          <span>{kpi.name}</span>
+          <span className="relative inline-flex">
+            {/* Keep your existing info icon (KpiInfo), but overlay a click-catcher that opens the drawer.
+               This stops the old hover popover while preserving your icon styling. */}
+            <KpiInfo id={kpi.id} description={kpi.description} />
+            {onInfoClick && (
+              <button
+                aria-label="Open KPI info"
+                title="Open KPI info"
+                className="absolute inset-0 cursor-pointer"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onInfoClick(); }}
+                onMouseEnter={(e) => e.stopPropagation()}
+                onMouseLeave={(e) => e.stopPropagation()}
+              />
+            )}
+          </span>
         </div>
 
         {/* Value */}
