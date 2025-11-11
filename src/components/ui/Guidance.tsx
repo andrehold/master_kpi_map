@@ -121,27 +121,40 @@ function bandFor(value: number | null | undefined, bands: Band[]) {
 /* ------------------------------ Mini Band Bar ---------------------------- */
 export function BandBar({ value, set }: { value?: number | null; set: BandSet }) {
   if (!set.hasBar) return null;
-  const p = set.valueScale === "percent" ? Math.max(0, Math.min(100, Number(value ?? 0))) : undefined;
-  const left = typeof p === "number" ? `clamp(6%, ${p}%, 94%)` : undefined;
+
+  const p = set.valueScale === "percent" ? clampPercent(value) : undefined;
+  const pc = typeof p === "number" ? Math.min(98.5, Math.max(1.5, p)) : undefined;
+
+  // first/middle/last lanes if >3 bands
+  const lanes: Band[] =
+    set.bands.length <= 3
+      ? set.bands
+      : [set.bands[0], set.bands[Math.floor(set.bands.length / 2)], set.bands[set.bands.length - 1]];
 
   return (
-    <div className="relative mt-3 rounded-xl border border-[var(--border)] h-3 overflow-visible">
-      <div className="absolute inset-0 grid grid-cols-3 gap-px opacity-70">
-        <div className="bg-rose-500/50" />
-        <div className="bg-emerald-500/40" />
-        <div className="bg-amber-500/40" />
+    <div
+      className={`
+        relative mt-3 rounded-xl border border-[var(--border)] h-3 overflow-hidden
+        [--indicator:theme(colors.neutral.700)]   /* light: dark gray */
+        dark:[--indicator:#ffffff]                /* dark: white */
+      `}
+    >
+      {/* lanes */}
+      <div className="absolute inset-0 grid grid-cols-3 gap-px opacity-60">
+        {lanes.map((b, i) => (
+          <div key={b.id} className={i === 0 ? "bg-rose-500/50" : i === 1 ? "bg-emerald-500/40" : "bg-amber-500/40"} />
+        ))}
       </div>
 
-      {set.valueScale === "percent" && typeof p === "number" && (
-        <>
-          <div className="absolute -top-1 bottom-0 w-0.5 bg-neutral-900 dark:bg-neutral-100" style={{ left }} />
-          <div
-            className="absolute -top-5 -translate-x-1/2 px-1.5 py-0.5 text-[10px] tabular-nums font-medium text-black drop-shadow-sm z-10 pointer-events-none bg-transparent"
-            style={{ left }}
-          >
-            {Math.round(p)}%
-          </div>
-        </>
+      {/* vertical indicator (no value bubble) */}
+      {set.valueScale === "percent" && typeof pc === "number" && (
+        <div
+          aria-hidden
+          className="absolute inset-y-0 -translate-x-1/2 z-20 pointer-events-none"
+          style={{ left: `${pc}%` }}
+        >
+          <div className="h-full w-[4px] rounded-sm" style={{ backgroundColor: "var(--indicator)" }} />
+        </div>
       )}
     </div>
   );
@@ -298,6 +311,12 @@ function renderInfoDoc(doc: KpiInfoDoc): React.ReactNode {
     </div>
   );
 }
+
+const clampPercent = (v: number | null | undefined): number => {
+  const n = Number(v ?? 0);
+  if (!Number.isFinite(n)) return 0;
+  return n < 0 ? 0 : n > 100 ? 100 : n;
+};
 
 /* --------------------------- Controller wrapper -------------------------- */
 type KpiGuidanceProps = {

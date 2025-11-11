@@ -200,7 +200,21 @@ export const KPI_INFO: Record<string, KpiInfoDoc> = {
       "Note: IVR measures level, not skew or term; check those separately."
     ]
   },
-  // add more KPI entries here, e.g. 'rv', 'iv-rv-spread', 'term-structure', ...
+  gammaWalls: {
+    title: "Gamma “walls” near strikes",
+    paragraphs: [
+      "Definition: Concentrations of option gamma at specific strikes can act like “walls” that absorb or amplify price moves. We aggregate absolute gamma by strike (using OI × model gamma per contract) and highlight the largest nodes within a configurable ±window around spot.",
+      "Computation: For listed options we approximate net gamma per strike from public data (OI, contract specs, greeks) and sum across calls/puts and nearby expiries. We surface the top N strikes by absolute gamma in the window and show their distance from spot.",
+      "Why it matters: Dealer positioning can turn large gamma nodes into temporary support/resistance. When the street is long gamma, hedging flows tend to dampen moves toward a wall (pinning). When short gamma dominates, breaks through walls can accelerate as hedges flip.",
+      "How to read: Look for thick clusters close to spot and for walls that persist across sessions or grow into expiry. Confluence with round numbers and high OI strikes increases relevance. Rapid migration of walls after big spot moves is a caution flag.",
+      "Caveats: This is an OI-based approximation — it does not see dealer inventory or block trades, and intraday OI updates can lag. Exchange coverage may be incomplete. On event days, wall effects can be overwhelmed by directional flows and liquidity gaps."
+    ],
+    bullets: [
+      "Trading implications: Pinning risk rises into expiry near the largest wall; consider adjusting strikes/widths for short-premium or gamma scalping tactics.",
+      "Combine with: Delta & Gamma near shorts, Funding/Basis, OI concentration %, and Liquidity/Depth to gauge fragility.",
+      "Risks: Walls can disappear as positions roll; slippage increases around gaps; don’t overfit to a single session."
+    ]
+  },
 };
 
   
