@@ -20,20 +20,19 @@ export function useGammaWalls(opts?: {
   windowPct?: number;   // strikes within ±(windowPct) of spot
   topN?: number;        // how many walls to surface for badges
   pollMs?: number;      // 0 = no polling
+  enabled?: boolean;
 }) {
-  const currency = opts?.currency ?? "BTC";
-  const windowPct = opts?.windowPct ?? 0.10;
-  const topN = opts?.topN ?? 3;
-  const pollMs = opts?.pollMs ?? 0;
+  const { currency = "BTC", windowPct = 0.10, topN = 3, pollMs = 30000, enabled = true } = opts;
 
   const [data, setData] = useState<GammaByStrike[] | null>(null);
   const [indexPrice, setIndexPrice] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const timer = useRef<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   async function run() {
-    setLoading(true);
+    if (!enabled) return;
+    setLoading(prev => (data ? prev : true));
     setError(null);
     try {
       const [spot, instruments, oiMap] = await Promise.all([
@@ -105,18 +104,32 @@ export function useGammaWalls(opts?: {
   }
 
   useEffect(() => {
-    run();
-    if (pollMs > 0) {
-      // @ts-ignore
-      timer.current = window.setInterval(run, pollMs);
-      return () => {
-        if (timer.current) window.clearInterval(timer.current);
-      };
+    // clear any existing timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currency, windowPct, pollMs]);
 
-  const top = useMemo(() => (data ? data.slice(0, topN) : null), [data, topN]);
+    // Always fetch once on mount/options change
+    run();
+
+    // Only set up polling when pollMs > 0
+    if (enabled && pollMs > 0) {
+      timerRef.current = setInterval(run, pollMs);
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [run, enabled, pollMs]);
+
+  const top = useMemo(() => {
+    if (!data) return null;
+    return data.slice(0, topN);
+  }, [data, topN]);
 
   return { data, top, indexPrice, loading, error, refresh: run };
 }

@@ -17,7 +17,14 @@ function fmtUsdShort(n: number) {
 }
 
 export default function GammaWallsCard({ kpi }: { kpi: KPIDef }) {
-  const gw = useGammaWalls({ currency: "BTC", windowPct: 0.10, topN: 3, pollMs: 30000 });
+  // Memoize options so effects inside the hook don't re-run on every render
+  const gwOpts = React.useMemo(() => ({
+    currency: "BTC" as const,
+    windowPct: 0.10,
+    topN: 3,
+    pollMs: 0, // disable polling
+  }), []);
+  const gw = useGammaWalls(gwOpts);
 
   let value = "—";
   let meta: string | undefined;

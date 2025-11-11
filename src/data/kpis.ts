@@ -192,12 +192,12 @@ export const KPI_INFO: Record<string, KpiInfoDoc> = {
   ivr: {
     title: "Implied Volatility Rank (IVR)",
     paragraphs: [
-      "Definition. IVR ranks today’s implied volatility against the last 52 weeks (0–100). 0 = low end; 100 = high end.",
-      "Formula (intuition). IVR ≈ percentile(today’s IV, lookback window). We proxy IV with Deribit DVOL (30D) and compute a ~365d percentile."
+      "Definition: IVR ranks today’s implied volatility against the last 52 weeks (0–100). 0 = low end; 100 = high end.",
+      "Formula (intuition): IVR ≈ percentile(today’s IV, lookback window). We proxy IV with Deribit DVOL (30D) and compute a ~365d percentile."
     ],
     bullets: [
-      "Use. High IVR → consider short premium; Low IVR → long-vol / debit structures.",
-      "Note. IVR measures level, not skew or term; check those separately."
+      "Use: High IVR → consider short premium; Low IVR → long-vol / debit structures.",
+      "Note: IVR measures level, not skew or term; check those separately."
     ]
   },
   // add more KPI entries here, e.g. 'rv', 'iv-rv-spread', 'term-structure', ...
