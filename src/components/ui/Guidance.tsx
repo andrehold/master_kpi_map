@@ -1,14 +1,8 @@
-// src/components/ui/guidance.tsx
+// src/components/ui/Guidance.tsx
 // Drop-in UI for KPI Guidance: mini band bar + side drawer + global toggle
-// - No external UI libs required (Tailwind classes only)
+// - Tolerates KPIs that have info only (no bands/signals)
 // - i18n dictionaries are loaded from /src/i18n/*/bands.json via Vite import glob
 // - Numeric thresholds come from src/kpi/bands.base.ts
-//
-// Usage (in a KPI card):
-//   import { GuidanceSwitch, KpiGuidance } from "@/components/ui/guidance";
-//   ... header ... <GuidanceSwitch className="ml-auto" />
-//   ... value row ...
-//   {kpi.guidanceKey && <KpiGuidance kpiId={kpi.guidanceKey} value={currentValue} locale={currentLocale} />}
 
 import * as React from "react";
 import BAND_BASE from "../../kpi/bands.base";
@@ -35,7 +29,7 @@ export type KpiGuidanceHandle = {
 };
 
 /* ------------------------------- i18n merge ------------------------------ */
-// Eager-load locale dicts. Expected files: /src/i18n/en/bands.json, /src/i18n/de/bands.json, ...
+// Eager-load locale dicts. Expected: /src/i18n/en/bands.json, /src/i18n/de/bands.json, ...
 const BAND_DICTS = import.meta.glob("/src/i18n/*/bands.json", { eager: true, import: "default" }) as Record<string, any>;
 
 function resolveDict(locale?: string) {
@@ -61,6 +55,16 @@ function getBandSet(kpiId: BandBaseIds, locale?: string): BandSet {
       return { id: t.id, min: t.min, max: t.max, tone: t.tone, label: d.label, guidance: d.guidance } as Band;
     }),
   } as BandSet;
+}
+
+/* --------------------------- Safe bands lookup --------------------------- */
+function safeGetBandSet(id?: unknown, locale?: string): BandSet | null {
+  if (!id) return null;
+  try {
+    return getBandSet(id as BandBaseIds, locale);
+  } catch {
+    return null; // tolerate missing bands (info-only KPI)
+  }
 }
 
 /* ----------------------------- Preferences ------------------------------- */
@@ -135,8 +139,8 @@ export function BandBar({ value, set }: { value?: number | null; set: BandSet })
     <div
       className={`
         relative mt-3 rounded-xl border border-[var(--border)] h-3 overflow-hidden
-        [--indicator:theme(colors.neutral.700)]   /* light: dark gray */
-        dark:[--indicator:#ffffff]                /* dark: white */
+        [--indicator:theme(colors.neutral.700)]
+        dark:[--indicator:#ffffff]
       `}
     >
       {/* lanes */}
@@ -146,7 +150,7 @@ export function BandBar({ value, set }: { value?: number | null; set: BandSet })
         ))}
       </div>
 
-      {/* vertical indicator (no value bubble) */}
+      {/* vertical indicator */}
       {set.valueScale === "percent" && typeof pc === "number" && (
         <div
           aria-hidden
@@ -162,9 +166,10 @@ export function BandBar({ value, set }: { value?: number | null; set: BandSet })
 
 /* -------------------------------- Drawer --------------------------------- */
 function DrawerTabs({
-  hasInfo, tab, setTab,
-}: { hasInfo: boolean; tab: "info" | "signals"; setTab: (t: "info" | "signals") => void }) {
-  if (!hasInfo) return null;
+  hasInfo, hasSignals, tab, setTab,
+}: { hasInfo: boolean; hasSignals: boolean; tab: "info" | "signals"; setTab: (t: "info" | "signals") => void }) {
+  // Only show tabs if we actually have both views
+  if (!(hasInfo && hasSignals)) return null;
   return (
     <div className="px-5 pt-2">
       <div className="inline-flex rounded-xl border border-[var(--border)] p-1 text-xs">
@@ -187,13 +192,13 @@ export function GuidanceDrawer({
   open: boolean;
   onClose: () => void;
   value?: number | null;
-  set: BandSet;
+  set?: BandSet | null;
   infoTitle?: string;
   info?: React.ReactNode;
   tab: "info" | "signals";
   setTab: (t: "info" | "signals") => void;
 }) {
-  const active = bandFor(value ?? null, set.bands);
+  const active = set ? bandFor(value ?? null, set.bands) : null;
 
   React.useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
@@ -201,11 +206,13 @@ export function GuidanceDrawer({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  const hasSignals = !!set && Array.isArray(set.bands) && set.bands.length > 0;
+
   return (
     <div aria-hidden={!open}>
       <div className={`fixed inset-0 z-40 transition-opacity ${open ? "bg-black/40 opacity-100" : "pointer-events-none opacity-0"}`} onClick={onClose} />
       <aside
-        role="dialog" aria-modal="true" aria-label={infoTitle || set.title}
+        role="dialog" aria-modal="true" aria-label={infoTitle || set?.title || "Guidance"}
         className={`fixed right-0 top-0 z-50 h-full w-[380px] max-w-[90vw]
               bg-[var(--surface-950)] text-[var(--fg)]
               shadow-2xl border-l border-[var(--border)]
@@ -223,8 +230,8 @@ export function GuidanceDrawer({
                 <span className="block h-6 w-6 rounded-md bg-gradient-to-br from-neutral-300 to-neutral-500 dark:from-neutral-700 dark:to-neutral-600" />
               </div>
               <div className="min-w-0">
-                <h2 className="text-base font-semibold leading-tight">{infoTitle || set.title}</h2>
-                {tab === "signals" && set.description && (
+                <h2 className="text-base font-semibold leading-tight">{infoTitle || set?.title || "Guidance"}</h2>
+                {tab === "signals" && set?.description && (
                   <p className="text-xs text-[var(--fg-muted)]">{set.description}</p>
                 )}
               </div>
@@ -233,13 +240,13 @@ export function GuidanceDrawer({
             {typeof value === "number" && (
               <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-3 py-1 text-xs">
                 <span className="font-medium">Now</span>
-                <span className="tabular-nums">{formatValue(value, set.valueScale)}</span>
+                <span className="tabular-nums">{formatValue(value, set?.valueScale ?? "raw")}</span>
                 {active && <span className={`ml-2 h-2 w-2 rounded-full ${toneClass(active.tone)}`} />}
               </div>
             )}
           </div>
 
-          <DrawerTabs hasInfo={!!info} tab={tab} setTab={setTab} />
+          <DrawerTabs hasInfo={!!info} hasSignals={hasSignals} tab={tab} setTab={setTab} />
 
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
             {info && tab === "info" && (
@@ -249,7 +256,7 @@ export function GuidanceDrawer({
               </section>
             )}
 
-            {tab === "signals" && (
+            {tab === "signals" && hasSignals && set && (
               <>
                 <section>
                   <h3 className="mb-2 text-sm font-medium text-[var(--fg)]">Signal bands</h3>
@@ -278,7 +285,9 @@ export function GuidanceDrawer({
                   <section className="pt-1">
                     <h3 className="mb-2 text-sm font-medium text-[var(--fg)]">Distribution (0–100)</h3>
                     <BandBar value={value} set={set} />
-                    <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">Pointer shows current reading on a 0–100 scale. Bands highlight suggested posture.</p>
+                    <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
+                      Pointer shows current reading on a 0–100 scale. Bands highlight suggested posture.
+                    </p>
                   </section>
                 )}
               </>
@@ -320,44 +329,66 @@ const clampPercent = (v: number | null | undefined): number => {
 
 /* --------------------------- Controller wrapper -------------------------- */
 type KpiGuidanceProps = {
-  kpiId: BandBaseIds;
+  /** Bands id (for signals / thresholds). Optional for info-only KPIs. */
+  kpiId?: BandBaseIds | string;
+  /** If you want a different id for bands than infoKey/kpiId, pass this. */
+  bandsKey?: BandBaseIds | string;
+  /** Current numeric value for contextualization. */
   value?: number | null;
-  showBar?: boolean; // override hasBar
-  locale?: string;   // e.g., "en", "de-DE"
-  trigger?: "inline" | "external"; // hide inline button in external mode
+  /** Override hasBar; if omitted, uses set.hasBar (when bands exist). */
+  showBar?: boolean;
+  /** e.g., "en", "de-DE" */
+  locale?: string;
+  /** Hide inline button when embedded in a card with its own trigger. */
+  trigger?: "inline" | "external";
+  /** Info title override (otherwise pulled from KPI_INFO[infoKey]?.title). */
   infoTitle?: string;
+  /** Direct React node for Info; if omitted, pulled from KPI_INFO[infoKey]. */
   info?: React.ReactNode;
-  infoKey?: keyof typeof KPI_INFO; // NEW: pull copy from data by key
+  /** Key for info copy (from data/kpis). Can be different from bands id. */
+  infoKey?: keyof typeof KPI_INFO | string;
 };
 
 export const KpiGuidance = React.forwardRef<KpiGuidanceHandle, KpiGuidanceProps>(function KpiGuidance(
-  { kpiId, value, showBar, locale, trigger = "inline", infoTitle, info, infoKey }: KpiGuidanceProps,
+  { kpiId, bandsKey, value, showBar, locale, trigger = "inline", infoTitle, info, infoKey }: KpiGuidanceProps,
   ref
 ) {
-  const set = React.useMemo(() => getBandSet(kpiId, locale), [kpiId, locale]);
-  const [open, setOpen] = React.useState(false);
-  const infoDoc = React.useMemo(() => (infoKey ? KPI_INFO[infoKey] : undefined), [infoKey]);
+  const bandsId = bandsKey ?? kpiId;
+  const set = React.useMemo(() => safeGetBandSet(bandsId, locale), [bandsId, locale]);
+
+  const infoDoc = React.useMemo(() => (infoKey ? (KPI_INFO as any)[infoKey] : undefined), [infoKey]);
   const resolvedInfoTitle = React.useMemo(() => infoTitle ?? infoDoc?.title, [infoTitle, infoDoc]);
   const resolvedInfo = React.useMemo(
     () => info ?? (infoDoc ? renderInfoDoc(infoDoc) : undefined),
     [info, infoDoc]
   );
-  const [tab, setTab] = React.useState<"info" | "signals">(resolvedInfo ? "info" : "signals");
-  const { showBars } = useGuidancePrefs();
-  const enableBar = (showBar ?? set.hasBar) && showBars;
+
+  const hasSignals = !!set && Array.isArray(set.bands) && set.bands.length > 0;
   const hasInfo = !!resolvedInfo;
+
+  const [open, setOpen] = React.useState(false);
+  const [tab, setTab] = React.useState<"info" | "signals">(hasInfo ? "info" : "signals");
+
+  // Keep tab valid if availability changes
+  React.useEffect(() => {
+    if (tab === "signals" && !hasSignals && hasInfo) setTab("info");
+    if (tab === "info" && !hasInfo && hasSignals) setTab("signals");
+  }, [hasSignals, hasInfo, tab]);
+
+  const { showBars } = useGuidancePrefs();
+  const enableBar = !!set && (showBar ?? set.hasBar) && set.valueScale === "percent" && showBars;
 
   React.useImperativeHandle(ref, () => ({
     open: () => { setOpen(true); },
-    openInfo: () => { if (resolvedInfo) setTab("info"); setOpen(true); },
-    openSignals: () => { setTab("signals"); setOpen(true); },
+    openInfo: () => { if (hasInfo) setTab("info"); setOpen(true); },
+    openSignals: () => { if (hasSignals) setTab("signals"); setOpen(true); },
     close: () => setOpen(false),
-  }), [resolvedInfo]);
+  }), [hasInfo, hasSignals]);
 
   return (
     <div className="mt-2">
       <div className="flex items-center gap-2">
-        {enableBar && <div className="flex-1"><BandBar value={value} set={set} /></div>}
+        {enableBar && set && <div className="flex-1"><BandBar value={value} set={set} /></div>}
         {trigger === "inline" && (
           <button
             type="button"

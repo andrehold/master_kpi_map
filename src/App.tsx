@@ -203,6 +203,8 @@ export default function MasterKPIMapDemo() {
                     let value = samples[kpi.id];
                     let meta: string | undefined = undefined;
                     let extraBadge: string | null = null;
+                    let infoKeyProp: string | undefined;
+                    let guidanceVal: number | null = null;
 
                     if (kpi.id === "atm-iv" && dvolPct != null) {
                       value = `${dvolPct.toFixed(1)}%`;
@@ -213,30 +215,10 @@ export default function MasterKPIMapDemo() {
                       value = `${ivr}`;
                       meta = "DVOL-based IVR";
                       if (ivp != null) extraBadge = `IVP ${ivp}`;
-
-                      // Wrap IVR card with guidance UI underneath
-                      return (
-                        <div key={kpi.id} className="space-y-2">
-                          <KpiCard
-                            key={kpi.id}
-                            kpi={kpi}
-                            value={value}
-                            meta={meta}
-                            extraBadge={extraBadge}
-                            onInfoClick={() => guidanceRefs.current["ivr"]?.openInfo?.()}
-                            footer={
-                              <KpiGuidance
-                                ref={(el) => { guidanceRefs.current["ivr"] = el; }}
-                                trigger="external"
-                                kpiId="ivr"
-                                value={typeof ivr === "number" ? ivr : null}
-                                locale={locale}
-                                infoKey="ivr"
-                              />
-                            }
-                          />
-                        </div>
-                      );
+                    
+                      // enable drawer for this KPI
+                      infoKeyProp = kpi.id;
+                      guidanceVal = typeof ivr === "number" ? ivr : null;
                     }
 
                     if (kpi.id === "rv" && rv20d != null) {
@@ -374,11 +356,22 @@ export default function MasterKPIMapDemo() {
                       return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={b} />;
                     }
 
-                    if (kpi.id === "gamma-walls") {
+                    if (kpi.id === "gammaWalls") {
                       return <GammaWallsCard key={kpi.id} kpi={kpi} />;
                     }
 
-                    return <KpiCard key={kpi.id} kpi={kpi} value={value} meta={meta} extraBadge={extraBadge} />;
+                    return (
+                      <KpiCard
+                        key={kpi.id}
+                        kpi={kpi}
+                        value={value}
+                        meta={meta}
+                        extraBadge={extraBadge}
+                        infoKey={infoKeyProp}           // undefined for most KPIs → drawer disabled
+                        guidanceValue={guidanceVal}     // null for most KPIs
+                        locale={locale}
+                      />
+                    );
                   })}
                 </div>
               )}

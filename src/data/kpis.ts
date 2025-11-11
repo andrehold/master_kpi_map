@@ -122,7 +122,7 @@ export const STRATEGIES = [
         { id: "funding", name: "Funding rates (perps)", strategies: ["Weekend Vol", "Range-Bound Premium", "0DTE Overwrite"], valueType: "percent" },
         { id: "basis", name: "Spot–perp / futures basis", strategies: ["0DTE Overwrite", "Parity Edge", "Box Financing"], valueType: "percent" },
         { id: "oi-concentration", name: "Open interest concentration (pin risk)", strategies: ["Weekend Vol", "Parity Edge", "0DTE Overwrite"], valueType: "percent" },
-        { id: "gamma-walls", name: "Gamma “walls” near strikes", strategies: ["0DTE Overwrite", "Parity Edge"], valueType: "price" },
+        { id: "gammaWalls", name: "Gamma “walls” near strikes", strategies: ["0DTE Overwrite", "Parity Edge"], valueType: "price" },
         { id: "liquidity-stress", name: "Liquidity stress (spreads/depth)", strategies: ["Expected Move", "Weekend Vol", "Range-Bound Premium", "Parity Edge", "0DTE Overwrite", "Box Financing"], valueType: "percent" },
         { id: "orderbook-health", name: "Order book slope / staleness / depth resilience", strategies: ["Parity Edge"], valueType: "percent" },
       ],

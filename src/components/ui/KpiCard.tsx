@@ -1,6 +1,22 @@
+import { useRef } from "react";
 import Badge from "./Badge";
 import KpiInfo from "../KpiInfo";
+import { KpiGuidance } from "./Guidance";
 import type { KPIDef } from "../../data/kpis";
+
+type Props = {
+  kpi: KPIDef;
+  value: string;
+  meta?: string;
+  extraBadge?: string | null;
+  footer?: React.ReactNode;
+  onInfoClick?: () => void;
+
+  // NEW (optional) props to enable the guidance drawer
+  infoKey?: string;                 // e.g. "ivr" – must match keys in kpis.ts / bands.base.ts
+  guidanceValue?: number | null;    // numeric value for context (e.g., IVR number)
+  locale?: string;                  // optional i18n, defaults to "en"
+};
 
 export default function KpiCard({
   kpi,
@@ -8,47 +24,42 @@ export default function KpiCard({
   meta,
   extraBadge,
   footer,
-  onInfoClick, // NEW
-}: {
-  kpi: KPIDef;
-  value: string;
-  meta?: string;
-  extraBadge?: string | null;
-  footer?: React.ReactNode;
-  onInfoClick?: () => void; // NEW
-}) {
+  onInfoClick,
+  infoKey,
+  guidanceValue,
+  locale = "en",
+}: Props) {
+  const drawerRef = useRef<any>(null);
+  const guidanceEnabled = !!infoKey;
+
+  const openInfo = () => {
+    if (onInfoClick) return onInfoClick();
+    drawerRef.current?.openInfo?.();
+  };
+
   return (
-    <div className="group rounded-2xl border border-[var(--border)] bg-[var(--surface-950)] p-4 shadow-[var(--shadow)] hover:border-[var(--brand-500)]/30 transition">
-      {/* Header: name | value */}
+    <div className="group rounded-2xl border border-[var(--border)] bg-[var(--surface-950)] p-4">
       <div className="grid grid-cols-[1fr_auto] items-start gap-x-4">
-        {/* KPI Name + Info */}
         <div className="text-[var(--fg)] font-medium leading-snug flex items-center gap-1">
           <span>{kpi.name}</span>
           <span className="relative inline-flex">
-            {/* Keep your existing info icon (KpiInfo), but overlay a click-catcher that opens the drawer.
-               This stops the old hover popover while preserving your icon styling. */}
             <KpiInfo id={kpi.id} description={kpi.description} />
-            {onInfoClick && (
+            {guidanceEnabled && (
               <button
                 aria-label="Open KPI info"
-                title="Open KPI info"
-                className="absolute inset-0 cursor-pointer"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onInfoClick(); }}
-                onMouseEnter={(e) => e.stopPropagation()}
-                onMouseLeave={(e) => e.stopPropagation()}
+                className="absolute inset-0"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInfo(); }}
               />
             )}
           </span>
         </div>
 
-        {/* Value */}
         <div className="text-right">
           <div className="text-xl font-semibold tabular-nums font-mono text-[var(--fg)]">
             {value}
           </div>
         </div>
 
-        {/* Full-width row below the KPI name for chip + meta */}
         {(extraBadge || meta) && (
           <div className="col-span-2 mt-1 flex w-full flex-wrap items-center gap-1">
             {extraBadge ? <Badge>{extraBadge}</Badge> : null}
@@ -62,7 +73,6 @@ export default function KpiCard({
         )}
       </div>
 
-      {/* Strategies */}
       <div className="mt-3 flex flex-wrap gap-1.5">
         {kpi.strategies.map((s) => (
           <span
@@ -74,8 +84,20 @@ export default function KpiCard({
         ))}
       </div>
 
-      {/* Footer (optional) */}
       {footer ? <div className="mt-3">{footer}</div> : null}
+
+      {guidanceEnabled ? (
+        <div className="mt-3">
+          <KpiGuidance
+            ref={drawerRef}
+            trigger="external"
+            kpiId={kpi.id}
+            infoKey={infoKey!}
+            value={guidanceValue ?? null}
+            locale={locale}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import {
   getIndexPrice,
   getInstruments,
   getTicker,
-  getBookSummaryByCurrency, // added in services/deribit.ts below
+  getBookSummaryByCurrency,
 } from "../services/deribit";
 
 export type GammaByStrike = {

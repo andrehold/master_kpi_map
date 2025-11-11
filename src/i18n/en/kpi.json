@@ -23,7 +23,7 @@
       "funding": "Perp funding rate; positive = longs pay shorts (carry direction).",
       "basis": "Spot–perp/futures basis; carry opportunity and pressure indicator.",
       "oi-concentration": "Open interest clustered near strikes; indicator of pin risk.",
-      "gamma-walls": "Large dealer gamma levels that can magnetize or repel price.",
+      "gammaWalls": "Large dealer gamma levels that can magnetize or repel price.",
       "liquidity-stress": "Spreads/depth slippage signals; execution risk under stress.",
       "orderbook-health": "Order book slope/staleness/resiliency; spoofing/refresh risk.",
   

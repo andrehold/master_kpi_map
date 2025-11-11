@@ -85,6 +85,7 @@ export default function GammaWallsCard({ kpi }: { kpi: KPIDef }) {
       meta={meta}
       extraBadge={extraBadge}
       footer={footer}
+      infoKey={kpi.id}
     />
   );
 }
