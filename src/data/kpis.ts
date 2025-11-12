@@ -242,7 +242,7 @@ export type StrategyMeta = {
   secondaryKpis?: KpiId[];     // nice-to-have KPIs
   // UI integration hints — use string keys so we avoid function imports here
   actions?: {
-    overlayKey?: "horizon";        // string key your UI can route on
+    overlayKey?: string;        // string key your UI can route on (any non-empty value enables overlay)
     scanKey?: "horizonScan";
     settingsKey?: "horizonSettings";
     overlayLabel?: string;
@@ -328,8 +328,12 @@ export const STRATEGY_CATALOG: Record<StrategyKey, StrategyMeta> = {
   weekend: {
     id: "weekend",
     name: "Weekend Vol",
-    short: "Calendar",
+    short: "weekend",
     primaryKpis: ["atm-iv", "term-structure", "funding"],
+    actions: {
+      overlayKey: "weekendOverlay", // any non-empty key enables the "Open Overlay" item
+      // no scanKey, no settingsKey for now
+    },
   },
   parity: {
     id: "parity",
