@@ -277,7 +277,7 @@ export default function MasterKPIMapDemo() {
                             } else {
                               m = label;
                             }
-                            return <KpiCard key={`${kpi.id}-${key}`} kpi={kpi} value={v} meta={m} extraBadge={b} />;
+                            return <KpiCard key={`${kpi.id}-${key}`} kpi={kpi} value={v} meta={m} extraBadge={b}/>;
                           })}
                         </>
                       );
@@ -309,7 +309,7 @@ export default function MasterKPIMapDemo() {
                         ? `IV ${(ivAnn * 100).toFixed(1)} • RV ${(rvAnn * 100).toFixed(1)}`
                         : null;
                     
-                      return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={bad} />;
+                      return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={bad}/>;
                     }
                     if (kpi.id === "funding") {
                       let v = samples[kpi.id];
@@ -322,7 +322,7 @@ export default function MasterKPIMapDemo() {
                         m = fundingTs ? `Deribit 8h · ${new Date(fundingTs).toLocaleTimeString()}` : "Deribit 8h";
                         if (avg7d8h != null) b = `7d avg ${(avg7d8h * 100).toFixed(3)}%`;
                       } else { v = "—"; m = "Awaiting data"; }
-                      return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={b} />;
+                      return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={b}/>;
                     }
                     if (kpi.id === "em-ribbon") {
                       return (
@@ -354,7 +354,7 @@ export default function MasterKPIMapDemo() {
                         v = "—"; m = "Awaiting data";
                       }
                     
-                      return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={b} />;
+                      return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={b}/>;
                     }
 
                     if (kpi.id === "gammaWalls") {
@@ -370,7 +370,7 @@ export default function MasterKPIMapDemo() {
                           topN={3}
                           expiry="front"
                           windowPct={0.25}   // optional; remove to use all strikes
-                          pollMs={60000}     // set 0 to disable polling
+                          pollMs={0}     // set 0 to disable polling
                         />
                       );
                     }

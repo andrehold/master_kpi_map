@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, ReactNode } from "react";
 import Badge from "./Badge";
 import KpiInfo from "../KpiInfo";
 import { KpiGuidance } from "./Guidance";
@@ -6,7 +6,7 @@ import type { KPIDef } from "../../data/kpis";
 
 type Props = {
   kpi: KPIDef;
-  value: string;
+  value: ReactNode;
   meta?: string;
   extraBadge?: string | null;
   footer?: React.ReactNode;
@@ -37,6 +37,14 @@ export default function KpiCard({
     drawerRef.current?.openInfo?.();
   };
 
+  const hasBadges = Boolean(extraBadge) || Boolean(meta);
+  // If meta is a string that clearly indicates loading, don't show "sample" yet.
+  const looksLoading =
+    typeof meta === "string" &&
+    /\b(loading|updating|fetching|polling|refreshing)\b/i.test(meta);
+
+  const showSample = !looksLoading && (!hasBadges || isEmptyKpiValue(value));
+
   return (
     <div className="group rounded-2xl border border-[var(--border)] bg-[var(--surface-950)] p-4">
       <div className="grid grid-cols-[1fr_auto] items-start gap-x-4">
@@ -60,7 +68,7 @@ export default function KpiCard({
           </div>
         </div>
 
-        {(extraBadge || meta) && (
+        {(extraBadge || meta || showSample) && (
           <div className="col-span-2 mt-1 flex w-full flex-wrap items-center gap-1">
             {extraBadge ? <Badge>{extraBadge}</Badge> : null}
             {meta ? (
@@ -69,6 +77,7 @@ export default function KpiCard({
                 {meta}
               </div>
             ) : null}
+            {showSample && <Badge>sample</Badge>}
           </div>
         )}
       </div>
@@ -100,4 +109,12 @@ export default function KpiCard({
       ) : null}
     </div>
   );
+}
+
+function isEmptyKpiValue(v: unknown) {
+  if (v == null) return true;
+  if (typeof v === "number") return Number.isNaN(v);
+  const s = String(v).trim().toLowerCase();
+  // treat common placeholders as empty
+  return s === "" || s === "—" || s === "-" || s === "…" || s === "na" || s === "n/a" || s === "null";
 }
