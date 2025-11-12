@@ -1,17 +1,5 @@
 import type { BandBaseIds } from "../kpi/bands.base";
 
-export const STRATEGIES = [
-    "Expected Move",
-    "Range-Bound Premium",
-    "Carry Trade",
-    "0DTE Overwrite",
-    "Weekend Vol",
-    "Parity Edge",
-    "Box Financing",
-  ] as const;
-  
-  export type Strategy = typeof STRATEGIES[number];
-
   export type KpiMeta = {
     id: string;
     title: string;
@@ -217,4 +205,143 @@ export const KPI_INFO: Record<string, KpiInfoDoc> = {
   },
 };
 
+// ==============================
+// Strategy catalog
+// ==============================
+
+export const STRATEGIES = [
+  "Expected Move",
+  "Range-Bound Premium",
+  "Carry Trade",
+  "0DTE Overwrite",
+  "Weekend Vol",
+  "Parity Edge",
+  "Box Financing",
+] as const;
+
+export type Strategy = typeof STRATEGIES[number];
+
+export type StrategyKey =
+  | "horizon"          // EM-based defined-risk entry
+  | "carry"            // Funding/basis carry
+  | "odte"             // 0DTE overwrite
+  | "range"            // Range-bound premium harvest
+  | "weekend"          // Weekend vol
+  | "parity"           // Parity edge
+  | "box";             // Box financing
+
+// Union of all KPI ids from the KPIS array above
+export type KpiId = (typeof KPIS)[number]["id"];
+
+export type StrategyMeta = {
+  id: StrategyKey;
+  name: string;                // display name (menu)
+  short?: string;              // brief tag/variant for the menu
+  description?: string[];      // optional longer text (drawer/help)
+  primaryKpis: KpiId[];        // most relevant KPIs for this strategy
+  secondaryKpis?: KpiId[];     // nice-to-have KPIs
+  // UI integration hints — use string keys so we avoid function imports here
+  actions?: {
+    overlayKey?: "horizon";        // string key your UI can route on
+    scanKey?: "horizonScan";
+    settingsKey?: "horizonSettings";
+    overlayLabel?: string;
+    scanLabel?: string;
+  };
+  // Defaults the UI/scanner can read; optional and strategy-specific
+  defaults?: {
+    currency?: "BTC" | "ETH";
+    targetDte?: number;
+    dteMin?: number;
+    dteMax?: number;
+    shortEmMult?: number;
+    hedgeEmMult?: number;
+    minCreditUsd?: number;
+    maxBaFrac?: number;
+  };
+};
+
+// Single source of truth your UI can read by id
+export const STRATEGY_CATALOG: Record<StrategyKey, StrategyMeta> = {
+  horizon: {
+    id: "horizon",
+    name: "Horizon",
+    short: "EM Iron Condor",
+    description: [
+      "Systematic EM-based, defined-risk entries for BTC options on Deribit.",
+      "Short strikes ≈ ±EM×1.0; hedges ≈ ±EM×1.6; filter by min credit and bid/ask quality.",
+    ],
+    // NOTE: these ids must exist in your KPIS list above
+    primaryKpis: [
+      "em-ribbon",
+      "ivr",
+      "atm-iv",
+      "term-structure",
+      "skew",              // 25Δ RR
+      "rv-em-factor",      // RV ÷ EM
+      "funding",
+      "spot-perp-basis",
+      "gammaWalls",
+      "oi-concentration",
+    ],
+    secondaryKpis: [
+      // add more if you like: "vol-of-vol", "iv-rv", ...
+    ],
+    actions: {
+      overlayKey: "horizon",
+      scanKey: "horizonScan",
+      settingsKey: "horizonSettings",
+      overlayLabel: "Open Horizon Overlay",
+      scanLabel: "Scan & Download CSV",
+    },
+    defaults: {
+      currency: "BTC",
+      targetDte: 14,
+      dteMin: 7,
+      dteMax: 21,
+      shortEmMult: 1.0,
+      hedgeEmMult: 1.6,
+      minCreditUsd: 50,
+      maxBaFrac: 0.05,
+    },
+  },
+
+  // Light placeholders (fill out later as you productize each strategy)
+  carry: {
+    id: "carry",
+    name: "Carry Trade",
+    short: "Funding/Basis",
+    primaryKpis: ["funding", "spot-perp-basis", "ivr", "term-structure"],
+  },
+  odte: {
+    id: "odte",
+    name: "0DTE Overwrite",
+    short: "Intraday",
+    primaryKpis: ["em-ribbon", "rv-em-factor", "ivr", "skew"],
+  },
+  range: {
+    id: "range",
+    name: "Range-Bound Premium",
+    short: "Neutral",
+    primaryKpis: ["ivr", "skew", "term-structure", "gammaWalls", "oi-concentration"],
+  },
+  weekend: {
+    id: "weekend",
+    name: "Weekend Vol",
+    short: "Calendar",
+    primaryKpis: ["atm-iv", "term-structure", "funding"],
+  },
+  parity: {
+    id: "parity",
+    name: "Parity Edge",
+    short: "Mispricing",
+    primaryKpis: ["iv-rv", "atm-iv", "term-structure"],
+  },
+  box: {
+    id: "box",
+    name: "Box Financing",
+    short: "Rates",
+    primaryKpis: ["spread"], // bid–ask spread %, etc.
+  },
+};
   

@@ -10,56 +10,106 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./Tooltip";
 import { useToast } from "./Use-toast";
 
-// if you already use lucide-react, keep these icons.
-// otherwise you can swap for text or small inline SVGs.
 import { ListChecks, ChevronLeft, Download, PanelRightOpen, Cog, Loader2 } from "lucide-react";
+import { STRATEGY_CATALOG, type StrategyKey } from "@/data/kpis";
 
+// Horizon scan (others can be added in the map below)
 import { runHorizonScanAndDownload } from "@/services/horizonScan";
 
 type Props = {
   label?: string; // default "Strategies"
+  // Back-compat (you can also handle generically via onOpenOverlay/onOpenSettings):
   onHorizonOpenOverlay?: () => void;
   onHorizonOpenSettings?: () => void;
-  // future strategies can add their own callbacks here
+
+  // Generic hooks if you want to route overlays/settings by id later:
+  onOpenOverlay?: (id: StrategyKey) => void;
+  onOpenSettings?: (id: StrategyKey) => void;
 };
 
-type StrategyId = "horizon" | "carry" | "odte" | "range" | "parity";
+// Map catalog action keys → actual functions
+const SCAN_EXECUTORS: Record<string, () => Promise<void>> = {
+  horizonScan: async () => { 
+    await runHorizonScanAndDownload(); // ignore returned rows
+  },
+  // add more when you implement other scanners:
+  // carryScan: async () => ...
+};
 
 export const StrategiesMenuButton: React.FC<Props> = ({
   label = "Strategies",
   onHorizonOpenOverlay,
   onHorizonOpenSettings,
+  onOpenOverlay,
+  onOpenSettings,
 }) => {
   const { toast } = useToast();
-  const [active, setActive] = React.useState<StrategyId | null>(null);
-  const [busy, setBusy] = React.useState<null | StrategyId>(null);
+  const [active, setActive] = React.useState<StrategyKey | null>(null);
+  const [busy, setBusy] = React.useState<StrategyKey | null>(null);
 
-  // simple placeholder for non-implemented strategies
-  const notImplemented = (name: string) =>
-    toast({ title: `${name}`, description: "Coming soon", variant: "default" });
+  // Build root list from catalog (you can sort here if you want a custom order)
+  const ROOT_STRATS = React.useMemo(
+    () =>
+      Object.values(STRATEGY_CATALOG).map((s) => ({
+        id: s.id,
+        name: s.short ? `${s.name} (${s.short})` : s.name,
+        hasActions: !!s.actions,
+      })),
+    []
+  );
 
-  // top-level list of strategies shown in the first view
-  const STRATS: Array<{ id: StrategyId; name: string; onOpen?: () => void }> = [
-    { id: "horizon", name: "Horizon (EM Iron Condor)" },
-    { id: "carry",   name: "Carry Trade", onOpen: () => notImplemented("Carry Trade") },
-    { id: "odte",    name: "0DTE Overwrite", onOpen: () => notImplemented("0DTE Overwrite") },
-    { id: "range",   name: "Range-Bound Premium", onOpen: () => notImplemented("Range-Bound Premium") },
-    { id: "parity",  name: "Parity Edge", onOpen: () => notImplemented("Parity Edge") },
-  ];
-
-  async function horizonScan() {
+  async function runScanFor(id: StrategyKey) {
+    const meta = STRATEGY_CATALOG[id];
+    const key = meta.actions?.scanKey;
+    if (!key) {
+      toast({ title: meta.name, description: "Scan not wired yet", variant: "default" });
+      return;
+    }
+    const exec = SCAN_EXECUTORS[key];
+    if (!exec) {
+      toast({ title: meta.name, description: `Missing scan executor: ${key}`, variant: "destructive" });
+      return;
+    }
+    setBusy(id);
     try {
-      setBusy("horizon");
-      await runHorizonScanAndDownload();
-      toast({ title: "Horizon CSV exported", description: "Saved as horizon_candidates_btc.csv" });
+      await exec();
+      toast({
+        title: `${meta.name} — CSV exported`,
+        description: "Download started",
+      });
     } catch (e: any) {
-      toast({ title: "Horizon scan failed", description: String(e?.message ?? e), variant: "destructive" });
+      toast({
+        title: `${meta.name} — scan failed`,
+        description: String(e?.message ?? e),
+        variant: "destructive",
+      });
     } finally {
       setBusy(null);
     }
   }
 
-  // render: either strategy list, or actions for the active strategy
+  function openOverlayFor(id: StrategyKey) {
+    const meta = STRATEGY_CATALOG[id];
+    if (!meta.actions?.overlayKey) {
+      toast({ title: meta.name, description: "Overlay not wired yet", variant: "default" });
+      return;
+    }
+    // Back-compat for Horizon
+    if (id === "horizon" && onHorizonOpenOverlay) return onHorizonOpenOverlay();
+    onOpenOverlay?.(id);
+  }
+
+  function openSettingsFor(id: StrategyKey) {
+    const meta = STRATEGY_CATALOG[id];
+    if (!meta.actions?.settingsKey) {
+      toast({ title: meta.name, description: "Settings not available", variant: "default" });
+      return;
+    }
+    // Back-compat for Horizon
+    if (id === "horizon" && onHorizonOpenSettings) return onHorizonOpenSettings();
+    onOpenSettings?.(id);
+  }
+
   const isRootView = active == null;
 
   return (
@@ -79,44 +129,66 @@ export const StrategiesMenuButton: React.FC<Props> = ({
 
         <DropdownMenuContent align="end" className="w-64">
           {isRootView ? (
-            // root: list strategies
+            // ROOT: show all strategies from catalog
             <div className="py-1">
-              {STRATS.map((s) => (
+              {ROOT_STRATS.map((s) => (
                 <DropdownMenuItem
                   key={s.id}
                   onClick={() => {
-                    if (s.id === "horizon") setActive("horizon");
-                    else s.onOpen?.();
+                    if (s.hasActions) setActive(s.id as StrategyKey);
+                    else toast({ title: s.name, description: "Coming soon", variant: "default" });
                   }}
-                  keepOpen={s.id === "horizon"} // keep menu open to show Horizon submenu
+                  keepOpen={s.hasActions} // keep open to show submenu
                 >
                   {s.name}
                 </DropdownMenuItem>
               ))}
             </div>
-          ) : active === "horizon" ? (
-            // horizon actions view
-            <div className="py-1">
-              <DropdownMenuItem onClick={() => setActive(null)} keepOpen>
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                <span>Back to strategies</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={horizonScan} disabled={busy === "horizon"}>
-                <Download className="mr-2 h-4 w-4" />
-                <span>Scan & Download CSV</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onHorizonOpenOverlay}>
-                <PanelRightOpen className="mr-2 h-4 w-4" />
-                <span>Open Horizon Overlay</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onHorizonOpenSettings}>
-                <Cog className="mr-2 h-4 w-4" />
-                <span>Settings…</span>
-              </DropdownMenuItem>
-            </div>
-          ) : null}
+          ) : (
+            // SUBMENU: build from the selected strategy's actions
+            (() => {
+              const meta = STRATEGY_CATALOG[active!];
+              const scanLabel = meta.actions?.scanLabel ?? "Scan";
+              const overlayLabel = meta.actions?.overlayLabel ?? "Open Overlay";
+
+              return (
+                <div className="py-1">
+                  <DropdownMenuItem onClick={() => setActive(null)} keepOpen>
+                    <ChevronLeft className="mr-2 h-4 w-4" />
+                    <span>Back to strategies</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+
+                  {/* Scan (if configured) */}
+                  {meta.actions?.scanKey && (
+                    <DropdownMenuItem onClick={() => runScanFor(active!)} disabled={busy === active!}>
+                      <Download className="mr-2 h-4 w-4" />
+                      <span>{scanLabel}</span>
+                    </DropdownMenuItem>
+                  )}
+
+                  {/* Overlay (if configured) */}
+                  {meta.actions?.overlayKey && (
+                    <DropdownMenuItem onClick={() => openOverlayFor(active!)}>
+                      <PanelRightOpen className="mr-2 h-4 w-4" />
+                      <span>{overlayLabel}</span>
+                    </DropdownMenuItem>
+                  )}
+
+                  {/* Settings (if configured) */}
+                  {meta.actions?.settingsKey && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => openSettingsFor(active!)}>
+                        <Cog className="mr-2 h-4 w-4" />
+                        <span>Settings…</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </div>
+              );
+            })()
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </TooltipProvider>

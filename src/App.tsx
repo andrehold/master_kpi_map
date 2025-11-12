@@ -6,7 +6,7 @@ import GroupHeader from "./components/ui/GroupHeader";
 import KpiCard from "./components/ui/KpiCard";
 import ExpectedMoveRibbonCard from "./components/ExpectedMoveRibbonCard";
 
-import { STRATEGIES, type Strategy, KPI_GROUPS } from "./data/kpis";
+import { STRATEGIES, type Strategy, KPI_GROUPS, type StrategyKey } from "./data/kpis";
 import { buildSamples, type Samples } from "./utils/samples";
 
 import { useDeribitDvol } from "./hooks/useDeribitDvol";
@@ -25,11 +25,13 @@ import OIConcentrationCard from "./components/ui/OIConcentrationCard";
 // Guidance UI
 import { GuidanceSwitch, KpiGuidance } from "./components/ui/Guidance";
 
-// NEW: lightweight UI primitives + Horizon button
+// UI primitives + data-driven Strategies menu
 import { ToastProvider } from "./components/ui/Use-toast";
 import { StrategiesMenuButton } from "@/components/ui/StrategiesMenuButton";
-import HorizonQuickOverlay from "./components/overlays/HorizonQuickOverlay";
-import { HorizonSettings } from "./components/overlays/HorizonSettings";
+
+// Generic strategy overlays
+import StrategyOverlay from "./components/overlays/StrategyOverlay";
+import { StrategySettings } from "./components/overlays/StrategySettings";
 
 export default function MasterKPIMapDemo() {
   const [search, setSearch] = useState("");
@@ -91,8 +93,9 @@ export default function MasterKPIMapDemo() {
   const { current8h, avg7d8h, zScore, updatedAt: fundingTs, loading: fundingLoading, error: fundingError, refresh: refreshFunding } =
     useDeribitFunding("BTC-PERPETUAL");
 
-  const [hOpen, setHOpen] = useState(false);
-  const [hsOpen, setHsOpen] = useState(false);
+  // Generic overlay/settings state
+  const [overlayStrategy, setOverlayStrategy] = useState<StrategyKey | null>(null);
+  const [settingsStrategy, setSettingsStrategy] = useState<StrategyKey | null>(null);
   const defaultUnderlying = "BTC" as const;
   const defaultExpiryISO = new Date(Date.now() + 7*24*3600*1000).toISOString();
 
@@ -193,12 +196,12 @@ export default function MasterKPIMapDemo() {
           loadingAny={!!loadingAny}
         />
 
-        {/* Fixed Horizon utility (top-right), non-intrusive */}
+        {/* Fixed Strategies utility (top-right), non-intrusive */}
         <div className="fixed top-3 right-4 z-40">
           <StrategiesMenuButton
-            label="Strategies"           // or "Check"
-            onHorizonOpenOverlay={() => setHOpen(true)}
-            onHorizonOpenSettings={() => setHsOpen(true)}
+            label="Strategies"
+            onOpenOverlay={(id) => setOverlayStrategy(id)}
+            onOpenSettings={(id) => setSettingsStrategy(id)}
           />
         </div>
 
@@ -419,13 +422,20 @@ export default function MasterKPIMapDemo() {
             ATM IV shows <span className="font-semibold">DVOL 30D (proxy)</span> when updated. IVR/IVP are computed from DVOL (52-week window). Samples are mock values until refreshed.
           </div>
         </main>
-        <HorizonQuickOverlay
-          open={hOpen}
-          onOpenChange={setHOpen}
+
+        {/* Generic strategy overlays */}
+        <StrategyOverlay
+          open={!!overlayStrategy}
+          onOpenChange={(v) => { if (!v) setOverlayStrategy(null); }}
+          strategyId={overlayStrategy ?? "horizon"}
           underlying={defaultUnderlying}
           expiryISO={defaultExpiryISO}
         />
-        <HorizonSettings open={hsOpen} onOpenChange={setHsOpen} />
+        <StrategySettings
+          open={!!settingsStrategy}
+          onOpenChange={(v) => { if (!v) setSettingsStrategy(null); }}
+          strategyId={settingsStrategy ?? "horizon"}
+        />
       </div>
     </ToastProvider>
   );
