@@ -20,6 +20,7 @@ import { useDeribitIndexPrice } from "./hooks/useDeribitIndexPrice";
 import { useDeribitFunding } from "./hooks/useDeribitFunding";
 import { useDeribitBasis } from "./hooks/useDeribitBasis";
 import GammaWallsCard from "./components/ui/GammaWallsCard";
+import OIConcentrationCard from "./components/ui/OIConcentrationCard";
 
 // ▼ Add guidance UI
 import { GuidanceSwitch, KpiGuidance } from "./components/ui/Guidance";
@@ -358,6 +359,20 @@ export default function MasterKPIMapDemo() {
 
                     if (kpi.id === "gammaWalls") {
                       return <GammaWallsCard key={kpi.id} kpi={kpi} />;
+                    }
+
+                    if (kpi.id === "oi-concentration") {
+                      return (
+                        <OIConcentrationCard
+                          key={kpi.id}
+                          kpi={kpi}
+                          currency="BTC"
+                          topN={3}
+                          expiry="front"
+                          windowPct={0.25}   // optional; remove to use all strikes
+                          pollMs={60000}     // set 0 to disable polling
+                        />
+                      );
                     }
 
                     return (
