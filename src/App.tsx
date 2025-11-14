@@ -21,6 +21,7 @@ import { useDeribitFunding } from "./hooks/useDeribitFunding";
 import { useDeribitBasis } from "./hooks/useDeribitBasis";
 import GammaWallsCard from "./components/ui/GammaWallsCard";
 import OIConcentrationCard from "./components/ui/OIConcentrationCard";
+import LiquidityStressCard from "./components/ui/LiquidityStressCard";
 
 // Guidance UI
 import { GuidanceSwitch, KpiGuidance } from "./components/ui/Guidance";
@@ -389,9 +390,22 @@ export default function MasterKPIMapDemo() {
                             kpi={kpi}
                             currency="BTC"
                             topN={3}
-                            expiry="front"
+                            expiry="all"
                             windowPct={0.25}
                             pollMs={0}
+                          />
+                        );
+                      }
+
+                      if (kpi.id === "liquidityStress") {
+                        return (
+                          <LiquidityStressCard
+                            key={kpi.id}
+                            kpi={kpi}
+                            currency="BTC"
+                            windowPct={0.005}  // ±0.5%
+                            clipSize={10}      // 10 BTC clip size
+                            pollMs={0}         // no polling from App-level
                           />
                         );
                       }

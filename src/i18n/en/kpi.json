@@ -24,7 +24,7 @@
       "basis": "Spot–perp/futures basis; carry opportunity and pressure indicator.",
       "oi-concentration": "Open interest clustered near strikes; indicator of pin risk.",
       "gammaWalls": "Large dealer gamma levels that can magnetize or repel price.",
-      "liquidity-stress": "Spreads/depth slippage signals; execution risk under stress.",
+      "liquidityStress": "Spreads/depth slippage signals; execution risk under stress.",
       "orderbook-health": "Order book slope/staleness/resiliency; spoofing/refresh risk.",
   
       "condor-credit-em": "Net condor credit as % of expected-move width.",

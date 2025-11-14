@@ -231,6 +231,17 @@ export const BAND_BASE: Record<string, BandBaseSet> = {
     note: "% of total OI sitting at a single strike.",
   },
 
+  liquidity_stress_composite: {
+    id: "liquidity_stress_composite",
+    valueScale: "percent",   // guidanceValue should be 0–100
+    hasBar: true,
+    thresholds: [
+      { id: "healthy", max: 30, tone: "good" },
+      { id: "watch",   min: 30, max: 60, tone: "caution" },
+      { id: "stressed", min: 60, tone: "avoid" }
+    ]
+  },
+
   /* -----------------------------------------------------------------------
    * 5) Strategy-Specific Health
    * --------------------------------------------------------------------- */

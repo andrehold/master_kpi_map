@@ -152,6 +152,25 @@
         "very_high": { "label": "≥40%", "guidance": "Very high concentration: strong pin risk—adjust positioning." }
       }
     },
+
+    "liquidity_stress_composite": {
+      "title": "Liquidity Stress (spreads & depth, 0–100)",
+      "description": "Composite stress score combining bid–ask spreads and top-of-book depth across your key expiries. 0% = very healthy, 100% = extremely stressed.",
+      "bands": {
+        "healthy": {
+          "label": "0–30%",
+          "guidance": "Healthy books: tight spreads and solid depth. Normal sizing and complex orders are fine."
+        },
+        "watch": {
+          "label": "30–60%",
+          "guidance": "Caution: liquidity thinner than usual. Work orders patiently, reduce clip size and demand more edge."
+        },
+        "stressed": {
+          "label": "≥60%",
+          "guidance": "Stressed liquidity: high slippage risk. Avoid pushing size or running sensitive multi-leg structures."
+        }
+      }
+    },
   
     "condor_credit_pct_of_em": {
       "title": "Condor Credit (% of EM)",

@@ -49,6 +49,7 @@ import type { BandBaseIds } from "../kpi/bands.base";
     { id: "event-window", title: "Macro Event Window", guidanceKey: "macro_event_tminus_days" },
     { id: "spread", title: "Bid–Ask Spread %", valueType: "percent", guidanceKey: "bid_ask_spread_pct" },
     { id: "tob-depth", title: "TOB Depth", guidanceKey: "tob_depth_contracts" },
+    { id: "liquidityStress", title: "Liquidity Stress (spreads/depth)", valueType: "percent", guidanceKey: "liquidity_stress_composite" },
     { id: "oi-concentration", title: "OI Concentration %", valueType: "percent", guidanceKey: "oi_concentration_pct" },
     { id: "condor-credit", title: "Condor Credit % of EM", valueType: "percent", guidanceKey: "condor_credit_pct_of_em" },
     { id: "maxloss-credit", title: "Max Loss ÷ Credit", valueType: "ratio", guidanceKey: "maxloss_credit_ratio" },
@@ -111,7 +112,7 @@ import type { BandBaseIds } from "../kpi/bands.base";
         { id: "basis", name: "Spot–perp / futures basis", strategies: ["0DTE Overwrite", "Parity Edge", "Box Financing"], valueType: "percent" },
         { id: "oi-concentration", name: "Open interest concentration (pin risk)", strategies: ["Weekend Vol", "Parity Edge", "0DTE Overwrite"], valueType: "percent" },
         { id: "gammaWalls", name: "Gamma “walls” near strikes", strategies: ["0DTE Overwrite", "Parity Edge"], valueType: "price" },
-        { id: "liquidity-stress", name: "Liquidity stress (spreads/depth)", strategies: ["Expected Move", "Weekend Vol", "Range-Bound Premium", "Parity Edge", "0DTE Overwrite", "Box Financing"], valueType: "percent" },
+        { id: "liquidityStress", name: "Liquidity stress (spreads/depth)", strategies: ["Expected Move", "Weekend Vol", "Range-Bound Premium", "Parity Edge", "0DTE Overwrite", "Box Financing"], valueType: "percent" },
         { id: "orderbook-health", name: "Order book slope / staleness / depth resilience", strategies: ["Parity Edge"], valueType: "percent" },
       ],
     },
@@ -201,6 +202,19 @@ export const KPI_INFO: Record<string, KpiInfoDoc> = {
       "Trading implications: Pinning risk rises into expiry near the largest wall; consider adjusting strikes/widths for short-premium or gamma scalping tactics.",
       "Combine with: Delta & Gamma near shorts, Funding/Basis, OI concentration %, and Liquidity/Depth to gauge fragility.",
       "Risks: Walls can disappear as positions roll; slippage increases around gaps; don’t overfit to a single session."
+    ]
+  },
+  liquidityStress: {
+    title: "Liquidity stress (spreads/depth)",
+    paragraphs: [
+      "Definition: Composite 0–100% stress score that combines bid–ask spreads and top-of-book depth for the key BTC option expiries you care about (e.g. ~3D and ~30D). 0% = very healthy order books; 100% = highly stressed with wide spreads and thin depth.",
+      "Computation (intuition): For each tenor we look at near-the-money options inside a small ±% window around the future price, measure spreads in basis points and the executable size up to your configured clip, normalise vs a “good” baseline, then aggregate across tenors into a worst-case / average stress number.",
+      "Why it matters: When spreads blow out and usable depth disappears, even strong strategy signals become hard to monetise—slippage, partial fills and legging risk can easily eat the theoretical edge, especially on multi-leg structures."
+    ],
+    bullets: [
+      "How to read: <30% → healthy liquidity; 30–60% → caution (reduce clip, be patient with limits); >60% → stressed—avoid pushing new size or complex boxes/condors.",
+      "Best use: Combine with OI concentration, Gamma walls and Funding/Basis to decide whether to deploy a signal now or wait until liquidity normalises.",
+      "Caveats: Only reflects Deribit books around the chosen strikes; off-screen size, hidden orders and other venues are not visible, and conditions can change quickly around events."
     ]
   },
 };
