@@ -166,6 +166,36 @@ import type { BandBaseIds } from "../kpi/bands.base";
         { id: "uptime", name: "Automation uptime / kill-switch triggers", strategies: ["Parity Edge"], valueType: "percent" },
       ],
     },
+    {
+      id: "client-portfolios",
+      title: "9. Client Portfolios",
+      kpis: [
+        {
+          id: "portfolio-client-alpha",
+          name: "Client Alpha",
+          strategies: [],        // cross-strategy view
+          valueType: "text",     // mixed metrics in one card
+        },
+        {
+          id: "portfolio-client-bravo",
+          name: "Client Bravo",
+          strategies: [],
+          valueType: "text",
+        },
+        {
+          id: "portfolio-client-charlie",
+          name: "Client Charlie",
+          strategies: [],
+          valueType: "text",
+        },
+        {
+          id: "portfolio-client-delta",
+          name: "Client Delta",
+          strategies: [],
+          valueType: "text",
+        },
+      ],
+    },
   ];
   
   export const ALL_KPIS = KPI_GROUPS.flatMap((g) => g.kpis.map((k) => k.id));

@@ -8,6 +8,7 @@ import ExpectedMoveRibbonCard from "./components/ExpectedMoveRibbonCard";
 
 import { STRATEGIES, type Strategy, KPI_GROUPS, type StrategyKey } from "./data/kpis";
 import { buildSamples, type Samples } from "./utils/samples";
+import { CLIENT_PORTFOLIOS } from "./data/clients";
 
 import { useDeribitDvol } from "./hooks/useDeribitDvol";
 import { useIvrFromDvol } from "./hooks/useIvrFromDvol";
@@ -22,6 +23,7 @@ import { useDeribitBasis } from "./hooks/useDeribitBasis";
 import GammaWallsCard from "./components/ui/GammaWallsCard";
 import OIConcentrationCard from "./components/ui/OIConcentrationCard";
 import LiquidityStressCard from "./components/ui/LiquidityStressCard";
+import ClientPortfolioCard from "./components/ui/ClientPortfolioCard";
 
 // Guidance UI
 import { GuidanceSwitch, KpiGuidance } from "./components/ui/Guidance";
@@ -406,6 +408,16 @@ export default function MasterKPIMapDemo() {
                             windowPct={0.005}  // ±0.5%
                             clipSize={10}      // 10 BTC clip size
                             pollMs={0}         // no polling from App-level
+                          />
+                        );
+                      }
+
+                      if (kpi.id.startsWith("portfolio-client-")) {
+                        return (
+                          <ClientPortfolioCard
+                            key={kpi.id}
+                            kpi={kpi}
+                            locale={locale}
                           />
                         );
                       }
