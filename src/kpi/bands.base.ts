@@ -238,8 +238,9 @@ export const BAND_BASE: Record<string, BandBaseSet> = {
     thresholds: [
       { id: "healthy", max: 30, tone: "good" },
       { id: "watch",   min: 30, max: 60, tone: "caution" },
-      { id: "stressed", min: 60, tone: "avoid" }
-    ]
+      { id: "stressed", min: 60, tone: "avoid" },
+    ],
+    note: "Composite 0–100 stress score combining bid–ask spreads and order-book depth for BTC perp plus key option tenors.",
   },
 
   /* -----------------------------------------------------------------------
