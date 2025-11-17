@@ -1,21 +1,14 @@
 // src/hooks/useCondorCreditPctOfEM.ts
 
 import { useEffect, useState } from "react";
-import { dget } from "../services/deribit";
+import { dget, type DeribitInstrument } from "../services/deribit";
+import { pickNearestInstrumentByType } from "../lib/deribitOptionMath";
 import { ceilExpiry, expectedMove } from "../lib/selectExpiries";
 
 type Currency = "BTC" | "ETH";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TARGET_DTE_DAYS = 30;
-
-type DeribitInstrument = {
-  instrument_name: string;
-  expiration_timestamp: number;
-  strike: number;
-  option_type: "call" | "put";
-  kind: "option" | "future";
-};
 
 type BookSummary = {
   mark_price?: number | null;
@@ -169,7 +162,10 @@ async function fetchCondorCreditPctOfEM(
   }
 
   // 4) ATM IV from nearest-to-the-money call
-  const atmCall = pickNearestStrike(chain, "call", indexPrice);
+  const atmCall = pickNearestInstrumentByType(chain, "call", indexPrice);
+  if (!atmCall) {
+    throw new Error("Unable to find ATM call");
+  }
   const atmSummary = await getBookSummary(atmCall.instrument_name);
 
   // Deribit sometimes gives IV in percent; normalize to decimal.
@@ -201,10 +197,14 @@ async function fetchCondorCreditPctOfEM(
   const shortCallTarget = indexPrice + emUsd;
   const longCallTarget = indexPrice + 2 * emUsd;
 
-  const longPutInst = pickNearestStrike(chain, "put", longPutTarget);
-  const shortPutInst = pickNearestStrike(chain, "put", shortPutTarget);
-  const shortCallInst = pickNearestStrike(chain, "call", shortCallTarget);
-  const longCallInst = pickNearestStrike(chain, "call", longCallTarget);
+  const longPutInst = pickNearestInstrumentByType(chain, "put", longPutTarget);
+  const shortPutInst = pickNearestInstrumentByType(chain, "put", shortPutTarget);
+  const shortCallInst = pickNearestInstrumentByType(chain, "call", shortCallTarget);
+  const longCallInst = pickNearestInstrumentByType(chain, "call", longCallTarget);
+
+  if (!longPutInst || !shortPutInst || !shortCallInst || !longCallInst) {
+    throw new Error("Unable to find strikes for condor structure");
+  }
 
   const [
     longPutSummary,
@@ -256,30 +256,6 @@ async function fetchCondorCreditPctOfEM(
       longCall: longCallInst.instrument_name,
     },
   };
-}
-
-function pickNearestStrike(
-  chain: DeribitInstrument[],
-  optionType: "call" | "put",
-  targetStrike: number
-): DeribitInstrument {
-  const candidates = chain.filter((i) => i.option_type === optionType);
-  if (!candidates.length) {
-    throw new Error(`No ${optionType} instruments for selected expiry`);
-  }
-
-  let best = candidates[0];
-  let bestDist = Math.abs(best.strike - targetStrike);
-
-  for (const inst of candidates) {
-    const dist = Math.abs(inst.strike - targetStrike);
-    if (dist < bestDist) {
-      best = inst;
-      bestDist = dist;
-    }
-  }
-
-  return best;
 }
 
 async function getBookSummary(

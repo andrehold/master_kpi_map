@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Currency, DeribitInstrument } from "../services/deribit";
 import { getInstruments, getTicker } from "../services/deribit";
+import { pickNearestStrike } from "../lib/deribitOptionMath";
 import { buildAtmIvPoints } from "../lib/atmIv";
 import { useDeribitIndexPrice } from "./useDeribitIndexPrice";
 import { useDeribitFunding } from "./useDeribitFunding";
@@ -58,18 +59,6 @@ function nearestTo<T>(arr: T[], proj: (x: T) => number, target: number): T | und
   for (const x of arr) {
     const d = Math.abs(proj(x) - target);
     if (d < bestDelta) { best = x; bestDelta = d; }
-  }
-  return best;
-}
-
-function nearestStrike(list: DeribitInstrument[], spot: number, type: "call" | "put") {
-  const eligible = list.filter(i => i.option_type === type && typeof i.strike === "number");
-  if (!eligible.length) return undefined;
-  let best = eligible[0];
-  let bestDelta = Math.abs((best.strike as number) - spot);
-  for (let i = 1; i < eligible.length; i++) {
-    const d = Math.abs((eligible[i].strike as number) - spot);
-    if (d < bestDelta) { best = eligible[i]; bestDelta = d; }
   }
   return best;
 }
@@ -172,7 +161,7 @@ export function useWeekendVol(
 
         if (sundayPick.expiryTs && sundayPick.instruments && typeof indexRef === "number") {
           const calls = sundayPick.instruments.filter(i => i.option_type === "call");
-          const callATM = nearestStrike(calls, indexRef, "call");
+          const callATM = pickNearestStrike(calls, indexRef);
 
           if (callATM?.instrument_name) {
             const tkr = await getTicker(callATM.instrument_name);

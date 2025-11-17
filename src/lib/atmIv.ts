@@ -5,6 +5,7 @@ import {
   getTicker,
   type DeribitInstrument,
 } from "../services/deribit";
+import { pickNearestStrike, normalizeDeribitIv } from "./deribitOptionMath";
 import { selectExpiriesByHorizon } from "./selectExpiries";
 
 export type AtmSelection = "curated" | "all";
@@ -54,20 +55,6 @@ export type BuildAtmIvResult = {
 };
 
 const DAY_MS = 86_400_000;
-
-/** Normalize IV into a decimal. Returns null if clearly invalid. */
-function normalizeIv(x: unknown): number | null {
-  const v = typeof x === "number" ? x : NaN;
-  if (!isFinite(v) || v <= 0) return null;
-
-  // Common cases:
-  // - 0.45 => decimal (OK)
-  // - 45   => percent (convert to 0.45)
-  // - 4500 => clearly broken (drop)
-  if (v >= 1000) return null;        // reject extreme junk
-  if (v > 5) return v / 100;         // treat 5–1000 as percent
-  return v;                          // already decimal (<= 500% annualized)
-}
 
 export async function buildAtmIvPoints(opts: BuildAtmIvOptions = {}): Promise<BuildAtmIvResult> {
   const {
@@ -149,16 +136,13 @@ export async function buildAtmIvPoints(opts: BuildAtmIvOptions = {}): Promise<Bu
     }
 
     // Nearest by absolute distance to spot
-    calls.sort((a, b) => Math.abs((a.strike! - refSpot)) - Math.abs((b.strike! - refSpot)));
-    puts .sort((a, b) => Math.abs((a.strike! - refSpot)) - Math.abs((b.strike! - refSpot)));
-
-    const call = calls[0];
-    const put  = puts[0];
+    const call = pickNearestStrike(calls, refSpot);
+    const put  = pickNearestStrike(puts, refSpot);
 
     // Fetch up to two tickers per expiry
-    let ivC = call ? normalizeIv((await getTicker(call.instrument_name))?.mark_iv) : null;
+    let ivC = call ? normalizeDeribitIv((await getTicker(call.instrument_name))?.mark_iv) ?? null : null;
     if (signal?.aborted) return { asOf: now, indexPrice: spot ?? null, points: [] };
-    let ivP = put  ? normalizeIv((await getTicker(put .instrument_name))?.mark_iv) : null;
+    let ivP = put  ? normalizeDeribitIv((await getTicker(put .instrument_name))?.mark_iv) ?? null : null;
     if (signal?.aborted) return { asOf: now, indexPrice: spot ?? null, points: [] };
 
     // Average IV if both sides present; otherwise take whichever exists

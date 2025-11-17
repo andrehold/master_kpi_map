@@ -1,6 +1,7 @@
 // src/hooks/useDeribitSkew25D.ts
 import { useEffect, useMemo, useState } from 'react';
 import { getInstruments, getTicker, getIndexPrice, DeribitInstrument } from '../services/deribit';
+import { normalizeDeribitIv } from '../lib/deribitOptionMath';
 
 // --- Helpers & defaults ------------------------------------------------------
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
@@ -72,12 +73,6 @@ async function mapWithConcurrency<T, U>(
   });
   await Promise.all(workers);
   return results;
-}
-
-// Normalize Deribit mark_iv (sometimes % like 45.8) to decimal (0.458)
-function asDecimalIv(x?: number) {
-  if (typeof x !== 'number' || !isFinite(x)) return undefined as any;
-  return x > 1 ? x / 100 : x;
 }
 
 function toDateLabel(ts: number | undefined) {
@@ -198,7 +193,7 @@ export function useDeribitSkew25D(opts: Options = {}) {
           const tk = tickers[i];
 
           const delta = tk?.greeks?.delta;
-          const iv = asDecimalIv(tk?.mark_iv);
+          const iv = normalizeDeribitIv(tk?.mark_iv);
 
           // basic sanity
           if (typeof delta !== 'number' || typeof iv !== 'number' || !isFinite(delta) || !isFinite(iv)) continue;

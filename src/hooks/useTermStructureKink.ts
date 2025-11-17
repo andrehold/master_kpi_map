@@ -5,6 +5,7 @@ import {
   getTicker,
   getIndexPrice,
 } from "../services/deribit";
+import { normalizeDeribitIv } from "../lib/deribitOptionMath";
 
 /**
  * useTermStructureKink (matches your deribit.ts service)
@@ -141,16 +142,10 @@ export function useTermStructureKink(
         atm3 ? getTicker(atm3.instrument_name) : Promise.resolve(null),
       ]);
 
-      // Normalize Deribit mark_iv to decimals: examples show values like 80 for 80%.
-      const normalizeIv = (iv?: number): number | undefined =>
-        typeof iv === "number" && isFinite(iv)
-          ? (iv > 2 ? iv / 100 : iv)
-          : undefined;
-
-      const iv0 = normalizeIv(s0?.mark_iv);
-      const iv1 = normalizeIv(s1?.mark_iv);
-      const iv2 = normalizeIv(s2?.mark_iv);
-      const iv3 = normalizeIv(s3?.mark_iv);
+      const iv0 = normalizeDeribitIv(s0?.mark_iv);
+      const iv1 = normalizeDeribitIv(s1?.mark_iv);
+      const iv2 = normalizeDeribitIv(s2?.mark_iv);
+      const iv3 = normalizeDeribitIv(s3?.mark_iv);
 
       const m13 = mean([iv1, iv2, iv3]);
       const kinkPts = iv0 !== undefined && m13 !== undefined ? iv0 - m13 : undefined;
