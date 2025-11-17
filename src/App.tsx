@@ -1,14 +1,12 @@
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { TokenStyles, TOKENS, ThemeKey } from "./theme/tokens";
 import HeaderBar from "./components/ui/HeaderBar";
 import ControlsBar from "./components/ui/ControlsBar";
 import GroupHeader from "./components/ui/GroupHeader";
-import KpiCard from "./components/ui/KpiCard";
-import ExpectedMoveRibbonCard from "./components/ExpectedMoveRibbonCard";
+import KpiCardRenderer, { type KpiCardRendererContext } from "./components/ui/KpiCardRenderer";
 
 import { STRATEGIES, type Strategy, KPI_GROUPS, type StrategyKey } from "./data/kpis";
 import { buildSamples, type Samples } from "./utils/samples";
-import { CLIENT_PORTFOLIOS } from "./data/clients";
 
 import { useDeribitDvol } from "./hooks/useDeribitDvol";
 import { useIvrFromDvol } from "./hooks/useIvrFromDvol";
@@ -20,13 +18,10 @@ import { useRvEmFactor } from "./hooks/useRvEmFactor";
 import { useDeribitIndexPrice } from "./hooks/useDeribitIndexPrice";
 import { useDeribitFunding } from "./hooks/useDeribitFunding";
 import { useDeribitBasis } from "./hooks/useDeribitBasis";
-import GammaWallsCard from "./components/ui/GammaWallsCard";
-import OIConcentrationCard from "./components/ui/OIConcentrationCard";
-import LiquidityStressCard from "./components/ui/LiquidityStressCard";
-import ClientPortfolioCard from "./components/ui/ClientPortfolioCard";
+import { useCondorCreditPctOfEM } from "./hooks/useCondorCreditPctOfEM";
 
 // Guidance UI
-import { GuidanceSwitch, KpiGuidance } from "./components/ui/Guidance";
+import { GuidanceSwitch } from "./components/ui/Guidance";
 
 // UI primitives + data-driven Strategies menu
 import { ToastProvider } from "./components/ui/Use-toast";
@@ -95,6 +90,15 @@ export default function MasterKPIMapDemo() {
   // Funding (BTC perpetual)
   const { current8h, avg7d8h, zScore, updatedAt: fundingTs, loading: fundingLoading, error: fundingError, refresh: refreshFunding } =
     useDeribitFunding("BTC-PERPETUAL");
+
+  const {
+    data: condorData,
+    loading: condorLoading,
+    error: condorError,
+  } = useCondorCreditPctOfEM({
+    currency: "BTC",
+    pollMs: 0, // 30DTE is baked into the hook via TARGET_DTE_DAYS = 30
+  });
 
   // Generic overlay/settings state
   const [overlayStrategy, setOverlayStrategy] = useState<StrategyKey | null>(null);
@@ -175,8 +179,58 @@ export default function MasterKPIMapDemo() {
 
   const loadingAny = dvolLoading || ivrLoading || tsLoading || skewLoadingAny || skLoading || fundingLoading;
 
-  // Store drawer refs by KPI id (used to open the drawer from the card info button)
-  const guidanceRefs = useRef<Record<string, any>>({});
+  const kpiCardContext: KpiCardRendererContext = {
+    samples,
+    locale,
+    dvolPct,
+    ivr,
+    ivp,
+    rv: {
+      value: rv20d,
+      ts: rvTs ?? null,
+      loading: rvLoading,
+    },
+    termStructure: tsData,
+    skew: {
+      entries: [
+        { key: "7d", label: "BTC 7D", state: skew7 },
+        { key: "30d", label: "BTC 30D", state: skew30 },
+        { key: "60d", label: "BTC 60D", state: skew60 },
+      ],
+      kink: {
+        loading: skLoading,
+        error: skError ?? null,
+        data: skData,
+      },
+    },
+    rvem: {
+      ratio: rvemRatio ?? null,
+      rvAnn,
+      ivAnn,
+      loading: rvemLoading,
+      error: rvemError ?? null,
+      tenorDays: RVEM_TENOR_DAYS,
+    },
+    funding: {
+      loading: fundingLoading,
+      error: fundingError ?? null,
+      current8h,
+      avg7d8h,
+      ts: fundingTs ?? null,
+    },
+    condor: {
+      data: condorData,
+      loading: condorLoading,
+      error: condorError ?? null,
+    },
+    basis: {
+      loading: basisLoading,
+      error: basisError ?? null,
+      pct: basisPctPerp,
+      abs: basisAbsPerp ?? null,
+      ts: basisTs ?? null,
+    },
+  };
 
   return (
     <ToastProvider>
@@ -227,214 +281,9 @@ export default function MasterKPIMapDemo() {
                 <GroupHeader title={group.title} open={openGroups[group.id]} onToggle={() => toggleGroup(group.id)} />
                 {openGroups[group.id] && (
                   <div className="mt-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {group.kpis.map((kpi) => {
-                      let value = samples[kpi.id];
-                      let meta: string | undefined = undefined;
-                      let extraBadge: string | null = null;
-                      let infoKeyProp: string | undefined;
-                      let guidanceVal: number | null = null;
-
-                      if (kpi.id === "atm-iv" && dvolPct != null) {
-                        value = `${dvolPct.toFixed(1)}%`;
-                        meta = "DVOL 30D (proxy)";
-                      }
-
-                      if (kpi.id === "ivr" && ivr != null) {
-                        value = `${ivr}`;
-                        meta = "DVOL-based IVR";
-                        if (ivp != null) extraBadge = `IVP ${ivp}`;
-                        infoKeyProp = kpi.id;
-                        guidanceVal = typeof ivr === "number" ? ivr : null;
-                      }
-
-                      if (kpi.id === "rv" && rv20d != null) {
-                        value = `${(rv20d * 100).toFixed(1)}%`;
-                        meta = rvTs ? `20D RV · ${new Date(rvTs).toLocaleDateString()}` : "20D RV";
-                        extraBadge = rvLoading ? "Refreshing…" : null;
-                      }
-                      if (kpi.id === "iv-rv-spread" && dvolPct != null && rv20d != null) {
-                        const spread = dvolPct - (rv20d * 100);
-                        const sign = spread >= 0 ? "+" : "";
-                        value = `${sign}${spread.toFixed(1)}%`;
-                        meta = "IV − RV";
-                        extraBadge = `IV ${dvolPct.toFixed(1)} • RV ${(rv20d * 100).toFixed(1)}`;
-                      }
-                      if (kpi.id === "term-structure" && tsData) {
-                        const labelTitle = tsData.label === "insufficient" ? "Insufficient" : tsData.label[0].toUpperCase() + tsData.label.slice(1);
-                        const premiumPct = tsData.termPremium != null ? (tsData.termPremium * 100) : null;
-                        const sign = premiumPct != null && premiumPct >= 0 ? "+" : "";
-                        value = labelTitle + (premiumPct != null ? ` (${sign}${premiumPct.toFixed(1)}%)` : "");
-                        meta = tsData.slopePerYear != null ? `Slope ${(tsData.slopePerYear * 100).toFixed(2)}%/yr · n=${tsData.n}` : `n=${tsData.n}`;
-                        if (tsData.points.length >= 2) {
-                          const first = tsData.points[0]?.expiryISO;
-                          const last = tsData.points[tsData.points.length - 1]?.expiryISO;
-                          extraBadge = `${first} → ${last}`;
-                        } else {
-                          extraBadge = "Awaiting data";
-                        }
-                      }
-                      if (kpi.id === "skew-25d-rr") {
-                        const tenors = [
-                          { key: "7d",  label: "BTC 7D",  s: skew7  },
-                          { key: "30d", label: "BTC 30D", s: skew30 },
-                          { key: "60d", label: "BTC 60D", s: skew60 },
-                        ];
-                        return (
-                          <>
-                            {tenors.map(({ key, label, s }) => {
-                              let v = samples[kpi.id];
-                              let m: string | undefined = undefined;
-                              let b: string | null = null;
-                              if (s?.skew != null) {
-                                const vp = s.skew * 100;
-                                const sign = vp >= 0 ? "+" : "";
-                                v = `${sign}${vp.toFixed(2)}`;
-                                m = s.expiryLabel ? `${label} · ${s.expiryLabel}` : label;
-                                if (s.ivC25 != null && s.ivP25 != null) {
-                                  b = `C25 ${(s.ivC25 * 100).toFixed(1)} • P25 ${(s.ivP25 * 100).toFixed(1)}`;
-                                } else {
-                                  b = "Interpolating…";
-                                }
-                              } else if (s?.loading) {
-                                v = "…"; m = `${label} · loading`;
-                              } else if (s?.error) {
-                                v = "—"; m = `${label} · error`;
-                              } else {
-                                m = label;
-                              }
-                              return <KpiCard key={`${kpi.id}-${key}`} kpi={kpi} value={v} meta={m} extraBadge={b}/>;
-                            })}
-                          </>
-                        );
-                      }
-                      if (kpi.id === "ts-kink") {
-                        let v = samples[kpi.id];
-                        let m: string | undefined = undefined;
-                        let b: string | null = null;
-                        if (skLoading) { v = "…"; m = "loading"; }
-                        else if (skError) { v = "—"; m = "error"; }
-                        else if (skData && typeof skData.kinkPoints === "number") {
-                          const vp = skData.kinkPoints * 100;
-                          const sign = vp >= 0 ? "+" : "";
-                          v = `${sign}${vp.toFixed(2)}%`;
-                          m = `0DTE − mean(1–3DTE)${skData.indexPrice ? ` · S ${Math.round(skData.indexPrice)}` : ""}`;
-                          const iv0 = skData.iv0dte != null ? (skData.iv0dte * 100).toFixed(1) : "—";
-                          const m13 = skData.mean1to3 != null ? (skData.mean1to3 * 100).toFixed(1) : "—";
-                          const ratio = skData.kinkRatio != null ? `${skData.kinkRatio.toFixed(2)}×` : null;
-                          b = ratio ? `0D ${iv0} • 1–3D ${m13} • ${ratio}` : `0D ${iv0} • 1–3D ${m13}`;
-                        } else {
-                          m = "Awaiting data";
-                        }
-                        return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={b} />;
-                      }
-                      if (kpi.id === "rv-em-factor") {
-                        const v   = rvemLoading ? "…" : (rvemRatio != null ? `${rvemRatio.toFixed(2)}×` : "—");
-                        const m   = rvemLoading ? "loading" : (rvemError ? "error" : `BTC ${RVEM_TENOR_DAYS}D · RV ÷ IV`);
-                        const bad = (rvAnn != null && ivAnn != null)
-                          ? `IV ${(ivAnn * 100).toFixed(1)} • RV ${(rvAnn * 100).toFixed(1)}`
-                          : null;
-                        return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={bad}/>;
-                      }
-                      if (kpi.id === "funding") {
-                        let v = samples[kpi.id];
-                        let m: string | undefined = undefined;
-                        let b: string | null = null;
-                        if (fundingLoading) { v = "…"; m = "loading"; }
-                        else if (fundingError) { v = "—"; m = "error"; }
-                        else if (current8h != null) {
-                          v = `${(current8h * 100).toFixed(3)}%`;
-                          m = fundingTs ? `Deribit 8h · ${new Date(fundingTs).toLocaleTimeString()}` : "Deribit 8h";
-                          if (avg7d8h != null) b = `7d avg ${(avg7d8h * 100).toFixed(3)}%`;
-                        } else { v = "—"; m = "Awaiting data"; }
-                        return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={b}/>;
-                      }
-                      if (kpi.id === "em-ribbon") {
-                        return (
-                          <div key="em-ribbon" className="col-span-full">
-                            <ExpectedMoveRibbonCard currency="BTC" />
-                          </div>
-                        );
-                      }
-                      if (kpi.id === "spot-perp-basis") {
-                        let v = samples[kpi.id];
-                        let m: string | undefined = undefined;
-                        let b: string | null = null;
-
-                        if (basisLoading) {
-                          v = "…"; m = "loading";
-                        } else if (basisError) {
-                          v = "—"; m = "error";
-                        } else if (basisPctPerp != null) {
-                          const pct = basisPctPerp * 100;
-                          const sign = pct >= 0 ? "+" : "";
-                          v = `${sign}${pct.toFixed(2)}%`;
-                          m = basisTs ? `BTC spot vs perp · ${new Date(basisTs).toLocaleTimeString()}` : "BTC spot vs perp";
-
-                          if (basisAbsPerp != null && Number.isFinite(basisAbsPerp)) {
-                            const abs = basisAbsPerp;
-                            b = `Δ ${abs >= 0 ? `+$${abs.toFixed(2)}` : `-$${Math.abs(abs).toFixed(2)}`}`;
-                          }
-                        } else {
-                          v = "—"; m = "Awaiting data";
-                        }
-
-                        return <KpiCard key={kpi.id} kpi={kpi} value={v} meta={m} extraBadge={b}/>;
-                      }
-
-                      if (kpi.id === "gammaWalls") {
-                        return <GammaWallsCard key={kpi.id} kpi={kpi} />;
-                      }
-
-                      if (kpi.id === "oi-concentration") {
-                        return (
-                          <OIConcentrationCard
-                            key={kpi.id}
-                            kpi={kpi}
-                            currency="BTC"
-                            topN={3}
-                            expiry="all"
-                            windowPct={0.25}
-                            pollMs={0}
-                          />
-                        );
-                      }
-
-                      if (kpi.id === "liquidityStress") {
-                        return (
-                          <LiquidityStressCard
-                            key={kpi.id}
-                            kpi={kpi}
-                            currency="BTC"
-                            windowPct={0.005}  // ±0.5%
-                            clipSize={10}      // 10 BTC clip size
-                            pollMs={0}         // no polling from App-level
-                          />
-                        );
-                      }
-
-                      if (kpi.id.startsWith("portfolio-client-")) {
-                        return (
-                          <ClientPortfolioCard
-                            key={kpi.id}
-                            kpi={kpi}
-                            locale={locale}
-                          />
-                        );
-                      }
-
-                      return (
-                        <KpiCard
-                          key={kpi.id}
-                          kpi={kpi}
-                          value={value}
-                          meta={meta}
-                          extraBadge={extraBadge}
-                          infoKey={infoKeyProp}
-                          guidanceValue={guidanceVal}
-                          locale={locale}
-                        />
-                      );
-                    })}
+                    {group.kpis.map((kpi) => (
+                      <KpiCardRenderer key={kpi.id} kpi={kpi} context={kpiCardContext} />
+                    ))}
                   </div>
                 )}
               </section>
