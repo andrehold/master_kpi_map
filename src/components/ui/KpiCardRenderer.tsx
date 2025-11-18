@@ -12,6 +12,7 @@ import type { useDeribitSkew25D } from "../../hooks/useDeribitSkew25D";
 import type { useTermStructureKink } from "../../hooks/useTermStructureKink";
 import type { useCondorCreditPctOfEM } from "../../hooks/useCondorCreditPctOfEM";
 import type { useIVTermStructure } from "../../hooks/useIVTermStructure";
+import { KPI_IDS } from "../../kpi/kpiIds";
 
 type SkewState = ReturnType<typeof useDeribitSkew25D>;
 type KinkData = ReturnType<typeof useTermStructureKink>["data"];
@@ -79,7 +80,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     locale,
   };
 
-  const renderCard = (overrides?: Partial<CardProps>, key = kpi.id) => (
+  const renderCard = (overrides?: Partial<CardProps>, key: string = kpi.id) => (
     <KpiCard
       key={key}
       {...baseProps}
@@ -87,14 +88,14 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     />
   );
 
-  if (kpi.id === "atm-iv" && context.dvolPct != null) {
+  if (kpi.id === KPI_IDS.atmIv && context.dvolPct != null) {
     return renderCard({
       value: `${context.dvolPct.toFixed(1)}%`,
       meta: "DVOL 30D (proxy)",
     });
   }
 
-  if (kpi.id === "ivr" && context.ivr != null) {
+  if (kpi.id === KPI_IDS.ivr && context.ivr != null) {
     return renderCard({
       value: `${context.ivr}`,
       meta: "DVOL-based IVR",
@@ -104,7 +105,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     });
   }
 
-  if (kpi.id === "rv" && context.rv.value != null) {
+  if (kpi.id === KPI_IDS.rv && context.rv.value != null) {
     return renderCard({
       value: `${(context.rv.value * 100).toFixed(1)}%`,
       meta: context.rv.ts ? `20D RV · ${new Date(context.rv.ts).toLocaleDateString()}` : "20D RV",
@@ -112,7 +113,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     });
   }
 
-  if (kpi.id === "iv-rv-spread" && context.dvolPct != null && context.rv.value != null) {
+  if (kpi.id === KPI_IDS.ivRvSpread && context.dvolPct != null && context.rv.value != null) {
     const spread = context.dvolPct - (context.rv.value * 100);
     const sign = spread >= 0 ? "+" : "";
     return renderCard({
@@ -122,7 +123,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     });
   }
 
-  if (kpi.id === "term-structure" && context.termStructure) {
+  if (kpi.id === KPI_IDS.termStructure && context.termStructure) {
     const tsData = context.termStructure;
     const labelTitle = tsData.label === "insufficient"
       ? "Insufficient"
@@ -142,7 +143,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     });
   }
 
-  if (kpi.id === "skew-25d-rr") {
+  if (kpi.id === KPI_IDS.skew25dRr) {
     return (
       <>
         {context.skew.entries.map(({ key, label, state }) => {
@@ -176,7 +177,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     );
   }
 
-  if (kpi.id === "ts-kink") {
+  if (kpi.id === KPI_IDS.tsKink) {
     const { loading, error, data } = context.skew.kink;
     let value = samples[kpi.id];
     let meta: string | undefined;
@@ -204,7 +205,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     return renderCard({ value, meta, extraBadge: badge });
   }
 
-  if (kpi.id === "rv-em-factor") {
+  if (kpi.id === KPI_IDS.rvEmFactor) {
     const { ratio, loading, error, rvAnn, ivAnn, tenorDays } = context.rvem;
     const value = loading ? "…" : (ratio != null ? `${ratio.toFixed(2)}×` : "—");
     const meta = loading ? "loading" : (error ? "error" : `BTC ${tenorDays}D · RV ÷ IV`);
@@ -214,7 +215,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     return renderCard({ value, meta, extraBadge });
   }
 
-  if (kpi.id === "funding") {
+  if (kpi.id === KPI_IDS.funding) {
     const { loading, error, current8h, avg7d8h, ts } = context.funding;
     let value = samples[kpi.id];
     let meta: string | undefined;
@@ -240,7 +241,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     return renderCard({ value, meta, extraBadge: badge });
   }
 
-  if (kpi.id === "em-ribbon") {
+  if (kpi.id === KPI_IDS.emRibbon) {
     return (
       <div key={kpi.id} className="col-span-full">
         <ExpectedMoveRibbonCard currency="BTC" />
@@ -248,7 +249,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     );
   }
 
-  if (kpi.id === "condorCreditEm") {
+  if (kpi.id === KPI_IDS.condorCreditEm) {
     const condorState = context.condor;
     let value = samples[kpi.id];
     let meta: string | undefined;
@@ -290,13 +291,13 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       meta,
       extraBadge: badge,
       // This key links into KPIS / BAND_BASE via kpis.ts
-      infoKey: "condorCreditEm",
+      infoKey: KPI_IDS.condorCreditEm,
       guidanceValue,
     });
   }
 
 
-  if (kpi.id === "spot-perp-basis") {
+  if (kpi.id === KPI_IDS.spotPerpBasis) {
     const { loading, error, pct, abs, ts } = context.basis;
     let value = samples[kpi.id];
     let meta: string | undefined;
@@ -324,11 +325,11 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     return renderCard({ value, meta, extraBadge: badge });
   }
 
-  if (kpi.id === "gammaWalls") {
+  if (kpi.id === KPI_IDS.gammaWalls) {
     return <GammaWallsCard key={kpi.id} kpi={kpi} />;
   }
 
-  if (kpi.id === "oi-concentration") {
+  if (kpi.id === KPI_IDS.oiConcentration) {
     return (
       <OIConcentrationCard
         key={kpi.id}
@@ -342,7 +343,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     );
   }
 
-  if (kpi.id === "liquidityStress") {
+  if (kpi.id === KPI_IDS.liquidityStress) {
     return (
       <LiquidityStressCard
         key={kpi.id}

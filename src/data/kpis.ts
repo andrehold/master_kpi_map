@@ -1,7 +1,10 @@
 import type { BandBaseIds } from "../kpi/bands.base";
+import { KPI_IDS, type KpiId } from "../kpi/kpiIds";
+
+export type { KpiId };
 
   export type KpiMeta = {
-    id: string;
+    id: KpiId;
     title: string;
     strategies?: string[];
     valueType?: "percent" | "raw" | "ratio";
@@ -21,7 +24,7 @@ import type { BandBaseIds } from "../kpi/bands.base";
     | "custom";
   
   export interface KPIDef {
-    id: string;
+    id: KpiId;
     name: string;
     description?: string;
     strategies: Strategy[];
@@ -35,37 +38,37 @@ import type { BandBaseIds } from "../kpi/bands.base";
   }
 
   export const KPIS: KpiMeta[] = [
-    { id: "ivr", title: "IV Rank (1y)", valueType: "percent", guidanceKey: "ivr" },
-    { id: "atm-iv", title: "ATM IV", valueType: "percent", guidanceKey: "atm_iv" },
-    { id: "term-structure", title: "Term Structure", guidanceKey: "term_structure_spread" },
-    { id: "skew", title: "25Δ Risk Reversal", guidanceKey: "skew_rr25" },
-    { id: "vol-of-vol", title: "Vol of Vol", guidanceKey: "vol_of_vol" },
-    { id: "iv-rv", title: "IV – RV Spread", guidanceKey: "iv_rv_spread" },
-    { id: "em-hit-rate", title: "EM Hit Rate (90d)", valueType: "percent", guidanceKey: "em_hit_rate_90d" },
-    { id: "rv-em", title: "RV ÷ EM", valueType: "ratio", guidanceKey: "rv_em_ratio" },
-    { id: "vix", title: "VIX", guidanceKey: "vix" },
-    { id: "vvix", title: "VVIX", guidanceKey: "vvix" },
-    { id: "funding", title: "Funding Rate (ann.)", valueType: "percent", guidanceKey: "funding_rate_annualized" },
-    { id: "event-window", title: "Macro Event Window", guidanceKey: "macro_event_tminus_days" },
-    { id: "spread", title: "Bid–Ask Spread %", valueType: "percent", guidanceKey: "bid_ask_spread_pct" },
-    { id: "tob-depth", title: "TOB Depth", guidanceKey: "tob_depth_contracts" },
-    { id: "liquidityStress", title: "Liquidity Stress (spreads/depth)", valueType: "percent", guidanceKey: "liquidity_stress_composite" },
-    { id: "oi-concentration", title: "OI Concentration %", valueType: "percent", guidanceKey: "oi_concentration_pct" },
-    { id: "condor-credit", title: "Condor Credit % of EM", valueType: "percent", guidanceKey: "condor_credit_pct_of_em" },
-    { id: "maxloss-credit", title: "Max Loss ÷ Credit", valueType: "ratio", guidanceKey: "maxloss_credit_ratio" },
-    { id: "pnl-vs-credit", title: "PnL vs Credit %", valueType: "percent", guidanceKey: "pnl_vs_credit_pct" },
-    { id: "delta-exposure", title: "Delta Exposure % NAV", valueType: "percent", guidanceKey: "delta_exposure_pct_nav" },
-    { id: "gamma-theta", title: "Gamma ÷ Theta", valueType: "ratio", guidanceKey: "gamma_theta_ratio" },
-    { id: "fill-ratio", title: "Fill Ratio %", valueType: "percent", guidanceKey: "fill_ratio_pct" },
-    { id: "arrival-slippage", title: "Arrival Slippage", guidanceKey: "arrival_slippage_ticks" },
-    { id: "breakage", title: "Breakage Rate %", valueType: "percent", guidanceKey: "breakage_rate_pct" },
-    { id: "capital-util", title: "Capital Util % NAV", valueType: "percent", guidanceKey: "capital_utilization_pct_nav" },
-    { id: "edge-capture", title: "Edge Capture %", valueType: "percent", guidanceKey: "edge_realized_pct" },
-    { id: "drawdown", title: "Drawdown % NAV", valueType: "percent", guidanceKey: "drawdown_pct_nav" },
-    { id: "box-spread", title: "Box Financing Spread (bps)", guidanceKey: "box_financing_spread_bps" },
-    { id: "box-slippage", title: "Box Slippage (ticks)", guidanceKey: "slippage_budget_ticks_4legs" },
-    { id: "basis", title: "Spot–Perp Basis (ann. %)", valueType: "percent", guidanceKey: "basis_spread_annualized_pct" },
-    { id: "ts-kink", title: "Term Structure Kink (abs)", guidanceKey: "term_structure_kink_abs" }
+    { id: KPI_IDS.ivr, title: "IV Rank (1y)", valueType: "percent", guidanceKey: "ivr" },
+    { id: KPI_IDS.atmIv, title: "ATM IV", valueType: "percent", guidanceKey: "atm_iv" },
+    { id: KPI_IDS.termStructure, title: "Term Structure", guidanceKey: "term_structure_spread" },
+    { id: KPI_IDS.skew, title: "25Δ Risk Reversal", guidanceKey: "skew_rr25" },
+    { id: KPI_IDS.volOfVol, title: "Vol of Vol", guidanceKey: "vol_of_vol" },
+    { id: KPI_IDS.ivRv, title: "IV – RV Spread", guidanceKey: "iv_rv_spread" },
+    { id: KPI_IDS.emHitRate, title: "EM Hit Rate (90d)", valueType: "percent", guidanceKey: "em_hit_rate_90d" },
+    { id: KPI_IDS.rvEm, title: "RV ÷ EM", valueType: "ratio", guidanceKey: "rv_em_ratio" },
+    { id: KPI_IDS.vix, title: "VIX", guidanceKey: "vix" },
+    { id: KPI_IDS.vvix, title: "VVIX", guidanceKey: "vvix" },
+    { id: KPI_IDS.funding, title: "Funding Rate (ann.)", valueType: "percent", guidanceKey: "funding_rate_annualized" },
+    { id: KPI_IDS.eventWindow, title: "Macro Event Window", guidanceKey: "macro_event_tminus_days" },
+    { id: KPI_IDS.spread, title: "Bid–Ask Spread %", valueType: "percent", guidanceKey: "bid_ask_spread_pct" },
+    { id: KPI_IDS.tobDepth, title: "TOB Depth", guidanceKey: "tob_depth_contracts" },
+    { id: KPI_IDS.liquidityStress, title: "Liquidity Stress (spreads/depth)", valueType: "percent", guidanceKey: "liquidity_stress_composite" },
+    { id: KPI_IDS.oiConcentration, title: "OI Concentration %", valueType: "percent", guidanceKey: "oi_concentration_pct" },
+    { id: KPI_IDS.condorCredit, title: "Condor Credit % of EM", valueType: "percent", guidanceKey: "condor_credit_pct_of_em" },
+    { id: KPI_IDS.maxlossCredit, title: "Max Loss ÷ Credit", valueType: "ratio", guidanceKey: "maxloss_credit_ratio" },
+    { id: KPI_IDS.pnlVsCredit, title: "PnL vs Credit %", valueType: "percent", guidanceKey: "pnl_vs_credit_pct" },
+    { id: KPI_IDS.deltaExposure, title: "Delta Exposure % NAV", valueType: "percent", guidanceKey: "delta_exposure_pct_nav" },
+    { id: KPI_IDS.gammaTheta, title: "Gamma ÷ Theta", valueType: "ratio", guidanceKey: "gamma_theta_ratio" },
+    { id: KPI_IDS.fillRatio, title: "Fill Ratio %", valueType: "percent", guidanceKey: "fill_ratio_pct" },
+    { id: KPI_IDS.arrivalSlippage, title: "Arrival Slippage", guidanceKey: "arrival_slippage_ticks" },
+    { id: KPI_IDS.breakage, title: "Breakage Rate %", valueType: "percent", guidanceKey: "breakage_rate_pct" },
+    { id: KPI_IDS.capitalUtil, title: "Capital Util % NAV", valueType: "percent", guidanceKey: "capital_utilization_pct_nav" },
+    { id: KPI_IDS.edgeCapture, title: "Edge Capture %", valueType: "percent", guidanceKey: "edge_realized_pct" },
+    { id: KPI_IDS.drawdown, title: "Drawdown % NAV", valueType: "percent", guidanceKey: "drawdown_pct_nav" },
+    { id: KPI_IDS.boxSpread, title: "Box Financing Spread (bps)", guidanceKey: "box_financing_spread_bps" },
+    { id: KPI_IDS.boxSlippage, title: "Box Slippage (ticks)", guidanceKey: "slippage_budget_ticks_4legs" },
+    { id: KPI_IDS.basis, title: "Spot–Perp Basis (ann. %)", valueType: "percent", guidanceKey: "basis_spread_annualized_pct" },
+    { id: KPI_IDS.tsKink, title: "Term Structure Kink (abs)", guidanceKey: "term_structure_kink_abs" }
   ];
   
   export const KPI_GROUPS: KPIGroup[] = [
@@ -73,97 +76,97 @@ import type { BandBaseIds } from "../kpi/bands.base";
       id: "vol-skew",
       title: "1. Volatility & Skew Metrics",
       kpis: [
-        { id: "atm-iv", name: "ATM Implied Volatility (IV)", strategies: ["Expected Move", "Range-Bound Premium", "Carry Trade", "0DTE Overwrite"], valueType: "percent" },
-        { id: "ivr", name: "IV Rank / Percentile (IVR)", strategies: ["Expected Move", "Range-Bound Premium", "Carry Trade", "0DTE Overwrite"], valueType: "ivrank" },
-        { id: "term-structure", name: "IV Term Structure (Contango vs Backwardation)", strategies: ["Expected Move", "Carry Trade", "0DTE Overwrite"], valueType: "text" },
-        { id: "skew-25d-rr", name: "Skew (25Δ Risk Reversal)", strategies: ["Expected Move", "Weekend Vol", "Carry Trade", "0DTE Overwrite"], valueType: "price" },
-        { id: "vol-of-vol", name: "Vol-of-Vol (VVIX/MOVE/intraday IV)", strategies: ["Expected Move", "0DTE Overwrite"], valueType: "index" },
-        { id: "ts-kink", name: "Term Structure Kink (0DTE vs 1–3DTE IV)", strategies: ["0DTE Overwrite"], valueType: "percent" },
+        { id: KPI_IDS.atmIv, name: "ATM Implied Volatility (IV)", strategies: ["Expected Move", "Range-Bound Premium", "Carry Trade", "0DTE Overwrite"], valueType: "percent" },
+        { id: KPI_IDS.ivr, name: "IV Rank / Percentile (IVR)", strategies: ["Expected Move", "Range-Bound Premium", "Carry Trade", "0DTE Overwrite"], valueType: "ivrank" },
+        { id: KPI_IDS.termStructure, name: "IV Term Structure (Contango vs Backwardation)", strategies: ["Expected Move", "Carry Trade", "0DTE Overwrite"], valueType: "text" },
+        { id: KPI_IDS.skew25dRr, name: "Skew (25Δ Risk Reversal)", strategies: ["Expected Move", "Weekend Vol", "Carry Trade", "0DTE Overwrite"], valueType: "price" },
+        { id: KPI_IDS.volOfVol, name: "Vol-of-Vol (VVIX/MOVE/intraday IV)", strategies: ["Expected Move", "0DTE Overwrite"], valueType: "index" },
+        { id: KPI_IDS.tsKink, name: "Term Structure Kink (0DTE vs 1–3DTE IV)", strategies: ["0DTE Overwrite"], valueType: "percent" },
       ],
     },
     {
       id: "rv-vs-iv",
       title: "2. Realized vs Implied (RV vs IV)",
       kpis: [
-        { id: "rv", name: "Realized Volatility (RV)", strategies: ["Expected Move", "Range-Bound Premium", "Carry Trade", "0DTE Overwrite"], valueType: "percent" },
-        { id: "iv-rv-spread", name: "IV–RV Spread", strategies: ["Expected Move", "Range-Bound Premium", "Carry Trade"], valueType: "percent" },
-        { id: "em-hit-rate", name: "Hit Rate of Expected Move", strategies: ["Expected Move"], valueType: "percent" },
-        { id: "rv-em-factor", name: "Over/Under Pricing Factor (RV ÷ EM)", strategies: ["Expected Move"], valueType: "ratio" },
-        { id: "short-horizon-atr", name: "Short-horizon realized σ / intraday ATR vs EM", strategies: ["0DTE Overwrite"], valueType: "sigma" },
-        { id: "em-ribbon", name: "Expected Move Ribbon", strategies: ["Expected Move"], valueType: "custom" },
+        { id: KPI_IDS.rv, name: "Realized Volatility (RV)", strategies: ["Expected Move", "Range-Bound Premium", "Carry Trade", "0DTE Overwrite"], valueType: "percent" },
+        { id: KPI_IDS.ivRvSpread, name: "IV–RV Spread", strategies: ["Expected Move", "Range-Bound Premium", "Carry Trade"], valueType: "percent" },
+        { id: KPI_IDS.emHitRate, name: "Hit Rate of Expected Move", strategies: ["Expected Move"], valueType: "percent" },
+        { id: KPI_IDS.rvEmFactor, name: "Over/Under Pricing Factor (RV ÷ EM)", strategies: ["Expected Move"], valueType: "ratio" },
+        { id: KPI_IDS.shortHorizonAtr, name: "Short-horizon realized σ / intraday ATR vs EM", strategies: ["0DTE Overwrite"], valueType: "sigma" },
+        { id: KPI_IDS.emRibbon, name: "Expected Move Ribbon", strategies: ["Expected Move"], valueType: "custom" },
       ],
     },
     {
       id: "regime-macro",
       title: "3. Market Regime & Macro Filters",
       kpis: [
-        { id: "vix-vvix", name: "VIX / VVIX levels & jumps", strategies: ["Expected Move"], valueType: "index" },
-        { id: "cross-asset-vol", name: "Cross-asset vol benchmarks (MOVE/FX/Credit)", strategies: ["Expected Move"], valueType: "index" },
-        { id: "implied-corr", name: "Equity correlation (implied correlation index)", strategies: ["Expected Move"], valueType: "percent" },
-        { id: "macro-events", name: "Macro risk events (Fed/CPI/NFP/etc.)", strategies: ["Expected Move", "Weekend Vol", "Range-Bound Premium", "Carry Trade", "0DTE Overwrite", "Box Financing"], valueType: "text" },
-        { id: "event-collapse", name: "Event premium collapse", strategies: ["Carry Trade"], valueType: "percent" },
+        { id: KPI_IDS.vixVvix, name: "VIX / VVIX levels & jumps", strategies: ["Expected Move"], valueType: "index" },
+        { id: KPI_IDS.crossAssetVol, name: "Cross-asset vol benchmarks (MOVE/FX/Credit)", strategies: ["Expected Move"], valueType: "index" },
+        { id: KPI_IDS.impliedCorr, name: "Equity correlation (implied correlation index)", strategies: ["Expected Move"], valueType: "percent" },
+        { id: KPI_IDS.macroEvents, name: "Macro risk events (Fed/CPI/NFP/etc.)", strategies: ["Expected Move", "Weekend Vol", "Range-Bound Premium", "Carry Trade", "0DTE Overwrite", "Box Financing"], valueType: "text" },
+        { id: KPI_IDS.eventCollapse, name: "Event premium collapse", strategies: ["Carry Trade"], valueType: "percent" },
       ],
     },
     {
       id: "micro-flow",
       title: "4. Microstructure, Flows & Liquidity",
       kpis: [
-        { id: "funding", name: "Funding rates (perps)", strategies: ["Weekend Vol", "Range-Bound Premium", "0DTE Overwrite"], valueType: "percent" },
-        { id: "basis", name: "Spot–perp / futures basis", strategies: ["0DTE Overwrite", "Parity Edge", "Box Financing"], valueType: "percent" },
-        { id: "oi-concentration", name: "Open interest concentration (pin risk)", strategies: ["Weekend Vol", "Parity Edge", "0DTE Overwrite"], valueType: "percent" },
-        { id: "gammaWalls", name: "Gamma “walls” near strikes", strategies: ["0DTE Overwrite", "Parity Edge"], valueType: "price" },
-        { id: "liquidityStress", name: "Liquidity stress (spreads/depth)", strategies: ["Expected Move", "Weekend Vol", "Range-Bound Premium", "Parity Edge", "0DTE Overwrite", "Box Financing"], valueType: "percent" },
-        { id: "orderbook-health", name: "Order book slope / staleness / depth resilience", strategies: ["Parity Edge"], valueType: "percent" },
+        { id: KPI_IDS.funding, name: "Funding rates (perps)", strategies: ["Weekend Vol", "Range-Bound Premium", "0DTE Overwrite"], valueType: "percent" },
+        { id: KPI_IDS.basis, name: "Spot–perp / futures basis", strategies: ["0DTE Overwrite", "Parity Edge", "Box Financing"], valueType: "percent" },
+        { id: KPI_IDS.oiConcentration, name: "Open interest concentration (pin risk)", strategies: ["Weekend Vol", "Parity Edge", "0DTE Overwrite"], valueType: "percent" },
+        { id: KPI_IDS.gammaWalls, name: "Gamma “walls” near strikes", strategies: ["0DTE Overwrite", "Parity Edge"], valueType: "price" },
+        { id: KPI_IDS.liquidityStress, name: "Liquidity stress (spreads/depth)", strategies: ["Expected Move", "Weekend Vol", "Range-Bound Premium", "Parity Edge", "0DTE Overwrite", "Box Financing"], valueType: "percent" },
+        { id: KPI_IDS.orderbookHealth, name: "Order book slope / staleness / depth resilience", strategies: ["Parity Edge"], valueType: "percent" },
       ],
     },
     {
       id: "strategy-health",
       title: "5. Strategy-Specific Health Metrics",
       kpis: [
-        { id: "condorCreditEm", name: "Condor Credit % of EM", strategies: ["Expected Move"], valueType: "percent" },
-        { id: "maxloss-credit", name: "Max Loss ÷ Expected Credit Ratio", strategies: ["Expected Move"], valueType: "ratio" },
-        { id: "delta-gamma-near-shorts", name: "Delta & Gamma exposure near short strikes", strategies: ["Expected Move", "Range-Bound Premium"], valueType: "price" },
-        { id: "portfolio-vega-theta", name: "Portfolio Vega & Theta exposure", strategies: ["Expected Move", "Carry Trade"], valueType: "price" },
-        { id: "pnl-vs-premium", name: "Position PnL vs Premium Collected", strategies: ["Range-Bound Premium"], valueType: "percent" },
-        { id: "reversion-half-life", name: "Reversion half-life of Δ (parity dev)", strategies: ["Parity Edge"], valueType: "price" },
-        { id: "edge-z", name: "Edge z-score", strategies: ["Parity Edge"], valueType: "sigma" },
-        { id: "box-financing-spread", name: "Box financing spread (r_imp – CoC)", strategies: ["Box Financing"], valueType: "bps" },
-        { id: "ex-div-early-ex", name: "Ex-dividend / early exercise risk", strategies: ["Box Financing"], valueType: "percent" },
+        { id: KPI_IDS.condorCreditEm, name: "Condor Credit % of EM", strategies: ["Expected Move"], valueType: "percent" },
+        { id: KPI_IDS.maxlossCredit, name: "Max Loss ÷ Expected Credit Ratio", strategies: ["Expected Move"], valueType: "ratio" },
+        { id: KPI_IDS.deltaGammaNearShorts, name: "Delta & Gamma exposure near short strikes", strategies: ["Expected Move", "Range-Bound Premium"], valueType: "price" },
+        { id: KPI_IDS.portfolioVegaTheta, name: "Portfolio Vega & Theta exposure", strategies: ["Expected Move", "Carry Trade"], valueType: "price" },
+        { id: KPI_IDS.pnlVsPremium, name: "Position PnL vs Premium Collected", strategies: ["Range-Bound Premium"], valueType: "percent" },
+        { id: KPI_IDS.reversionHalfLife, name: "Reversion half-life of Δ (parity dev)", strategies: ["Parity Edge"], valueType: "price" },
+        { id: KPI_IDS.edgeZ, name: "Edge z-score", strategies: ["Parity Edge"], valueType: "sigma" },
+        { id: KPI_IDS.boxFinancingSpread, name: "Box financing spread (r_imp – CoC)", strategies: ["Box Financing"], valueType: "bps" },
+        { id: KPI_IDS.exDivEarlyEx, name: "Ex-dividend / early exercise risk", strategies: ["Box Financing"], valueType: "percent" },
       ],
     },
     {
       id: "execution-costs",
       title: "6. Execution & Cost KPIs",
       kpis: [
-        { id: "fill-ratio", name: "Fill ratio", strategies: ["Parity Edge"], valueType: "percent" },
-        { id: "maker-taker", name: "Maker/taker rate & rebates", strategies: ["Parity Edge"], valueType: "percent" },
-        { id: "slippage", name: "Arrival price slippage (per leg, per kit)", strategies: ["Parity Edge", "Box Financing"], valueType: "bps" },
-        { id: "legging-risk", name: "Legging risk realized", strategies: ["Parity Edge"], valueType: "percent" },
-        { id: "time-to-fill", name: "Time-to-fill & reprice count", strategies: ["Parity Edge"], valueType: "ms" },
-        { id: "breakage", name: "Breakage rate", strategies: ["Parity Edge"], valueType: "percent" },
-        { id: "fees-spread", name: "Total fees & effective spread paid", strategies: ["Parity Edge", "Box Financing"], valueType: "bps" },
-        { id: "infra-errors", name: "Infra costs & error rates", strategies: ["Parity Edge", "Box Financing"], valueType: "percent" },
+        { id: KPI_IDS.fillRatio, name: "Fill ratio", strategies: ["Parity Edge"], valueType: "percent" },
+        { id: KPI_IDS.makerTaker, name: "Maker/taker rate & rebates", strategies: ["Parity Edge"], valueType: "percent" },
+        { id: KPI_IDS.slippage, name: "Arrival price slippage (per leg, per kit)", strategies: ["Parity Edge", "Box Financing"], valueType: "bps" },
+        { id: KPI_IDS.leggingRisk, name: "Legging risk realized", strategies: ["Parity Edge"], valueType: "percent" },
+        { id: KPI_IDS.timeToFill, name: "Time-to-fill & reprice count", strategies: ["Parity Edge"], valueType: "ms" },
+        { id: KPI_IDS.breakage, name: "Breakage rate", strategies: ["Parity Edge"], valueType: "percent" },
+        { id: KPI_IDS.feesSpread, name: "Total fees & effective spread paid", strategies: ["Parity Edge", "Box Financing"], valueType: "bps" },
+        { id: KPI_IDS.infraErrors, name: "Infra costs & error rates", strategies: ["Parity Edge", "Box Financing"], valueType: "percent" },
       ],
     },
     {
       id: "risk-pnl",
       title: "7. Risk, Capital & P&L",
       kpis: [
-        { id: "max-dd-calmar", name: "Max drawdown & Calmar ratio", strategies: ["Expected Move"], valueType: "percent" },
-        { id: "locked-vs-realized", name: "Locked vs realized edge (capture ratio)", strategies: ["Parity Edge"], valueType: "percent" },
-        { id: "stress-tests", name: "Stress tests (±Y% spot, liquidity haircut)", strategies: ["Parity Edge", "Expected Move"], valueType: "percent" },
-        { id: "capital-utilization", name: "Capital utilization / margin footprint (Reg-T vs PM)", strategies: ["Box Financing", "Parity Edge"], valueType: "percent" },
-        { id: "concentration-limits", name: "Concentration limits", strategies: ["Parity Edge", "Box Financing"], valueType: "percent" },
-        { id: "utilization-vs-caps", name: "Utilization vs daily/expiry risk caps", strategies: ["Carry Trade", "Parity Edge", "Box Financing"], valueType: "percent" },
+        { id: KPI_IDS.maxDdCalmar, name: "Max drawdown & Calmar ratio", strategies: ["Expected Move"], valueType: "percent" },
+        { id: KPI_IDS.lockedVsRealized, name: "Locked vs realized edge (capture ratio)", strategies: ["Parity Edge"], valueType: "percent" },
+        { id: KPI_IDS.stressTests, name: "Stress tests (±Y% spot, liquidity haircut)", strategies: ["Parity Edge", "Expected Move"], valueType: "percent" },
+        { id: KPI_IDS.capitalUtilization, name: "Capital utilization / margin footprint (Reg-T vs PM)", strategies: ["Box Financing", "Parity Edge"], valueType: "percent" },
+        { id: KPI_IDS.concentrationLimits, name: "Concentration limits", strategies: ["Parity Edge", "Box Financing"], valueType: "percent" },
+        { id: KPI_IDS.utilizationVsCaps, name: "Utilization vs daily/expiry risk caps", strategies: ["Carry Trade", "Parity Edge", "Box Financing"], valueType: "percent" },
       ],
     },
     {
       id: "ops-process",
       title: "8. Operational & Process Health",
       kpis: [
-        { id: "latency", name: "Latency (e2e ms)", strategies: ["Parity Edge"], valueType: "ms" },
-        { id: "data-freshness", name: "Data freshness (book staleness %)", strategies: ["Parity Edge"], valueType: "percent" },
-        { id: "uptime", name: "Automation uptime / kill-switch triggers", strategies: ["Parity Edge"], valueType: "percent" },
+        { id: KPI_IDS.latency, name: "Latency (e2e ms)", strategies: ["Parity Edge"], valueType: "ms" },
+        { id: KPI_IDS.dataFreshness, name: "Data freshness (book staleness %)", strategies: ["Parity Edge"], valueType: "percent" },
+        { id: KPI_IDS.uptime, name: "Automation uptime / kill-switch triggers", strategies: ["Parity Edge"], valueType: "percent" },
       ],
     },
     {
@@ -171,25 +174,25 @@ import type { BandBaseIds } from "../kpi/bands.base";
       title: "9. Client Portfolios",
       kpis: [
         {
-          id: "portfolio-client-alpha",
+          id: KPI_IDS.portfolioClientAlpha,
           name: "Client Alpha",
           strategies: [],        // cross-strategy view
           valueType: "text",     // mixed metrics in one card
         },
         {
-          id: "portfolio-client-bravo",
+          id: KPI_IDS.portfolioClientBravo,
           name: "Client Bravo",
           strategies: [],
           valueType: "text",
         },
         {
-          id: "portfolio-client-charlie",
+          id: KPI_IDS.portfolioClientCharlie,
           name: "Client Charlie",
           strategies: [],
           valueType: "text",
         },
         {
-          id: "portfolio-client-delta",
+          id: KPI_IDS.portfolioClientDelta,
           name: "Client Delta",
           strategies: [],
           valueType: "text",
@@ -207,8 +210,8 @@ export type KpiInfoDoc = {
   bullets?: string[];
 };
 
-export const KPI_INFO: Record<string, KpiInfoDoc> = {
-  ivr: {
+export const KPI_INFO: Partial<Record<KpiId, KpiInfoDoc>> = {
+  [KPI_IDS.ivr]: {
     title: "Implied Volatility Rank (IVR)",
     paragraphs: [
       "Definition: IVR ranks today’s implied volatility against the last 52 weeks (0–100). 0 = low end; 100 = high end.",
@@ -219,7 +222,7 @@ export const KPI_INFO: Record<string, KpiInfoDoc> = {
       "Note: IVR measures level, not skew or term; check those separately."
     ]
   },
-  gammaWalls: {
+  [KPI_IDS.gammaWalls]: {
     title: "Gamma “walls” near strikes",
     paragraphs: [
       "Definition: Concentrations of option gamma at specific strikes can act like “walls” that absorb or amplify price moves. We aggregate absolute gamma by strike (using OI × model gamma per contract) and highlight the largest nodes within a configurable ±window around spot.",
@@ -234,7 +237,7 @@ export const KPI_INFO: Record<string, KpiInfoDoc> = {
       "Risks: Walls can disappear as positions roll; slippage increases around gaps; don’t overfit to a single session."
     ]
   },
-  liquidityStress: {
+  [KPI_IDS.liquidityStress]: {
     title: "Liquidity stress (spreads/depth)",
     paragraphs: [
       "Definition: Composite 0–100% stress score that combines bid–ask spreads and top-of-book depth for the key BTC option expiries you care about (e.g. ~3D and ~30D). 0% = very healthy order books; 100% = highly stressed with wide spreads and thin depth.",
@@ -247,7 +250,7 @@ export const KPI_INFO: Record<string, KpiInfoDoc> = {
       "Caveats: Only reflects Deribit books around the chosen strikes; off-screen size, hidden orders and other venues are not visible, and conditions can change quickly around events."
     ]
   },
-  condorCreditEm: {
+  [KPI_IDS.condorCreditEm]: {
     title: "Condor Credit % of Expected Move",
     paragraphs: [
       "Definition: compares the net credit of a short BTC iron condor to the 30-day expected move (≈1σ) implied by options.",
@@ -285,9 +288,6 @@ export type StrategyKey =
   | "weekend"          // Weekend vol
   | "parity"           // Parity edge
   | "box";             // Box financing
-
-// Union of all KPI ids from the KPIS array above
-export type KpiId = (typeof KPIS)[number]["id"];
 
 export type StrategyMeta = {
   id: StrategyKey;
@@ -329,16 +329,16 @@ export const STRATEGY_CATALOG: Record<StrategyKey, StrategyMeta> = {
     ],
     // NOTE: these ids must exist in your KPIS list above
     primaryKpis: [
-      "em-ribbon",
-      "ivr",
-      "atm-iv",
-      "term-structure",
-      "skew",              // 25Δ RR
-      "rv-em-factor",      // RV ÷ EM
-      "funding",
-      "spot-perp-basis",
-      "gammaWalls",
-      "oi-concentration",
+      KPI_IDS.emRibbon,
+      KPI_IDS.ivr,
+      KPI_IDS.atmIv,
+      KPI_IDS.termStructure,
+      KPI_IDS.skew,              // 25Δ RR
+      KPI_IDS.rvEmFactor,        // RV ÷ EM
+      KPI_IDS.funding,
+      KPI_IDS.spotPerpBasis,
+      KPI_IDS.gammaWalls,
+      KPI_IDS.oiConcentration,
     ],
     secondaryKpis: [
       // add more if you like: "vol-of-vol", "iv-rv", ...
@@ -367,25 +367,25 @@ export const STRATEGY_CATALOG: Record<StrategyKey, StrategyMeta> = {
     id: "carry",
     name: "Carry Trade",
     short: "Funding/Basis",
-    primaryKpis: ["funding", "spot-perp-basis", "ivr", "term-structure"],
+    primaryKpis: [KPI_IDS.funding, KPI_IDS.spotPerpBasis, KPI_IDS.ivr, KPI_IDS.termStructure],
   },
   odte: {
     id: "odte",
     name: "0DTE Overwrite",
     short: "Intraday",
-    primaryKpis: ["em-ribbon", "rv-em-factor", "ivr", "skew"],
+    primaryKpis: [KPI_IDS.emRibbon, KPI_IDS.rvEmFactor, KPI_IDS.ivr, KPI_IDS.skew],
   },
   range: {
     id: "range",
     name: "Range-Bound Premium",
     short: "Neutral",
-    primaryKpis: ["ivr", "skew", "term-structure", "gammaWalls", "oi-concentration"],
+    primaryKpis: [KPI_IDS.ivr, KPI_IDS.skew, KPI_IDS.termStructure, KPI_IDS.gammaWalls, KPI_IDS.oiConcentration],
   },
   weekend: {
     id: "weekend",
     name: "Weekend Vol",
     short: "weekend",
-    primaryKpis: ["atm-iv", "term-structure", "funding"],
+    primaryKpis: [KPI_IDS.atmIv, KPI_IDS.termStructure, KPI_IDS.funding],
     actions: {
       overlayKey: "weekendOverlay", // any non-empty key enables the "Open Overlay" item
       // no scanKey, no settingsKey for now
@@ -395,13 +395,13 @@ export const STRATEGY_CATALOG: Record<StrategyKey, StrategyMeta> = {
     id: "parity",
     name: "Parity Edge",
     short: "Mispricing",
-    primaryKpis: ["iv-rv", "atm-iv", "term-structure"],
+    primaryKpis: [KPI_IDS.ivRv, KPI_IDS.atmIv, KPI_IDS.termStructure],
   },
   box: {
     id: "box",
     name: "Box Financing",
     short: "Rates",
-    primaryKpis: ["spread"], // bid–ask spread %, etc.
+    primaryKpis: [KPI_IDS.spread], // bid–ask spread %, etc.
   },
 };
   
