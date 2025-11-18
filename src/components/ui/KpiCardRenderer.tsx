@@ -261,7 +261,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       value = "—";
       meta = "error";
     } else if (condorState.data && condorState.data.pctOfEm != null) {
-      value = `${(condorState.data.pctOfEm * 100).toFixed(1)}%`;
+      value = `${(condorState.data.pctOfEm).toFixed(1)}%`;
       const expiryLabel = new Date(condorState.data.expiryTimestamp)
         .toLocaleDateString(locale, { month: "short", day: "numeric" });
       meta = `BTC 30D condor · ${expiryLabel}`;
