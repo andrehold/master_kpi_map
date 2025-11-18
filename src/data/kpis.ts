@@ -120,7 +120,7 @@ import type { BandBaseIds } from "../kpi/bands.base";
       id: "strategy-health",
       title: "5. Strategy-Specific Health Metrics",
       kpis: [
-        { id: "condor-credit-em", name: "Condor Credit % of EM", strategies: ["Expected Move"], valueType: "percent" },
+        { id: "condorCreditEm", name: "Condor Credit % of EM", strategies: ["Expected Move"], valueType: "percent" },
         { id: "maxloss-credit", name: "Max Loss ÷ Expected Credit Ratio", strategies: ["Expected Move"], valueType: "ratio" },
         { id: "delta-gamma-near-shorts", name: "Delta & Gamma exposure near short strikes", strategies: ["Expected Move", "Range-Bound Premium"], valueType: "price" },
         { id: "portfolio-vega-theta", name: "Portfolio Vega & Theta exposure", strategies: ["Expected Move", "Carry Trade"], valueType: "price" },
@@ -245,6 +245,18 @@ export const KPI_INFO: Record<string, KpiInfoDoc> = {
       "How to read: <30% → healthy liquidity; 30–60% → caution (reduce clip, be patient with limits); >60% → stressed—avoid pushing new size or complex boxes/condors.",
       "Best use: Combine with OI concentration, Gamma walls and Funding/Basis to decide whether to deploy a signal now or wait until liquidity normalises.",
       "Caveats: Only reflects Deribit books around the chosen strikes; off-screen size, hidden orders and other venues are not visible, and conditions can change quickly around events."
+    ]
+  },
+  condorCreditEm: {
+    title: "Condor Credit % of Expected Move",
+    paragraphs: [
+      "Definition: compares the net credit of a short BTC iron condor to the 30-day expected move (≈1σ) implied by options.",
+      "Interpretation: the higher the percentage, the more you are paid per unit of expected movement; very low values usually mean poor risk/reward for a defined-risk short-vol structure."
+    ],
+    bullets: [
+      "Rule of thumb for BTC 30D: <20% = weak; 20–25% = borderline; 25–35% = healthy; ≥40% = very rich but double-check RV/EM, skew and event risk.",
+      "Here we use BTC options, ~30-calendar-day expiries and a symmetric condor around spot; EM is the 1σ move based on DVOL.",
+      "Use alongside IVR, RV/EM, liquidity and OI concentration when deciding whether to deploy or scale condor risk."
     ]
   },
 };

@@ -172,7 +172,7 @@
       }
     },
   
-    "condor_credit_pct_of_em": {
+    "condorCreditEm": {
       "title": "Condor Credit (% of EM)",
       "description": "Credit relative to expected move gauges risk/reward.",
       "bands": {

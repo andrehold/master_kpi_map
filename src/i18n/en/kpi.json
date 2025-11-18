@@ -27,7 +27,7 @@
       "liquidityStress": "Spreads/depth slippage signals; execution risk under stress.",
       "orderbook-health": "Order book slope/staleness/resiliency; spoofing/refresh risk.",
   
-      "condor-credit-em": "Net condor credit as % of expected-move width.",
+      "condorCreditEm": "Net condor credit as % of expected-move width.",
       "maxloss-credit": "Max loss divided by expected credit; entry risk-reward ratio.",
       "delta-gamma-near-shorts": "Delta/Gamma exposure near short strikes; shock sensitivity.",
       "portfolio-vega-theta": "Aggregate vega and theta across positions; carry vs convexity.",

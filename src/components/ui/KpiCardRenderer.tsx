@@ -248,11 +248,12 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     );
   }
 
-  if (kpi.id === "condor-credit-em") {
+  if (kpi.id === "condorCreditEm") {
     const condorState = context.condor;
     let value = samples[kpi.id];
     let meta: string | undefined;
     let badge: string | null = null;
+    let guidanceValue: number | null = null;
 
     if (condorState.loading) {
       value = "…";
@@ -261,20 +262,39 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       value = "—";
       meta = "error";
     } else if (condorState.data && condorState.data.pctOfEm != null) {
-      value = `${(condorState.data.pctOfEm).toFixed(1)}%`;
+      const pct = condorState.data.pctOfEm; // already in %
+      value = `${pct.toFixed(1)}%`;
+
       const expiryLabel = new Date(condorState.data.expiryTimestamp)
         .toLocaleDateString(locale, { month: "short", day: "numeric" });
+
       meta = `BTC 30D condor · ${expiryLabel}`;
-      if (condorState.data.condorCreditUsd != null && condorState.data.emUsd != null) {
-        badge = `Credit $${condorState.data.condorCreditUsd.toFixed(2)} • EM $${condorState.data.emUsd.toFixed(2)}`;
+
+      if (
+        condorState.data.condorCreditUsd != null &&
+        condorState.data.emUsd != null
+      ) {
+        badge = `Credit $${condorState.data.condorCreditUsd.toFixed(
+          2
+        )} • EM $${condorState.data.emUsd.toFixed(2)}`;
       }
+
+      guidanceValue = pct; // feed % into the bands
     } else {
       value = "—";
       meta = "Awaiting data";
     }
 
-    return renderCard({ value, meta, extraBadge: badge });
+    return renderCard({
+      value,
+      meta,
+      extraBadge: badge,
+      // This key links into KPIS / BAND_BASE via kpis.ts
+      infoKey: "condorCreditEm",
+      guidanceValue,
+    });
   }
+
 
   if (kpi.id === "spot-perp-basis") {
     const { loading, error, pct, abs, ts } = context.basis;

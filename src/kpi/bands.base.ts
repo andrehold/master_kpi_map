@@ -246,8 +246,8 @@ export const BAND_BASE: Record<string, BandBaseSet> = {
   /* -----------------------------------------------------------------------
    * 5) Strategy-Specific Health
    * --------------------------------------------------------------------- */
-  condor_credit_pct_of_em: {
-    id: "condor_credit_pct_of_em",
+  condorCreditEm: {
+    id: "condorCreditEm",
     valueScale: "percent",
     hasBar: true,
     thresholds: [
