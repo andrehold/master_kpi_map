@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import React, { type  ComponentProps } from "react";
 import KpiCard from "./KpiCard";
 import ExpectedMoveRibbonCard from "../ExpectedMoveRibbonCard";
 import GammaWallsCard from "./GammaWallsCard";
@@ -13,6 +13,7 @@ import type { useTermStructureKink } from "../../hooks/useTermStructureKink";
 import type { useCondorCreditPctOfEM } from "../../hooks/useCondorCreditPctOfEM";
 import type { useIVTermStructure } from "../../hooks/useIVTermStructure";
 import { KPI_IDS } from "../../kpi/kpiIds";
+import { KpiMiniTable } from "./KpiMiniTable"
 
 type SkewState = ReturnType<typeof useDeribitSkew25D>;
 type KinkData = ReturnType<typeof useTermStructureKink>["data"];
@@ -144,38 +145,84 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
   }
 
   if (kpi.id === KPI_IDS.skew25dRr) {
-    return (
-      <>
-        {context.skew.entries.map(({ key, label, state }) => {
-          let value = samples[kpi.id];
-          let meta: string | undefined;
-          let badge: string | null = null;
-
-          if (state?.skew != null) {
-            const vp = state.skew * 100;
-            const sign = vp >= 0 ? "+" : "";
-            value = `${sign}${vp.toFixed(2)}`;
-            meta = state.expiryLabel ? `${label} · ${state.expiryLabel}` : label;
-            if (state.ivC25 != null && state.ivP25 != null) {
-              badge = `C25 ${(state.ivC25 * 100).toFixed(1)} • P25 ${(state.ivP25 * 100).toFixed(1)}`;
-            } else {
-              badge = "Interpolating…";
-            }
-          } else if (state?.loading) {
-            value = "…";
-            meta = `${label} · loading`;
-          } else if (state?.error) {
-            value = "—";
-            meta = `${label} · error`;
-          } else {
-            meta = label;
-          }
-
-          return renderCard({ value, meta, extraBadge: badge }, `${kpi.id}-${key}`);
-        })}
-      </>
+    const entries = context.skew.entries;
+  
+    // Prefer 30D as the primary tenor, otherwise first available
+    const primary = entries.find((e) => e.key === "30d") ?? entries[0];
+  
+    let value: CardProps["value"] = samples[kpi.id];
+    let meta: string | undefined;
+    let extraBadge: string | null = null;
+  
+    if (primary) {
+      const { label, state } = primary;
+  
+      if (state?.skew != null) {
+        const vp = state.skew * 100;
+        const sign = vp >= 0 ? "+" : "";
+        value = `${sign}${vp.toFixed(2)}`;
+        meta = state.expiryLabel ? `${label} · ${state.expiryLabel}` : label;
+  
+        if (state.ivC25 != null && state.ivP25 != null) {
+          extraBadge = `C25 ${(state.ivC25 * 100).toFixed(1)} • P25 ${(state.ivP25 * 100).toFixed(1)}`;
+        } else {
+          extraBadge = "Interpolating…";
+        }
+      } else if (state?.loading) {
+        value = "…";
+        meta = `${label} · loading`;
+      } else if (state?.error) {
+        value = "—";
+        meta = `${label} · error`;
+      } else {
+        meta = label;
+      }
+    } else {
+      value = "—";
+      meta = "Awaiting data";
+    }
+  
+    // Build table rows for all tenors
+    const rows = entries.map(({ key, label, state }) => {
+      const id = `${kpi.id}-${key}`;
+      const tenorLabel = state?.expiryLabel
+        ? `${label} · ${state.expiryLabel}`
+        : label;
+  
+      let c25 = "—";
+      let p25 = "—";
+      let rr = "—";
+  
+      if (state?.loading && !state.skew) {
+        c25 = p25 = rr = "…";
+      } else if (state?.error) {
+        c25 = p25 = rr = "err";
+      } else if (state?.skew != null) {
+        rr = `${state.skew >= 0 ? "+" : ""}${(state.skew * 100).toFixed(2)}`;
+        if (state.ivC25 != null) c25 = `${(state.ivC25 * 100).toFixed(1)}%`;
+        if (state.ivP25 != null) p25 = `${(state.ivP25 * 100).toFixed(1)}%`;
+      }
+  
+      return { id, label: tenorLabel, c25, p25, rr };
+    });
+  
+    const footer = (
+      <KpiMiniTable
+        title="Tenors"
+        rows={rows}
+        getKey={(r) => r.id}
+        columns={[
+          { id: "label", header: "Tenor", render: (r) => r.label },
+          { id: "c25", header: "C25", align: "right", render: (r) => r.c25 },
+          { id: "p25", header: "P25", align: "right", render: (r) => r.p25 },
+          { id: "rr",  header: "RR",  align: "right", render: (r) => r.rr },
+        ]}
+      />
     );
+  
+    return renderCard({ value, meta, extraBadge, footer });
   }
+  
 
   if (kpi.id === KPI_IDS.tsKink) {
     const { loading, error, data } = context.skew.kink;
