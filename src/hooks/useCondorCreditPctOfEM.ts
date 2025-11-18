@@ -193,9 +193,9 @@ async function fetchCondorCreditPctOfEM(
 
   // 6) Condor: shorts at ±1·EM, longs at ±2·EM
   const shortPutTarget = indexPrice - emUsd;
-  const longPutTarget = indexPrice - 2 * emUsd;
+  const longPutTarget = indexPrice - 1.5 * emUsd;
   const shortCallTarget = indexPrice + emUsd;
-  const longCallTarget = indexPrice + 2 * emUsd;
+  const longCallTarget = indexPrice + 1.5 * emUsd;
 
   const longPutInst = pickNearestInstrumentByType(chain, "put", longPutTarget);
   const shortPutInst = pickNearestInstrumentByType(chain, "put", shortPutTarget);
