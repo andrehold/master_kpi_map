@@ -153,7 +153,7 @@
       }
     },
 
-    "liquidity_stress_composite": {
+    "liquidityStress": {
       "title": "Liquidity Stress (spreads & depth, 0–100)",
       "description": "Composite stress score combining bid–ask spreads and top-of-book depth across your key expiries. 0% = very healthy, 100% = extremely stressed.",
       "bands": {

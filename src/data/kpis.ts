@@ -52,7 +52,7 @@ export type { KpiId };
     { id: KPI_IDS.eventWindow, title: "Macro Event Window", guidanceKey: "macro_event_tminus_days" },
     { id: KPI_IDS.spread, title: "Bid–Ask Spread %", valueType: "percent", guidanceKey: "bid_ask_spread_pct" },
     { id: KPI_IDS.tobDepth, title: "TOB Depth", guidanceKey: "tob_depth_contracts" },
-    { id: KPI_IDS.liquidityStress, title: "Liquidity Stress (spreads/depth)", valueType: "percent", guidanceKey: "liquidity_stress_composite" },
+    { id: KPI_IDS.liquidityStress, title: "Liquidity Stress (spreads/depth)", valueType: "percent", guidanceKey: "liquidityStress" },
     { id: KPI_IDS.oiConcentration, title: "OI Concentration %", valueType: "percent", guidanceKey: "oi_concentration_pct" },
     { id: KPI_IDS.condorCredit, title: "Condor Credit % of EM", valueType: "percent", guidanceKey: "condor_credit_pct_of_em" },
     { id: KPI_IDS.maxlossCredit, title: "Max Loss ÷ Credit", valueType: "ratio", guidanceKey: "maxloss_credit_ratio" },
