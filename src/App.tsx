@@ -21,6 +21,8 @@ import { useDeribitBasis } from "./hooks/useDeribitBasis";
 import { useCondorCreditPctOfEM } from "./hooks/useCondorCreditPctOfEM";
 import { useOpenInterestConcentration } from "./hooks/useOpenInterestConcentration";
 import { useExpectedMove } from "./hooks/useExpectedMove";
+import { useGammaWalls } from "./hooks/useGammaWalls";
+
 import type { ExpectedMovePoint } from "./hooks/useExpectedMove";
 import type { IVPoint } from "./lib/atmIv";
 
@@ -95,6 +97,13 @@ export default function MasterKPIMapDemo() {
   const { current8h, avg7d8h, zScore, updatedAt: fundingTs, loading: fundingLoading, error: fundingError, refresh: refreshFunding } =
     useDeribitFunding("BTC-PERPETUAL");
 
+  const gammaWalls = useGammaWalls({
+    currency: "BTC",
+    windowPct: 0.10,
+    topN: 5,     // so gw.top has 5 entries for the mini table
+    pollMs: 0,   // no polling, same as before
+  });
+
   const {
     data: condorData,
     loading: condorLoading,
@@ -111,6 +120,7 @@ export default function MasterKPIMapDemo() {
     windowPct: 0.25,
     pollMs: 0,
   });
+
   const expectedMoveState = useExpectedMove({
     currency: "BTC",
     horizons: EXPECTED_MOVE_TENORS,
@@ -259,6 +269,7 @@ export default function MasterKPIMapDemo() {
       ts: basisTs ?? null,
     },
     oiConcentration: oiConcentrationState,
+    gammaWalls: gammaWalls,
   };
 
   return (

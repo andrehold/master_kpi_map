@@ -1,6 +1,5 @@
 import { type ComponentProps } from "react";
 import KpiCard from "./KpiCard";
-import GammaWallsCard from "./GammaWallsCard";
 import LiquidityStressCard from "./LiquidityStressCard";
 import ClientPortfolioCard from "./ClientPortfolioCard";
 
@@ -11,6 +10,7 @@ import type { useTermStructureKink } from "../../hooks/useTermStructureKink";
 import type { useCondorCreditPctOfEM } from "../../hooks/useCondorCreditPctOfEM";
 import type { useIVTermStructure } from "../../hooks/useIVTermStructure";
 import type { useOpenInterestConcentration } from "../../hooks/useOpenInterestConcentration";
+import type { useGammaWalls } from "../../hooks/useGammaWalls";
 
 import { KPI_IDS } from "../../kpi/kpiIds";
 import { KpiMiniTable } from "./KpiMiniTable"
@@ -20,6 +20,7 @@ type KinkData = ReturnType<typeof useTermStructureKink>["data"];
 type CondorState = ReturnType<typeof useCondorCreditPctOfEM>;
 type TermStructureData = ReturnType<typeof useIVTermStructure>["data"];
 type OIConcentrationState = ReturnType<typeof useOpenInterestConcentration>;
+type GammaWallsState = ReturnType<typeof useGammaWalls>;
 
 export type KpiCardRendererContext = {
   samples: Samples;
@@ -71,6 +72,7 @@ export type KpiCardRendererContext = {
     ts?: number | null;
   };
   oiConcentration: OIConcentrationState;
+  gammaWalls: GammaWallsState;
 };
 
 type Props = {
@@ -451,8 +453,101 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
   }
 
   if (kpi.id === KPI_IDS.gammaWalls) {
-    return <GammaWallsCard key={kpi.id} kpi={kpi} />;
+    const gw = context.gammaWalls;
+
+    let value: CardProps["value"] = samples[kpi.id];
+    let meta: string | undefined;
+    let extraBadge: string | null = null;
+
+    if (!gw) {
+      value = "—";
+      meta = "Gamma walls unavailable";
+    } else if (gw.loading) {
+      value = "…";
+      meta = "loading";
+    } else if (gw.error) {
+      value = "—";
+      meta = "error";
+    } else if (gw.top && gw.top.length > 0) {
+      const top = gw.top[0];
+      value = `${fmtK(top.strike)} • ${fmtUsdShort(top.gex_abs_usd)}`;
+      meta = gw.indexPrice
+        ? `Near S ${Math.round(gw.indexPrice)}`
+        : "Net |GEX| near spot";
+
+      const others = gw.top
+        .slice(1)
+        .map((t: any) => fmtK(t.strike))
+        .join(" • ");
+      extraBadge = others ? `Also: ${others}` : null;
+    } else {
+      value = "—";
+      meta = "Awaiting data";
+    }
+
+    type GwRow = {
+      id: string;
+      strike: string;
+      size: string;
+    };
+
+    let footer: CardProps["footer"];
+
+    if (!gw) {
+      footer = (
+        <div className="text-xs text-[var(--fg-muted)]">
+          Gamma walls unavailable
+        </div>
+      );
+    } else if (gw.error) {
+      footer = (
+        <div className="rounded-md border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-400">
+          Failed to load: {String(gw.error)}
+        </div>
+      );
+    } else if (gw.top && gw.top.length > 0) {
+      // top-5 walls by |GEX|, as provided by the hook
+      const topWalls = gw.top.slice(0, 5);
+
+      const rows: GwRow[] = topWalls.map((wall: any, idx: number) => ({
+        id: `wall-${wall.strike}-${idx}`,
+        strike: fmtK(wall.strike),
+        size: fmtUsdShort(wall.gex_abs_usd),
+      }));
+
+      footer = (
+        <KpiMiniTable<GwRow>
+          title="Top γ walls"
+          rows={rows}
+          getKey={(r) => r.id}
+          columns={[
+            { id: "strike", header: "Strike", render: (r) => r.strike },
+            {
+              id: "size",
+              header: "|GEX| (USD)",
+              align: "right",
+              render: (r) => r.size,
+            },
+          ]}
+        />
+      );
+    } else {
+      footer = (
+        <div className="text-xs text-[var(--fg-muted)]">
+          No gamma walls in scope
+        </div>
+      );
+    }
+
+    return renderCard({
+      value,
+      meta,
+      extraBadge,
+      footer,
+      infoKey: kpi.id,
+    });
   }
+
 
   if (kpi.id === KPI_IDS.oiConcentration) {
     const { oiConcentration } = context;
@@ -667,4 +762,17 @@ function formatEmPercent(value: number | null) {
   const pct = value * 100;
   const decimals = Math.abs(pct) >= 10 ? 1 : 2;
   return `±${pct.toFixed(decimals)}%`;
+}
+
+function fmtK(x: number) {
+  return x >= 1000 ? `${Math.round(x / 1000)}k` : `${Math.round(x)}`;
+}
+
+function fmtUsdShort(n: number) {
+  const a = Math.abs(n);
+  if (a >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+  if (a >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+  if (a >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+  if (a >= 1e3) return `$${(n / 1e3).toFixed(0)}k`;
+  return `$${n.toFixed(0)}`;
 }
