@@ -20,6 +20,9 @@ import { useDeribitFunding } from "./hooks/useDeribitFunding";
 import { useDeribitBasis } from "./hooks/useDeribitBasis";
 import { useCondorCreditPctOfEM } from "./hooks/useCondorCreditPctOfEM";
 import { useOpenInterestConcentration } from "./hooks/useOpenInterestConcentration";
+import { useExpectedMove } from "./hooks/useExpectedMove";
+import type { ExpectedMovePoint } from "./hooks/useExpectedMove";
+import type { IVPoint } from "./lib/atmIv";
 
 // Guidance UI
 import { GuidanceSwitch } from "./components/ui/Guidance";
@@ -108,6 +111,14 @@ export default function MasterKPIMapDemo() {
     windowPct: 0.25,
     pollMs: 0,
   });
+  const expectedMoveState = useExpectedMove({
+    currency: "BTC",
+    horizons: EXPECTED_MOVE_TENORS,
+  });
+  const expectedMoveRows = useMemo(
+    () => buildExpectedMoveRows(expectedMoveState.em, expectedMoveState.points),
+    [expectedMoveState.em, expectedMoveState.points]
+  );
 
   // Generic overlay/settings state
   const [overlayStrategy, setOverlayStrategy] = useState<StrategyKey | null>(null);
@@ -178,15 +189,17 @@ export default function MasterKPIMapDemo() {
       skew7.refresh?.(); await new Promise(r => setTimeout(r, 150));
       skew30.refresh?.(); await new Promise(r => setTimeout(r, 150));
       skew60.refresh?.();
+      await new Promise(r => setTimeout(r, 150));
+      try { await expectedMoveState.reload(); } catch {}
     } finally {
       setIsUpdating(false);
     }
   }
 
   const errorText =
-    (dvolError || ivrError || tsError || skewErrorAny || skError || rvError || indexError || fundingError) || null;
+    (dvolError || ivrError || tsError || skewErrorAny || skError || rvError || indexError || fundingError || expectedMoveState.error) || null;
 
-  const loadingAny = dvolLoading || ivrLoading || tsLoading || skewLoadingAny || skLoading || fundingLoading;
+  const loadingAny = dvolLoading || ivrLoading || tsLoading || skewLoadingAny || skLoading || fundingLoading || expectedMoveState.loading;
 
   const kpiCardContext: KpiCardRendererContext = {
     samples,
@@ -226,6 +239,12 @@ export default function MasterKPIMapDemo() {
       current8h,
       avg7d8h,
       ts: fundingTs ?? null,
+    },
+    expectedMove: {
+      loading: expectedMoveState.loading,
+      error: expectedMoveState.error ?? null,
+      asOf: expectedMoveState.asOf,
+      rows: expectedMoveRows,
     },
     condor: {
       data: condorData,
@@ -324,4 +343,38 @@ export default function MasterKPIMapDemo() {
       </div>
     </ToastProvider>
   );
+}
+
+type ExpectedMoveRow = {
+  days: number;
+  expiryTs: number | null;
+  abs: number | null;
+  pct: number | null;
+};
+
+const EXPECTED_MOVE_TENORS: number[] = [1, 7, 30, 90];
+
+function buildExpectedMoveRows(emPoints?: ExpectedMovePoint[], ivPoints?: IVPoint[]): ExpectedMoveRow[] {
+  if (!emPoints?.length) return [];
+  const points = [...(ivPoints ?? [])].sort((a, b) => a.dteDays - b.dteDays);
+  return emPoints.map((row) => ({
+    days: row.days,
+    expiryTs: nearestExpiryTs(points, row.days),
+    abs: row.abs ?? null,
+    pct: row.pct ?? null,
+  }));
+}
+
+function nearestExpiryTs(points: IVPoint[], days: number): number | null {
+  if (!points.length) return null;
+  let bestIndex = 0;
+  let bestDiff = Math.abs(points[0].dteDays - days);
+  for (let i = 1; i < points.length; i++) {
+    const diff = Math.abs(points[i].dteDays - days);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestIndex = i;
+    }
+  }
+  return points[bestIndex]?.expiryTs ?? null;
 }

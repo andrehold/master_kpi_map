@@ -1,6 +1,5 @@
 import { type ComponentProps } from "react";
 import KpiCard from "./KpiCard";
-import ExpectedMoveRibbonCard from "../ExpectedMoveRibbonCard";
 import GammaWallsCard from "./GammaWallsCard";
 import LiquidityStressCard from "./LiquidityStressCard";
 import ClientPortfolioCard from "./ClientPortfolioCard";
@@ -57,6 +56,12 @@ export type KpiCardRendererContext = {
     avg7d8h?: number | null;
     ts?: number | null;
   };
+  expectedMove?: {
+    loading: boolean;
+    error: string | null;
+    asOf: number | null;
+    rows: ExpectedMoveRow[];
+  };
   condor: CondorState;
   basis: {
     loading: boolean;
@@ -74,6 +79,15 @@ type Props = {
 };
 
 type CardProps = ComponentProps<typeof KpiCard>;
+
+const EXPECTED_MOVE_PRIMARY_TENOR = 30;
+
+type ExpectedMoveRow = {
+  days: number;
+  expiryTs: number | null;
+  abs: number | null;
+  pct: number | null;
+};
 
 export default function KpiCardRenderer({ kpi, context }: Props) {
   const { samples, locale } = context;
@@ -292,11 +306,72 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
   }
 
   if (kpi.id === KPI_IDS.emRibbon) {
-    return (
-      <div key={kpi.id} className="col-span-full">
-        <ExpectedMoveRibbonCard currency="BTC" />
-      </div>
+    const emContext = context.expectedMove;
+    const rows = emContext?.rows ?? [];
+    const sortedRows = [...rows].sort((a, b) => a.days - b.days);
+    const primaryRow = sortedRows.find((row) => row.days === EXPECTED_MOVE_PRIMARY_TENOR);
+
+    let value: CardProps["value"] = samples[kpi.id];
+    let meta: string | undefined;
+    let extraBadge: string | null = null;
+
+    if (!emContext) {
+      value = "—";
+      meta = "Expected Move unavailable";
+    } else if (emContext.loading && !primaryRow) {
+      value = "…";
+      meta = "loading";
+    } else if (emContext.error) {
+      value = "—";
+      meta = "error";
+    } else if (primaryRow) {
+      value = formatEmAbsolute(primaryRow.abs, locale) ?? "—";
+      meta = `Exp ${formatExpiryLabel(primaryRow.expiryTs, locale)} · ${formatTenorLabel(primaryRow.days)}`;
+      const pctBadge = formatEmPercent(primaryRow.pct);
+      if (emContext.loading) {
+        extraBadge = pctBadge ? `${pctBadge} · updating…` : "Refreshing…";
+      } else {
+        extraBadge = pctBadge;
+      }
+    } else {
+      value = "—";
+      meta = "Awaiting data";
+    }
+
+    type EmTableRow = {
+      id: string;
+      tenor: string;
+      expiry: string;
+      abs: string;
+      pct: string;
+    };
+
+    const tableRows: EmTableRow[] = sortedRows
+      .filter((row) => row.days !== EXPECTED_MOVE_PRIMARY_TENOR)
+      .map((row) => ({
+        id: `${kpi.id}-${row.days}`,
+        tenor: formatTenorLabel(row.days),
+        expiry: formatExpiryLabel(row.expiryTs, locale),
+        abs: formatEmAbsolute(row.abs, locale) ?? "—",
+        pct: formatEmPercent(row.pct) ?? "—",
+      }));
+
+    const footer = (
+      <KpiMiniTable<EmTableRow>
+        title="Additional tenors"
+        rows={tableRows}
+        getKey={(r) => r.id}
+        emptyLabel="Waiting for data"
+        columns={[
+          { id: "tenor", header: "Tenor", render: (r) => r.tenor },
+          { id: "expiry", header: "Expiry", align: "right", render: (r) => r.expiry },
+          { id: "abs", header: "±$ Move", align: "right", render: (r) => r.abs },
+          { id: "pct", header: "±%", align: "right", render: (r) => r.pct },
+        ]}
+      />
     );
+
+    return renderCard({ value, meta, extraBadge, footer });
   }
 
   if (kpi.id === KPI_IDS.condorCreditEm) {
@@ -562,4 +637,34 @@ function formatNumber(x?: number) {
   if (Math.abs(x) >= 1_000_000) return (x / 1_000_000).toFixed(2) + "M";
   if (Math.abs(x) >= 1_000) return (x / 1_000).toFixed(2) + "k";
   return x.toFixed(2);
+}
+
+function formatTenorLabel(days: number) {
+  if (days === 1) return "1D";
+  if (days === 7) return "1W";
+  if (days === 30) return "30D";
+  if (days === 90) return "3M";
+  if (days % 30 === 0) return `${Math.round(days / 30)}M`;
+  return `${days}D`;
+}
+
+function formatExpiryLabel(expiryTs: number | null, locale: string) {
+  if (expiryTs == null || !isFinite(expiryTs)) return "—";
+  return new Date(expiryTs).toLocaleDateString(locale, { month: "short", day: "numeric" });
+}
+
+function formatEmAbsolute(value: number | null, locale: string) {
+  if (value == null || !isFinite(value)) return null;
+  const magnitude = Math.abs(value);
+  const formatter = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: magnitude >= 1000 ? 0 : magnitude >= 100 ? 1 : 2,
+  });
+  return `±$${formatter.format(value)}`;
+}
+
+function formatEmPercent(value: number | null) {
+  if (value == null || !isFinite(value)) return null;
+  const pct = value * 100;
+  const decimals = Math.abs(pct) >= 10 ? 1 : 2;
+  return `±${pct.toFixed(decimals)}%`;
 }
