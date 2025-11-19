@@ -1,8 +1,7 @@
-import React, { type  ComponentProps } from "react";
+import { type  ComponentProps } from "react";
 import KpiCard from "./KpiCard";
 import ExpectedMoveRibbonCard from "../ExpectedMoveRibbonCard";
 import GammaWallsCard from "./GammaWallsCard";
-import OIConcentrationCard from "./OIConcentrationCard";
 import LiquidityStressCard from "./LiquidityStressCard";
 import ClientPortfolioCard from "./ClientPortfolioCard";
 
@@ -12,6 +11,8 @@ import type { useDeribitSkew25D } from "../../hooks/useDeribitSkew25D";
 import type { useTermStructureKink } from "../../hooks/useTermStructureKink";
 import type { useCondorCreditPctOfEM } from "../../hooks/useCondorCreditPctOfEM";
 import type { useIVTermStructure } from "../../hooks/useIVTermStructure";
+import type { useOpenInterestConcentration } from "../../hooks/useOpenInterestConcentration";
+
 import { KPI_IDS } from "../../kpi/kpiIds";
 import { KpiMiniTable } from "./KpiMiniTable"
 
@@ -19,6 +20,7 @@ type SkewState = ReturnType<typeof useDeribitSkew25D>;
 type KinkData = ReturnType<typeof useTermStructureKink>["data"];
 type CondorState = ReturnType<typeof useCondorCreditPctOfEM>;
 type TermStructureData = ReturnType<typeof useIVTermStructure>["data"];
+type OIConcentrationState = ReturnType<typeof useOpenInterestConcentration>;
 
 export type KpiCardRendererContext = {
   samples: Samples;
@@ -63,6 +65,7 @@ export type KpiCardRendererContext = {
     abs?: number | null;
     ts?: number | null;
   };
+  oiConcentration: OIConcentrationState;
 };
 
 type Props = {
@@ -376,19 +379,137 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     return <GammaWallsCard key={kpi.id} kpi={kpi} />;
   }
 
-  if (kpi.id === KPI_IDS.oiConcentration) {
-    return (
-      <OIConcentrationCard
-        key={kpi.id}
-        kpi={kpi}
-        currency="BTC"
-        topN={3}
-        expiry="all"
-        windowPct={0.25}
-        pollMs={0}
-      />
-    );
+  if (kpi.id === "oi-concentration") {
+    const { oiConcentration } = context;
+    const { loading, error, metrics } = oiConcentration;
+
+    const topN = 3;
+    const windowPct = 0.25;
+
+    let value: CardProps["value"] = samples[kpi.id];
+
+    if (loading && !metrics) {
+      value = "…";
+    } else if (error) {
+      value = "—";
+    } else if (metrics?.topNShare != null) {
+      value = `${(metrics.topNShare * 100).toFixed(1)}%`;
+    }
+
+    const meta = (() => {
+      if (loading && !metrics) return "loading";
+      if (error) return "error";
+      if (!metrics) return "Awaiting data";
+
+      const scope =
+        metrics.expiryScope === "front"
+          ? `Front expiry${
+              metrics.frontExpiryTs
+                ? ` · ${new Date(metrics.frontExpiryTs).toLocaleDateString()}`
+                : ""
+            }`
+          : "All expiries";
+
+      const s = metrics.indexPrice ? ` · S ${Math.round(metrics.indexPrice)}` : "";
+      return `${scope}${s} · n=${metrics.includedCount}`;
+    })();
+
+    const win = typeof windowPct === "number" && windowPct > 0
+      ? ` • Window ±${Math.round(windowPct * 100)}%`
+      : "";
+    const extraBadge = `Top ${topN}${win}`;
+
+    let footer: CardProps["footer"];
+
+    if (error) {
+      footer = (
+        <div className="rounded-md border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-400">
+          Failed to load: {String(error)}
+        </div>
+      );
+    } else {
+      const list = (metrics?.rankedStrikes ?? []).slice(0, 6);
+
+      if (!list.length) {
+        footer = (
+          <div className="text-xs text-[var(--fg-muted)]">
+            No strikes in scope
+          </div>
+        );
+      } else {
+        const strikeRows = list.map((b) => {
+          const share =
+            metrics && metrics.totalOi > 0 ? b.oi / metrics.totalOi : 0;
+          return {
+            id: String(b.strike),
+            strikeLabel: `$${Math.round(b.strike)}`,
+            share: `${(share * 100).toFixed(1)}%`,
+          };
+        });
+
+        const totalRows = [
+          {
+            id: "total-oi",
+            label: "Total OI",
+            value:
+              metrics?.totalOi != null && isFinite(metrics.totalOi)
+                ? `${formatNumber(metrics.totalOi)} BTC`
+                : "—",
+          },
+          {
+            id: "top-1",
+            label: "Top-1",
+            value:
+              metrics?.top1Share != null
+                ? `${(metrics.top1Share * 100).toFixed(1)}%`
+                : "—",
+          },
+          {
+            id: "hhi",
+            label: "HHI",
+            value:
+              metrics?.hhi != null
+                ? `${(metrics.hhi * 100).toFixed(1)}%`
+                : "—",
+          },
+        ];
+
+        footer = (
+          <div className="flex items-start justify-between gap-8">
+            <KpiMiniTable
+              title="Top strikes"
+              rows={strikeRows}
+              getKey={(r) => r.id}
+              columns={[
+                { id: "strike", header: "Strike", render: (r) => r.strikeLabel },
+                { id: "share", header: "Share", align: "right", render: (r) => r.share },
+              ]}
+            />
+            <KpiMiniTable
+              title="Totals"
+              rows={totalRows}
+              getKey={(r) => r.id}
+              columns={[
+                { id: "label", header: "", render: (r) => r.label },
+                { id: "value", header: "", align: "right", render: (r) => r.value },
+              ]}
+            />
+          </div>
+        );
+      }
+    }
+
+    return renderCard({
+      value,
+      meta,
+      extraBadge,
+      footer,
+      infoKey: kpi.id,
+      guidanceValue:
+        metrics?.topNShare != null ? metrics.topNShare * 100 : null,
+    });
   }
+
 
   if (kpi.id === KPI_IDS.liquidityStress) {
     return (
@@ -416,3 +537,10 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
   return renderCard();
 }
 
+function formatNumber(x?: number) {
+  if (x == null || !isFinite(x)) return "—";
+  if (Math.abs(x) >= 1_000_000_000) return (x / 1_000_000_000).toFixed(2) + "B";
+  if (Math.abs(x) >= 1_000_000) return (x / 1_000_000).toFixed(2) + "M";
+  if (Math.abs(x) >= 1_000) return (x / 1_000).toFixed(2) + "k";
+  return x.toFixed(2);
+}

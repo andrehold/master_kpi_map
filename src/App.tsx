@@ -19,6 +19,7 @@ import { useDeribitIndexPrice } from "./hooks/useDeribitIndexPrice";
 import { useDeribitFunding } from "./hooks/useDeribitFunding";
 import { useDeribitBasis } from "./hooks/useDeribitBasis";
 import { useCondorCreditPctOfEM } from "./hooks/useCondorCreditPctOfEM";
+import { useOpenInterestConcentration } from "./hooks/useOpenInterestConcentration";
 
 // Guidance UI
 import { GuidanceSwitch } from "./components/ui/Guidance";
@@ -98,6 +99,14 @@ export default function MasterKPIMapDemo() {
   } = useCondorCreditPctOfEM({
     currency: "BTC",
     pollMs: 0, // 30DTE is baked into the hook via TARGET_DTE_DAYS = 30
+  });
+
+  const oiConcentrationState = useOpenInterestConcentration({
+    currency: "BTC",
+    topN: 3,
+    expiry: "all",
+    windowPct: 0.25,
+    pollMs: 0,
   });
 
   // Generic overlay/settings state
@@ -230,6 +239,7 @@ export default function MasterKPIMapDemo() {
       abs: basisAbsPerp ?? null,
       ts: basisTs ?? null,
     },
+    oiConcentration: oiConcentrationState,
   };
 
   return (
