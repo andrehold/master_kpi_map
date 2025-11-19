@@ -1,4 +1,4 @@
-import { type  ComponentProps } from "react";
+import { type ComponentProps } from "react";
 import KpiCard from "./KpiCard";
 import ExpectedMoveRibbonCard from "../ExpectedMoveRibbonCard";
 import GammaWallsCard from "./GammaWallsCard";
@@ -149,23 +149,23 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
 
   if (kpi.id === KPI_IDS.skew25dRr) {
     const entries = context.skew.entries;
-  
+
     // Prefer 30D as the primary tenor, otherwise first available
     const primary = entries.find((e) => e.key === "30d") ?? entries[0];
-  
+
     let value: CardProps["value"] = samples[kpi.id];
     let meta: string | undefined;
     let extraBadge: string | null = null;
-  
+
     if (primary) {
       const { label, state } = primary;
-  
+
       if (state?.skew != null) {
         const vp = state.skew * 100;
         const sign = vp >= 0 ? "+" : "";
         value = `${sign}${vp.toFixed(2)}`;
         meta = state.expiryLabel ? `${label} · ${state.expiryLabel}` : label;
-  
+
         if (state.ivC25 != null && state.ivP25 != null) {
           extraBadge = `C25 ${(state.ivC25 * 100).toFixed(1)} • P25 ${(state.ivP25 * 100).toFixed(1)}`;
         } else {
@@ -184,18 +184,18 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       value = "—";
       meta = "Awaiting data";
     }
-  
+
     // Build table rows for all tenors
     const rows = entries.map(({ key, label, state }) => {
       const id = `${kpi.id}-${key}`;
       const tenorLabel = state?.expiryLabel
         ? `${label} · ${state.expiryLabel}`
         : label;
-  
+
       let c25 = "—";
       let p25 = "—";
       let rr = "—";
-  
+
       if (state?.loading && !state.skew) {
         c25 = p25 = rr = "…";
       } else if (state?.error) {
@@ -205,10 +205,10 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
         if (state.ivC25 != null) c25 = `${(state.ivC25 * 100).toFixed(1)}%`;
         if (state.ivP25 != null) p25 = `${(state.ivP25 * 100).toFixed(1)}%`;
       }
-  
+
       return { id, label: tenorLabel, c25, p25, rr };
     });
-  
+
     const footer = (
       <KpiMiniTable
         title="Tenors"
@@ -218,14 +218,14 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
           { id: "label", header: "Tenor", render: (r) => r.label },
           { id: "c25", header: "C25", align: "right", render: (r) => r.c25 },
           { id: "p25", header: "P25", align: "right", render: (r) => r.p25 },
-          { id: "rr",  header: "RR",  align: "right", render: (r) => r.rr },
+          { id: "rr", header: "RR", align: "right", render: (r) => r.rr },
         ]}
       />
     );
-  
+
     return renderCard({ value, meta, extraBadge, footer });
   }
-  
+
 
   if (kpi.id === KPI_IDS.tsKink) {
     const { loading, error, data } = context.skew.kink;
@@ -379,7 +379,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     return <GammaWallsCard key={kpi.id} kpi={kpi} />;
   }
 
-  if (kpi.id === "oi-concentration") {
+  if (kpi.id === KPI_IDS.oiConcentration) {
     const { oiConcentration } = context;
     const { loading, error, metrics } = oiConcentration;
 
@@ -414,10 +414,18 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       return `${scope}${s} · n=${metrics.includedCount}`;
     })();
 
-    const win = typeof windowPct === "number" && windowPct > 0
-      ? ` • Window ±${Math.round(windowPct * 100)}%`
-      : "";
+    const win =
+      typeof windowPct === "number" && windowPct > 0
+        ? ` • Window ±${Math.round(windowPct * 100)}%`
+        : "";
     const extraBadge = `Top ${topN}${win}`;
+
+    type OIRow = {
+      id: string;
+      label: string;
+      value: string;
+      kind: "strike" | "total";
+    };
 
     let footer: CardProps["footer"];
 
@@ -428,26 +436,28 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
         </div>
       );
     } else {
-      const list = (metrics?.rankedStrikes ?? []).slice(0, 6);
+      const ranked = metrics?.rankedStrikes ?? [];
+      const topStrikes = ranked.slice(0, 5); // top-5 strikes
 
-      if (!list.length) {
+      if (!topStrikes.length) {
         footer = (
           <div className="text-xs text-[var(--fg-muted)]">
             No strikes in scope
           </div>
         );
       } else {
-        const strikeRows = list.map((b) => {
+        const strikeRows: OIRow[] = topStrikes.map((b) => {
           const share =
             metrics && metrics.totalOi > 0 ? b.oi / metrics.totalOi : 0;
           return {
-            id: String(b.strike),
-            strikeLabel: `$${Math.round(b.strike)}`,
-            share: `${(share * 100).toFixed(1)}%`,
+            id: `strike-${b.strike}`,
+            label: `$${Math.round(b.strike)}`,
+            value: `${(share * 100).toFixed(1)}%`,
+            kind: "strike",
           };
         });
 
-        const totalRows = [
+        const totalRows: OIRow[] = [
           {
             id: "total-oi",
             label: "Total OI",
@@ -455,6 +465,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
               metrics?.totalOi != null && isFinite(metrics.totalOi)
                 ? `${formatNumber(metrics.totalOi)} BTC`
                 : "—",
+            kind: "total",
           },
           {
             id: "top-1",
@@ -463,6 +474,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
               metrics?.top1Share != null
                 ? `${(metrics.top1Share * 100).toFixed(1)}%`
                 : "—",
+            kind: "total",
           },
           {
             id: "hhi",
@@ -471,30 +483,38 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
               metrics?.hhi != null
                 ? `${(metrics.hhi * 100).toFixed(1)}%`
                 : "—",
+            kind: "total",
           },
         ];
 
+        const rows: OIRow[] = [...strikeRows, ...totalRows];
+
         footer = (
-          <div className="flex items-start justify-between gap-8">
-            <KpiMiniTable
-              title="Top strikes"
-              rows={strikeRows}
-              getKey={(r) => r.id}
-              columns={[
-                { id: "strike", header: "Strike", render: (r) => r.strikeLabel },
-                { id: "share", header: "Share", align: "right", render: (r) => r.share },
-              ]}
-            />
-            <KpiMiniTable
-              title="Totals"
-              rows={totalRows}
-              getKey={(r) => r.id}
-              columns={[
-                { id: "label", header: "", render: (r) => r.label },
-                { id: "value", header: "", align: "right", render: (r) => r.value },
-              ]}
-            />
-          </div>
+          <KpiMiniTable<OIRow>
+            title="Top strikes"
+            rows={rows}
+            getKey={(r) => r.id}
+            sections={[
+              {
+                index: strikeRows.length, // <- splitter between strikes and totals
+                title: "Totals",
+              },
+            ]}
+            columns={[
+              {
+                id: "label",
+                header: "Strike / metric",
+                render: (r) => r.label,
+              },
+              {
+                id: "value",
+                header: "Share / value",
+                align: "right",
+                render: (r) =>
+                  r.kind === "total" ? <strong>{r.value}</strong> : r.value,
+              },
+            ]}
+          />
         );
       }
     }
@@ -509,7 +529,6 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
         metrics?.topNShare != null ? metrics.topNShare * 100 : null,
     });
   }
-
 
   if (kpi.id === KPI_IDS.liquidityStress) {
     return (
