@@ -347,12 +347,35 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
   if (kpi.id === KPI_IDS.condorCreditEm) {
     const vm = useCondorCreditKpi(context.condor);
 
+    let footer: CardProps["footer"];
+
+    if (vm.legsTable) {
+      type Row = (typeof vm.legsTable.rows)[number];
+
+      footer = (
+        <KpiMiniTable<Row>
+          title={vm.legsTable.title}
+          rows={vm.legsTable.rows}
+          getKey={(r) => r.id}
+          sections={vm.legsTable.sections}
+          columns={[
+            { id: "legLabel", header: "Leg", render: (r) => r.legLabel },
+            { id: "strike", header: "Strike", align: "right", render: (r) => r.strike },
+            { id: "distPct", header: "Dist", align: "right", render: (r) => r.distPct },
+            { id: "delta", header: "Δ", align: "right", render: (r) => r.delta },
+            { id: "premium", header: "Premium", align: "right", render: (r) => r.premium },
+          ]}
+        />
+      );
+    }
+
     return renderCard({
       value: vm.value,
       meta: vm.meta,
       extraBadge: vm.extraBadge ?? null,
       infoKey: KPI_IDS.condorCreditEm,
       guidanceValue: vm.guidanceValue ?? null,
+      footer,
     });
   }
 

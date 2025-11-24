@@ -1,46 +1,56 @@
-// src/hooks/kpi/useCondorCreditKpi.ts
+// src/hook/kpi/useCondorCreditKpi.ts
 import type { ReactNode } from "react";
 import type { useCondorCreditPctOfEM } from "../domain/useCondorCreditPctOfEM";
+import { fmtK, fmtUsdShort } from "../../utils/format"; // adjust path if needed
 
-// Reuse the actual hook's state shape for type safety
+// Domain state type from your existing hook
 type CondorState = ReturnType<typeof useCondorCreditPctOfEM>;
+
+export interface CondorLegRow {
+  id: string;
+  legLabel: string;   // "Short PUT", "Long CALL hedge"
+  strike: string;     // e.g. "70k"
+  distPct: string;    // e.g. "-18.7%"
+  delta: string;      // currently "—" (no per-leg delta yet)
+  premium: string;    // currently "—" (no per-leg premium yet)
+  section: "short" | "long";
+}
+
+export interface CondorLegTableSpec {
+  title: string;
+  rows: CondorLegRow[];
+  sections: { index: number; title: string }[];
+}
 
 export interface CondorCreditKpiViewModel {
   value: ReactNode;
   meta?: string;
   extraBadge?: string | null;
   guidanceValue?: number | null;
+
+  legsTable?: CondorLegTableSpec;
 }
 
 /**
- * Pure view-model builder for the "Condor Credit % of EM" KPI.
+ * View-model builder for the "Condor Credit % of EM" KPI.
  *
- * Takes the existing condor state and produces card-ready props:
- * - value (e.g. "18.25%")
- * - meta ("Condor credit relative to EM")
- * - extraBadge ("Condor $12.34 • EM $45.67")
- * - guidanceValue (for bands, in percent units)
+ * Uses CondorCreditPctOfEMPoint:
+ * - pctOfEm is already in percent units (e.g. 7.53 = 7.53%)
  */
 export function useCondorCreditKpi(
   state: CondorState | null | undefined
 ): CondorCreditKpiViewModel {
   const loading = !!state?.loading;
   const error = state?.error;
-  const data = state?.data as
-    | {
-        valuePct?: number | null;
-        condorPriceUsd?: number | null;
-        emPct?: number | null;
-        emUsd?: number | null;
-        tenorDays?: number | null;
-        expiryTs?: number | null;
-      }
-    | undefined;
+  const data = state?.data; // CondorCreditPctOfEMPoint | null
 
   let value: ReactNode = "—";
   let meta: string | undefined = "Awaiting data";
   let extraBadge: string | null = null;
   let guidanceValue: number | null = null;
+  let legsTable: CondorLegTableSpec | undefined;
+
+  // --- 1) Main value / meta / badge / guidance -----------------------------
 
   if (!state) {
     value = "—";
@@ -53,26 +63,28 @@ export function useCondorCreditKpi(
     meta = "error";
   } else if (data) {
     const {
-      valuePct,
-      condorPriceUsd,
-      emPct,
+      pctOfEm,
+      condorCreditUsd,
       emUsd,
-      tenorDays,
-      expiryTs,
+      dte,
+      expiryTimestamp,
     } = data;
 
-    const pct = typeof valuePct === "number" ? valuePct * 100 : null;
+    // 🔑 pctOfEm is already a percentage (e.g. 7.53), so no extra *100
+    const pct =
+      typeof pctOfEm === "number" && isFinite(pctOfEm) ? pctOfEm : null;
 
-    // Main display value: "% of EM"
     value = pct != null ? `${pct.toFixed(2)}%` : "—";
 
-    // Meta line
     const parts: string[] = ["Condor credit relative to EM"];
-    if (tenorDays != null) {
-      parts.push(`${tenorDays}D structure`);
+
+    if (typeof dte === "number" && isFinite(dte)) {
+      const dteRounded = Math.round(dte);
+      parts.push(`${dteRounded}D structure`);
     }
-    if (expiryTs != null) {
-      const d = new Date(expiryTs);
+
+    if (typeof expiryTimestamp === "number" && isFinite(expiryTimestamp)) {
+      const d = new Date(expiryTimestamp);
       parts.push(
         `exp ${d.toLocaleDateString(undefined, {
           month: "short",
@@ -80,21 +92,102 @@ export function useCondorCreditKpi(
         })}`
       );
     }
+
     meta = parts.join(" · ");
 
-    // Extra badge: Condor and EM notionals
-    if (condorPriceUsd != null && emUsd != null) {
-      extraBadge = `Condor $${condorPriceUsd.toFixed(
-        2
-      )} • EM $${emUsd.toFixed(2)}`;
-    } else if (condorPriceUsd != null && emPct != null) {
-      extraBadge = `Condor $${condorPriceUsd.toFixed(
-        2
-      )} • EM ${((emPct ?? 0) * 100).toFixed(2)}%`;
+    if (condorCreditUsd != null && isFinite(condorCreditUsd) && emUsd != null && isFinite(emUsd)) {
+      extraBadge = `Condor ${fmtUsdShort(condorCreditUsd)} • EM ${fmtUsdShort(
+        emUsd
+      )}`;
     }
 
-    // Bands / guidance in percent units
+    // Bands / guidance: feed % directly (no extra scaling)
     guidanceValue = pct;
+  }
+
+  // --- 2) Legs mini table (from strikes + indexPrice) ----------------------
+
+  if (data && data.strikes && data.indexPrice && isFinite(data.indexPrice)) {
+    const { strikes, indexPrice } = data;
+
+    const legsRaw: Array<{
+      id: string;
+      side: "short" | "long";
+      type: "call" | "put";
+      strike: number;
+    }> = [
+      {
+        id: "short-put",
+        side: "short",
+        type: "put",
+        strike: strikes.shortPut,
+      },
+      {
+        id: "long-put",
+        side: "long",
+        type: "put",
+        strike: strikes.longPut,
+      },
+      {
+        id: "short-call",
+        side: "short",
+        type: "call",
+        strike: strikes.shortCall,
+      },
+      {
+        id: "long-call",
+        side: "long",
+        type: "call",
+        strike: strikes.longCall,
+      },
+    ];
+
+    const rows: CondorLegRow[] = legsRaw.map((leg, idx) => {
+      const distPctNum =
+        indexPrice && isFinite(indexPrice)
+          ? (leg.strike / indexPrice - 1) * 100
+          : null;
+
+      const legLabel =
+        leg.side === "short"
+          ? `Short ${leg.type.toUpperCase()}`
+          : `Long ${leg.type.toUpperCase()} hedge`;
+
+      const distPct =
+        distPctNum != null
+          ? `${distPctNum >= 0 ? "+" : ""}${distPctNum.toFixed(1)}%`
+          : "—";
+
+      return {
+        id: leg.id ?? `leg-${idx}`,
+        legLabel,
+        strike: fmtK(leg.strike),
+        distPct,
+        delta: "—",   // no per-leg greeks yet
+        premium: "—", // no per-leg premium yet
+        section: leg.side,
+      };
+    });
+
+    const shorts = rows.filter((r) => r.section === "short");
+    const longs = rows.filter((r) => r.section === "long");
+    const ordered = [...shorts, ...longs];
+
+    const sections: { index: number; title: string }[] =
+      shorts.length && longs.length
+        ? [
+            {
+              index: shorts.length,
+              title: "Hedges",
+            },
+          ]
+        : [];
+
+    legsTable = {
+      title: "Condor legs",
+      rows: ordered,
+      sections,
+    };
   }
 
   return {
@@ -102,5 +195,6 @@ export function useCondorCreditKpi(
     meta,
     extraBadge,
     guidanceValue,
+    legsTable,
   };
 }
