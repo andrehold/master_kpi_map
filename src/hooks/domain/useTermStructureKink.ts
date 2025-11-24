@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DeribitInstrument } from "../services/deribit";
+import type { DeribitInstrument } from "../../services/deribit";
 import {
   getInstruments,
   getTicker,
   getIndexPrice,
-} from "../services/deribit";
-import { normalizeDeribitIv } from "../lib/deribitOptionMath";
+} from "../../services/deribit";
+import { normalizeDeribitIv } from "../../lib/deribitOptionMath";
 
 /**
  * useTermStructureKink (matches your deribit.ts service)

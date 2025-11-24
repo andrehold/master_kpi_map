@@ -1,9 +1,9 @@
 // src/hooks/useLiquidityStress.ts
 import { useEffect, useRef, useState } from 'react';
-import type { Currency, DeribitInstrument } from '../services/deribit';
-import { dget, getIndexPriceMeta, getInstruments } from '../services/deribit';
+import type { Currency, DeribitInstrument } from '../../services/deribit';
+import { dget, getIndexPriceMeta, getInstruments } from '../../services/deribit';
 
-export type { Currency } from '../services/deribit';
+export type { Currency } from '../../services/deribit';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 

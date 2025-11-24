@@ -1,7 +1,7 @@
 // src/hooks/useIVTermStructure.ts
 import { useEffect, useRef, useState } from "react";
-import { getTermStructureStats, type IVTermStructureLabel } from "../lib/ivTerm";
-import { buildAtmIvPoints, type IVPoint, type AtmSelection } from "../lib/atmIv";
+import { getTermStructureStats, type IVTermStructureLabel } from "../../lib/ivTerm";
+import { buildAtmIvPoints, type IVPoint, type AtmSelection } from "../../lib/atmIv";
 
 export type UseIVTermStructureOptions = {
   currency?: "BTC" | "ETH";

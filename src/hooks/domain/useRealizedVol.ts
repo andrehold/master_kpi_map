@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { fetchPerpHistory } from "../services/deribit";
+import { fetchPerpHistory } from "../../services/deribit";
 
 export type UseRealizedVolOptions = {
   currency?: "BTC" | "ETH";

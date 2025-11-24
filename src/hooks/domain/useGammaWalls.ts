@@ -5,7 +5,7 @@ import {
   getInstruments,
   getTicker,
   getBookSummaryByCurrency,
-} from "../services/deribit";
+} from "../../services/deribit";
 
 export type GammaByStrike = {
   strike: number;

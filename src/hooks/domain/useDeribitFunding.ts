@@ -1,6 +1,6 @@
 // src/hooks/useDeribitFunding.ts
 import { useEffect, useState, useCallback } from "react";
-import { dget } from "../services/deribit"; // adjust if your helper is elsewhere
+import { dget } from "../../services/deribit"; // adjust if your helper is elsewhere
 
 type AnyPoint = {
   timestamp?: number;           // ms epoch

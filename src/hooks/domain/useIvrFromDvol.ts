@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchDvolHistory } from "../services/deribit";
+import { fetchDvolHistory } from "../../services/deribit";
 
 type DvolPoint = {
   ts: number;

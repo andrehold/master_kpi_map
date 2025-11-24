@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 // Use only the exports your deribit.ts actually provides
-import { dget, getIndexPrice } from "../services/deribit";
+import { dget, getIndexPrice } from "../../services/deribit";
 
 export type Currency = "BTC" | "ETH";
 

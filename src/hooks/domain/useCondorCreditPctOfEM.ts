@@ -1,9 +1,9 @@
 // src/hooks/useCondorCreditPctOfEM.ts
 
 import { useEffect, useState } from "react";
-import { dget, type DeribitInstrument } from "../services/deribit";
-import { pickNearestInstrumentByType } from "../lib/deribitOptionMath";
-import { ceilExpiry, expectedMove } from "../lib/selectExpiries";
+import { dget, type DeribitInstrument } from "../../services/deribit";
+import { pickNearestInstrumentByType } from "../../lib/deribitOptionMath";
+import { ceilExpiry, expectedMove } from "../../lib/selectExpiries";
 
 type Currency = "BTC" | "ETH";
 

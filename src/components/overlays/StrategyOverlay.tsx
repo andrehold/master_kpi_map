@@ -13,7 +13,7 @@ import {
 } from "@/services/horizonScan";
 
 // Weekend Vol hook
-import { useWeekendVol } from "@/hooks/useWeekendVol";
+import { useWeekendVol } from "@/hooks/domain/useWeekendVol";
 
 type OverlayProps = {
   open: boolean;

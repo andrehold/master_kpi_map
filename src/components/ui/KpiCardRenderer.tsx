@@ -5,12 +5,12 @@ import ClientPortfolioCard from "./ClientPortfolioCard";
 
 import type { KPIDef } from "../../data/kpis";
 import type { Samples } from "../../utils/samples";
-import type { useDeribitSkew25D } from "../../hooks/useDeribitSkew25D";
-import type { useTermStructureKink } from "../../hooks/useTermStructureKink";
-import type { useCondorCreditPctOfEM } from "../../hooks/useCondorCreditPctOfEM";
-import type { useIVTermStructure } from "../../hooks/useIVTermStructure";
-import type { useOpenInterestConcentration } from "../../hooks/useOpenInterestConcentration";
-import type { useGammaWalls } from "../../hooks/useGammaWalls";
+import type { useDeribitSkew25D } from "../../hooks/domain/useDeribitSkew25D";
+import type { useTermStructureKink } from "../../hooks/domain/useTermStructureKink";
+import type { useCondorCreditPctOfEM } from "../../hooks/domain/useCondorCreditPctOfEM";
+import type { useIVTermStructure } from "../../hooks/domain/useIVTermStructure";
+import type { useOpenInterestConcentration } from "../../hooks/domain/useOpenInterestConcentration";
+import type { useGammaWalls } from "../../hooks/domain/useGammaWalls";
 
 import { KPI_IDS } from "../../kpi/kpiIds";
 import { KpiMiniTable } from "./KpiMiniTable"

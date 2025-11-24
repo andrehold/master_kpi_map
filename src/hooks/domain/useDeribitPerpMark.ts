@@ -1,6 +1,6 @@
 // src/hooks/useDeribitPerpMark.ts
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getTicker, type Currency } from "../services/deribit";
+import { getTicker, type Currency } from "../../services/deribit";
 
 export type UseDeribitPerpMarkOpts = {
   pollMs?: number; // default 15s

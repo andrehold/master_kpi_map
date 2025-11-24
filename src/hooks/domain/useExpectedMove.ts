@@ -1,6 +1,6 @@
 // src/hooks/useExpectedMove.ts
 import { useEffect, useMemo, useRef, useState } from "react";
-import { buildAtmIvPoints, type IVPoint, type AtmSelection } from "../lib/atmIv";
+import { buildAtmIvPoints, type IVPoint, type AtmSelection } from "../../lib/atmIv";
 
 /**
  * Expected Move (EM) hook

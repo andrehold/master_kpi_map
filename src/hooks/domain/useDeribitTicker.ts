@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getTicker, type DeribitTicker } from "../services/deribit";
+import { getTicker, type DeribitTicker } from "../../services/deribit";
 
 /** Try mark_price -> mid(bid/ask) -> last_price. */
 export function midFromTicker(t?: DeribitTicker | null): number | null {

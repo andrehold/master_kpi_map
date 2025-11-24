@@ -1,8 +1,8 @@
 // src/hooks/useStrikeMap.ts
 import { useMemo } from "react";
-import { useDeribitPerpMark } from "@/hooks/useDeribitPerpMark";
-import { useGammaWalls } from "@/hooks/useGammaWalls";
-import { useOpenInterestConcentration } from "@/hooks/useOpenInterestConcentration";
+import { useDeribitPerpMark } from "@/hooks/domain/useDeribitPerpMark";
+import { useGammaWalls } from "@/hooks/domain/useGammaWalls";
+import { useOpenInterestConcentration } from "@/hooks/domain/useOpenInterestConcentration";
 import {
   StrikeLevelKind,
   StrikeMapBucket,

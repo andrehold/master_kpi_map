@@ -8,22 +8,22 @@ import KpiCardRenderer, { type KpiCardRendererContext } from "./components/ui/Kp
 import { STRATEGIES, type Strategy, KPI_GROUPS, type StrategyKey } from "./data/kpis";
 import { buildSamples, type Samples } from "./utils/samples";
 
-import { useDeribitDvol } from "./hooks/useDeribitDvol";
-import { useIvrFromDvol } from "./hooks/useIvrFromDvol";
-import { useIVTermStructure } from "./hooks/useIVTermStructure";
-import { useDeribitSkew25D } from "./hooks/useDeribitSkew25D";
-import { useTermStructureKink } from "./hooks/useTermStructureKink";
-import { useRealizedVol } from "./hooks/useRealizedVol";
-import { useRvEmFactor } from "./hooks/useRvEmFactor";
-import { useDeribitIndexPrice } from "./hooks/useDeribitIndexPrice";
-import { useDeribitFunding } from "./hooks/useDeribitFunding";
-import { useDeribitBasis } from "./hooks/useDeribitBasis";
-import { useCondorCreditPctOfEM } from "./hooks/useCondorCreditPctOfEM";
-import { useOpenInterestConcentration } from "./hooks/useOpenInterestConcentration";
-import { useExpectedMove } from "./hooks/useExpectedMove";
-import { useGammaWalls } from "./hooks/useGammaWalls";
+import { useDeribitDvol } from "./hooks/domain/useDeribitDvol";
+import { useIvrFromDvol } from "./hooks/domain/useIvrFromDvol";
+import { useIVTermStructure } from "./hooks/domain/useIVTermStructure";
+import { useDeribitSkew25D } from "./hooks/domain/useDeribitSkew25D";
+import { useTermStructureKink } from "./hooks/domain/useTermStructureKink";
+import { useRealizedVol } from "./hooks/domain/useRealizedVol";
+import { useRvEmFactor } from "./hooks/domain/useRvEmFactor";
+import { useDeribitIndexPrice } from "./hooks/domain/useDeribitIndexPrice";
+import { useDeribitFunding } from "./hooks/domain/useDeribitFunding";
+import { useDeribitBasis } from "./hooks/domain/useDeribitBasis";
+import { useCondorCreditPctOfEM } from "./hooks/domain/useCondorCreditPctOfEM";
+import { useOpenInterestConcentration } from "./hooks/domain/useOpenInterestConcentration";
+import { useExpectedMove } from "./hooks/domain/useExpectedMove";
+import { useGammaWalls } from "./hooks/domain/useGammaWalls";
 
-import type { ExpectedMovePoint } from "./hooks/useExpectedMove";
+import type { ExpectedMovePoint } from "./hooks/domain/useExpectedMove";
 import type { IVPoint } from "./lib/atmIv";
 
 // Guidance UI

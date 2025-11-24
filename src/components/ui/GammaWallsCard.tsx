@@ -2,7 +2,7 @@ import * as React from "react";
 import KpiCard from "./KpiCard";
 import Sparkline from "./Sparkline";
 import type { KPIDef } from "../../data/kpis";
-import { useGammaWalls } from "../../hooks/useGammaWalls";
+import { useGammaWalls } from "../../hooks/domain/useGammaWalls";
 
 function fmtK(x: number) {
   return x >= 1000 ? `${Math.round(x / 1000)}k` : `${Math.round(x)}`;

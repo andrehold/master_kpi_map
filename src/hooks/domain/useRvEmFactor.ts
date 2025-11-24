@@ -2,7 +2,7 @@
 import { useMemo } from "react";
 import { useRealizedVol } from "./useRealizedVol";
 import { useIVTermStructure } from "./useIVTermStructure";
-import { DAYS_IN_YEAR, ivAnnFromTermStructure, rvEmFactorFromAnn } from "../lib/volMath";
+import { DAYS_IN_YEAR, ivAnnFromTermStructure, rvEmFactorFromAnn } from "../../lib/volMath";
 
 type Currency = "BTC" | "ETH";
 

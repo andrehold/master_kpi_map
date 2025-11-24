@@ -1,6 +1,6 @@
 // src/hooks/useDeribitInstrumentsATM.ts
 import { useEffect, useRef, useState } from "react";
-import { getInstruments, getIndexPrice, type DeribitInstrument } from "../services/deribit";
+import { getInstruments, getIndexPrice, type DeribitInstrument } from "../../services/deribit";
 
 export type Group = {
   expiryTs: number;

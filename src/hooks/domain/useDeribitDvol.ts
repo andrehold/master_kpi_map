@@ -1,6 +1,6 @@
 // src/hooks/useDeribitDvol.ts
 import { useCallback, useEffect, useState } from "react";
-import { fetchDvolHistory } from "../services/deribit";
+import { fetchDvolHistory } from "../../services/deribit";
 
 /**
  * Fetches latest DVOL (in percent) and its timestamp using the DVOL history endpoint.

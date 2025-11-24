@@ -3,7 +3,7 @@ import { BAND_BASE } from "./bands.base";
 import en from "../i18n/en/bands.json";
 
 type Dicts = { [k: string]: any };
-const DICTS: Dicts = { en, de };
+const DICTS: Dicts = { en };
 
 export function getBandSet(id: keyof typeof BAND_BASE, locale = "en") {
   const base = BAND_BASE[id];

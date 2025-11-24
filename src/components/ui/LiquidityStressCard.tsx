@@ -3,7 +3,7 @@ import React, { useMemo } from "react";
 import KpiCard from "./KpiCard";
 import type { KPIDef } from "../../data/kpis";
 import type { Currency } from "../../services/deribit";
-import { useLiquidityStress } from "../../hooks/useLiquidityStress";
+import { useLiquidityStress } from "../../hooks/domain/useLiquidityStress";
 
 function fmtPercent(x?: number, digits = 1) {
   if (x == null || !isFinite(x)) return "—";

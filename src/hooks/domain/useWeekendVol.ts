@@ -1,9 +1,9 @@
 // src/hooks/useWeekendVol.ts
 import { useEffect, useMemo, useState } from "react";
-import type { Currency, DeribitInstrument } from "../services/deribit";
-import { getInstruments, getTicker } from "../services/deribit";
-import { pickNearestStrike } from "../lib/deribitOptionMath";
-import { buildAtmIvPoints } from "../lib/atmIv";
+import type { Currency, DeribitInstrument } from "../../services/deribit";
+import { getInstruments, getTicker } from "../../services/deribit";
+import { pickNearestStrike } from "../../lib/deribitOptionMath";
+import { buildAtmIvPoints } from "../../lib/atmIv";
 import { useDeribitIndexPrice } from "./useDeribitIndexPrice";
 import { useDeribitFunding } from "./useDeribitFunding";
 import { useDeribitSkew25D } from "./useDeribitSkew25D";
@@ -71,7 +71,7 @@ async function pickNextSundayGroup(currency: Currency): Promise<{
   expiryTs: number | null;
   instruments: DeribitInstrument[] | null;
 }> {
-  const r = await getInstruments({ currency, kind: "option", expired: false });
+  const r = await getInstruments( currency );
   const list: DeribitInstrument[] = (r as any)?.instruments ?? (r as any) ?? [];
   const now = Date.now() + 15 * 60 * 1000; // small safety margin
 

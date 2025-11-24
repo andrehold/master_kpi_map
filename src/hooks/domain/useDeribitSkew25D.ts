@@ -1,7 +1,7 @@
 // src/hooks/useDeribitSkew25D.ts
 import { useEffect, useMemo, useState } from 'react';
-import { getInstruments, getTicker, getIndexPrice, DeribitInstrument } from '../services/deribit';
-import { normalizeDeribitIv } from '../lib/deribitOptionMath';
+import { getInstruments, getTicker, getIndexPrice, DeribitInstrument } from '../../services/deribit';
+import { normalizeDeribitIv } from '../../lib/deribitOptionMath';
 
 // --- Helpers & defaults ------------------------------------------------------
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
