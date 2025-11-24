@@ -12,8 +12,13 @@ import type { useIVTermStructure } from "../../hooks/domain/useIVTermStructure";
 import type { useOpenInterestConcentration } from "../../hooks/domain/useOpenInterestConcentration";
 import type { useGammaWalls } from "../../hooks/domain/useGammaWalls";
 
+import { useOiConcentrationKpi } from "../../hooks/kpi/useOiConcentrationKpi";
+import { useGammaWallsKpi } from "../../hooks/kpi/useGammaWallsKpi";
+import { useEmRibbonKpi } from "../../hooks/kpi/useEmRibbonKpi";
+import { useCondorCreditKpi } from "../../hooks/kpi/useCondorCreditKpi";
+
 import { KPI_IDS } from "../../kpi/kpiIds";
-import { KpiMiniTable } from "./KpiMiniTable"
+import { KpiMiniTable } from "./KpiMiniTable";
 
 type SkewState = ReturnType<typeof useDeribitSkew25D>;
 type KinkData = ReturnType<typeof useTermStructureKink>["data"];
@@ -308,118 +313,46 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
   }
 
   if (kpi.id === KPI_IDS.emRibbon) {
-    const emContext = context.expectedMove;
-    const rows = emContext?.rows ?? [];
-    const sortedRows = [...rows].sort((a, b) => a.days - b.days);
-    const primaryRow = sortedRows.find((row) => row.days === EXPECTED_MOVE_PRIMARY_TENOR);
+    const vm = useEmRibbonKpi(context.expectedMove, locale);
 
-    let value: CardProps["value"] = samples[kpi.id];
-    let meta: string | undefined;
-    let extraBadge: string | null = null;
+    let footer: CardProps["footer"];
 
-    if (!emContext) {
-      value = "—";
-      meta = "Expected Move unavailable";
-    } else if (emContext.loading && !primaryRow) {
-      value = "…";
-      meta = "loading";
-    } else if (emContext.error) {
-      value = "—";
-      meta = "error";
-    } else if (primaryRow) {
-      value = formatEmAbsolute(primaryRow.abs, locale) ?? "—";
-      meta = `Exp ${formatExpiryLabel(primaryRow.expiryTs, locale)} · ${formatTenorLabel(primaryRow.days)}`;
-      const pctBadge = formatEmPercent(primaryRow.pct);
-      if (emContext.loading) {
-        extraBadge = pctBadge ? `${pctBadge} · updating…` : "Refreshing…";
-      } else {
-        extraBadge = pctBadge;
-      }
-    } else {
-      value = "—";
-      meta = "Awaiting data";
-    }
+    if (vm.table) {
+      type EmTableRow = (typeof vm.table.rows)[number];
 
-    type EmTableRow = {
-      id: string;
-      tenor: string;
-      expiry: string;
-      abs: string;
-      pct: string;
-    };
-
-    const tableRows: EmTableRow[] = sortedRows
-      .filter((row) => row.days !== EXPECTED_MOVE_PRIMARY_TENOR)
-      .map((row) => ({
-        id: `${kpi.id}-${row.days}`,
-        tenor: formatTenorLabel(row.days),
-        expiry: formatExpiryLabel(row.expiryTs, locale),
-        abs: formatEmAbsolute(row.abs, locale) ?? "—",
-        pct: formatEmPercent(row.pct) ?? "—",
-      }));
-
-    const footer = (
-      <KpiMiniTable<EmTableRow>
-        title="Additional tenors"
-        rows={tableRows}
-        getKey={(r) => r.id}
-        emptyLabel="Waiting for data"
-        columns={[
-          { id: "tenor", header: "Tenor", render: (r) => r.tenor },
-          { id: "expiry", header: "Expiry", align: "right", render: (r) => r.expiry },
-          { id: "abs", header: "±$ Move", align: "right", render: (r) => r.abs },
-          { id: "pct", header: "±%", align: "right", render: (r) => r.pct },
-        ]}
-      />
-    );
-
-    return renderCard({ value, meta, extraBadge, footer });
-  }
-
-  if (kpi.id === KPI_IDS.condorCreditEm) {
-    const condorState = context.condor;
-    let value = samples[kpi.id];
-    let meta: string | undefined;
-    let badge: string | null = null;
-    let guidanceValue: number | null = null;
-
-    if (condorState.loading) {
-      value = "…";
-      meta = "loading";
-    } else if (condorState.error) {
-      value = "—";
-      meta = "error";
-    } else if (condorState.data && condorState.data.pctOfEm != null) {
-      const pct = condorState.data.pctOfEm; // already in %
-      value = `${pct.toFixed(1)}%`;
-
-      const expiryLabel = new Date(condorState.data.expiryTimestamp)
-        .toLocaleDateString(locale, { month: "short", day: "numeric" });
-
-      meta = `BTC 30D condor · ${expiryLabel}`;
-
-      if (
-        condorState.data.condorCreditUsd != null &&
-        condorState.data.emUsd != null
-      ) {
-        badge = `Credit $${condorState.data.condorCreditUsd.toFixed(
-          2
-        )} • EM $${condorState.data.emUsd.toFixed(2)}`;
-      }
-
-      guidanceValue = pct; // feed % into the bands
-    } else {
-      value = "—";
-      meta = "Awaiting data";
+      footer = (
+        <KpiMiniTable<EmTableRow>
+          title={vm.table.title}
+          rows={vm.table.rows}
+          getKey={(r) => r.id}
+          emptyLabel={vm.table.emptyLabel}
+          columns={[
+            { id: "tenor", header: "Tenor", render: (r) => r.tenor },
+            { id: "expiry", header: "Expiry", align: "right", render: (r) => r.expiry },
+            { id: "abs", header: "±$ Move", align: "right", render: (r) => r.abs },
+            { id: "pct", header: "±%", align: "right", render: (r) => r.pct },
+          ]}
+        />
+      );
     }
 
     return renderCard({
-      value,
-      meta,
-      extraBadge: badge,
-      // This key links into KPIS / BAND_BASE via kpis.ts
+      value: vm.value,
+      meta: vm.meta,
+      extraBadge: vm.extraBadge ?? null,
+      footer,
+    });
+  }
+
+  if (kpi.id === KPI_IDS.condorCreditEm) {
+    const vm = useCondorCreditKpi(context.condor);
+
+    return renderCard({
+      value: vm.value,
+      meta: vm.meta,
+      extraBadge: vm.extraBadge ?? null,
       infoKey: KPI_IDS.condorCreditEm,
-      guidanceValue,
+      guidanceValue: vm.guidanceValue ?? null,
     });
   }
 
@@ -453,251 +386,108 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
   }
 
   if (kpi.id === KPI_IDS.gammaWalls) {
-    const gw = context.gammaWalls;
-
-    let value: CardProps["value"] = samples[kpi.id];
-    let meta: string | undefined;
-    let extraBadge: string | null = null;
-
-    if (!gw) {
-      value = "—";
-      meta = "Gamma walls unavailable";
-    } else if (gw.loading) {
-      value = "…";
-      meta = "loading";
-    } else if (gw.error) {
-      value = "—";
-      meta = "error";
-    } else if (gw.top && gw.top.length > 0) {
-      const top = gw.top[0];
-      value = `${fmtK(top.strike)} • ${fmtUsdShort(top.gex_abs_usd)}`;
-      meta = gw.indexPrice
-        ? `Near S ${Math.round(gw.indexPrice)}`
-        : "Net |GEX| near spot";
-
-      const others = gw.top
-        .slice(1)
-        .map((t: any) => fmtK(t.strike))
-        .join(" • ");
-      extraBadge = others ? `Also: ${others}` : null;
-    } else {
-      value = "—";
-      meta = "Awaiting data";
-    }
-
-    type GwRow = {
-      id: string;
-      strike: string;
-      size: string;
-    };
+    const vm = useGammaWallsKpi(context.gammaWalls);
 
     let footer: CardProps["footer"];
 
-    if (!gw) {
-      footer = (
-        <div className="text-xs text-[var(--fg-muted)]">
-          Gamma walls unavailable
-        </div>
-      );
-    } else if (gw.error) {
+    if (vm.status === "error") {
       footer = (
         <div className="rounded-md border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-400">
-          Failed to load: {String(gw.error)}
+          Failed to load: {vm.errorMessage ?? "Unknown error"}
         </div>
       );
-    } else if (gw.top && gw.top.length > 0) {
-      // top-5 walls by |GEX|, as provided by the hook
-      const topWalls = gw.top.slice(0, 5);
-
-      const rows: GwRow[] = topWalls.map((wall: any, idx: number) => ({
-        id: `wall-${wall.strike}-${idx}`,
-        strike: fmtK(wall.strike),
-        size: fmtUsdShort(wall.gex_abs_usd),
-      }));
-
-      footer = (
-        <KpiMiniTable<GwRow>
-          title="Top γ walls"
-          rows={rows}
-          getKey={(r) => r.id}
-          columns={[
-            { id: "strike", header: "Strike", render: (r) => r.strike },
-            {
-              id: "size",
-              header: "|GEX| (USD)",
-              align: "right",
-              render: (r) => r.size,
-            },
-          ]}
-        />
-      );
-    } else {
+    } else if (
+      vm.status === "unavailable" ||
+      vm.status === "loading" ||
+      vm.status === "empty"
+    ) {
       footer = (
         <div className="text-xs text-[var(--fg-muted)]">
-          No gamma walls in scope
+          {vm.message ??
+            (vm.status === "unavailable"
+              ? "Gamma walls unavailable"
+              : vm.status === "loading"
+                ? "Loading gamma walls…"
+                : "No gamma walls in scope")}
         </div>
       );
+    } else {
+      // status === "ok"
+      type GwRow = NonNullable<typeof vm.rows>[number];
+      const rows = vm.rows ?? [];
+
+      footer =
+        rows.length > 0 ? (
+          <KpiMiniTable<GwRow>
+            title="Top γ walls"
+            rows={rows}
+            getKey={(r) => r.id}
+            columns={[
+              { id: "strike", header: "Strike", render: (r) => r.strike },
+              {
+                id: "size",
+                header: "|GEX| (USD)",
+                align: "right",
+                render: (r) => r.size,
+              },
+            ]}
+          />
+        ) : (
+          <div className="text-xs text-[var(--fg-muted)]">
+            No gamma walls in scope
+          </div>
+        );
     }
 
     return renderCard({
-      value,
-      meta,
-      extraBadge,
+      value: vm.value,
+      meta: vm.meta,
+      extraBadge: vm.extraBadge ?? null,
       footer,
       infoKey: kpi.id,
+      guidanceValue: vm.guidanceValue ?? null,
     });
   }
 
 
   if (kpi.id === KPI_IDS.oiConcentration) {
-    const { oiConcentration } = context;
-    const { loading, error, metrics } = oiConcentration;
+    const vm = useOiConcentrationKpi({ topN: 3, windowPct: 0.25 });
 
-    const topN = 3;
-    const windowPct = 0.25;
-
-    let value: CardProps["value"] = samples[kpi.id];
-
-    if (loading && !metrics) {
-      value = "…";
-    } else if (error) {
-      value = "—";
-    } else if (metrics?.topNShare != null) {
-      value = `${(metrics.topNShare * 100).toFixed(1)}%`;
-    }
-
-    const meta = (() => {
-      if (loading && !metrics) return "loading";
-      if (error) return "error";
-      if (!metrics) return "Awaiting data";
-
-      const scope =
-        metrics.expiryScope === "front"
-          ? `Front expiry${
-              metrics.frontExpiryTs
-                ? ` · ${new Date(metrics.frontExpiryTs).toLocaleDateString()}`
-                : ""
-            }`
-          : "All expiries";
-
-      const s = metrics.indexPrice ? ` · S ${Math.round(metrics.indexPrice)}` : "";
-      return `${scope}${s} · n=${metrics.includedCount}`;
-    })();
-
-    const win =
-      typeof windowPct === "number" && windowPct > 0
-        ? ` • Window ±${Math.round(windowPct * 100)}%`
-        : "";
-    const extraBadge = `Top ${topN}${win}`;
-
-    type OIRow = {
-      id: string;
-      label: string;
-      value: string;
-      kind: "strike" | "total";
-    };
-
-    let footer: CardProps["footer"];
-
-    if (error) {
-      footer = (
-        <div className="rounded-md border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-400">
-          Failed to load: {String(error)}
-        </div>
+    const footer =
+      vm.table && (
+        <KpiMiniTable
+          title={vm.table.title}
+          rows={vm.table.rows}
+          getKey={(r) => r.id}
+          sections={vm.table.sections}
+          columns={[
+            {
+              id: "label",
+              header: "Strike / metric",
+              render: (r) => r.label,
+            },
+            {
+              id: "value",
+              header: "% of OI / value",
+              align: "right",
+              render: (r) => r.value,
+            },
+          ]}
+        />
       );
-    } else {
-      const ranked = metrics?.rankedStrikes ?? [];
-      const topStrikes = ranked.slice(0, 5); // top-5 strikes
 
-      if (!topStrikes.length) {
-        footer = (
-          <div className="text-xs text-[var(--fg-muted)]">
-            No strikes in scope
-          </div>
-        );
-      } else {
-        const strikeRows: OIRow[] = topStrikes.map((b) => {
-          const share =
-            metrics && metrics.totalOi > 0 ? b.oi / metrics.totalOi : 0;
-          return {
-            id: `strike-${b.strike}`,
-            label: `$${Math.round(b.strike)}`,
-            value: `${(share * 100).toFixed(1)}%`,
-            kind: "strike",
-          };
-        });
-
-        const totalRows: OIRow[] = [
-          {
-            id: "total-oi",
-            label: "Total OI",
-            value:
-              metrics?.totalOi != null && isFinite(metrics.totalOi)
-                ? `${formatNumber(metrics.totalOi)} BTC`
-                : "—",
-            kind: "total",
-          },
-          {
-            id: "top-1",
-            label: "Top-1",
-            value:
-              metrics?.top1Share != null
-                ? `${(metrics.top1Share * 100).toFixed(1)}%`
-                : "—",
-            kind: "total",
-          },
-          {
-            id: "hhi",
-            label: "HHI",
-            value:
-              metrics?.hhi != null
-                ? `${(metrics.hhi * 100).toFixed(1)}%`
-                : "—",
-            kind: "total",
-          },
-        ];
-
-        const rows: OIRow[] = [...strikeRows, ...totalRows];
-
-        footer = (
-          <KpiMiniTable<OIRow>
-            title="Top strikes"
-            rows={rows}
-            getKey={(r) => r.id}
-            sections={[
-              {
-                index: strikeRows.length, // <- splitter between strikes and totals
-                title: "Totals",
-              },
-            ]}
-            columns={[
-              {
-                id: "label",
-                header: "Strike / metric",
-                render: (r) => r.label,
-              },
-              {
-                id: "value",
-                header: "Share / value",
-                align: "right",
-                render: (r) =>
-                  r.kind === "total" ? <strong>{r.value}</strong> : r.value,
-              },
-            ]}
-          />
-        );
-      }
-    }
-
-    return renderCard({
-      value,
-      meta,
-      extraBadge,
-      footer,
-      infoKey: kpi.id,
-      guidanceValue:
-        metrics?.topNShare != null ? metrics.topNShare * 100 : null,
-    });
+    return (
+      <KpiCard
+        kpi={kpi}
+        locale={locale}
+        value={vm.value}
+        meta={vm.meta}
+        extraBadge={vm.extraBadge}
+        footer={footer}
+        infoKey={kpi.id}
+        guidanceValue={vm.guidanceValue}
+      />
+    );
   }
 
   if (kpi.id === KPI_IDS.liquidityStress) {
@@ -724,55 +514,4 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
   }
 
   return renderCard();
-}
-
-function formatNumber(x?: number) {
-  if (x == null || !isFinite(x)) return "—";
-  if (Math.abs(x) >= 1_000_000_000) return (x / 1_000_000_000).toFixed(2) + "B";
-  if (Math.abs(x) >= 1_000_000) return (x / 1_000_000).toFixed(2) + "M";
-  if (Math.abs(x) >= 1_000) return (x / 1_000).toFixed(2) + "k";
-  return x.toFixed(2);
-}
-
-function formatTenorLabel(days: number) {
-  if (days === 1) return "1D";
-  if (days === 7) return "1W";
-  if (days === 30) return "30D";
-  if (days === 90) return "3M";
-  if (days % 30 === 0) return `${Math.round(days / 30)}M`;
-  return `${days}D`;
-}
-
-function formatExpiryLabel(expiryTs: number | null, locale: string) {
-  if (expiryTs == null || !isFinite(expiryTs)) return "—";
-  return new Date(expiryTs).toLocaleDateString(locale, { month: "short", day: "numeric" });
-}
-
-function formatEmAbsolute(value: number | null, locale: string) {
-  if (value == null || !isFinite(value)) return null;
-  const magnitude = Math.abs(value);
-  const formatter = new Intl.NumberFormat(locale, {
-    maximumFractionDigits: magnitude >= 1000 ? 0 : magnitude >= 100 ? 1 : 2,
-  });
-  return `±$${formatter.format(value)}`;
-}
-
-function formatEmPercent(value: number | null) {
-  if (value == null || !isFinite(value)) return null;
-  const pct = value * 100;
-  const decimals = Math.abs(pct) >= 10 ? 1 : 2;
-  return `±${pct.toFixed(decimals)}%`;
-}
-
-function fmtK(x: number) {
-  return x >= 1000 ? `${Math.round(x / 1000)}k` : `${Math.round(x)}`;
-}
-
-function fmtUsdShort(n: number) {
-  const a = Math.abs(n);
-  if (a >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-  if (a >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-  if (a >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-  if (a >= 1e3) return `$${(n / 1e3).toFixed(0)}k`;
-  return `$${n.toFixed(0)}`;
 }
