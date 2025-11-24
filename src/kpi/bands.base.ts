@@ -416,6 +416,35 @@ export const BAND_BASE: Record<string, BandBaseSet> = {
   },
 
   /* -----------------------------------------------------------------------
+   * 9) Strike support / resistance map
+   * --------------------------------------------------------------------- */
+  strikeMap: {
+    id: "strikeMap",
+    valueScale: "percent",
+    hasBar: true,
+    thresholds: [
+      {
+        id: "tight_pin",
+        max: 1,
+        tone: "caution", // spot almost glued to a pin strike
+      },
+      {
+        id: "balanced",
+        min: 1,
+        max: 3,
+        tone: "good", // healthy distance; walls still relevant
+      },
+      {
+        id: "loose",
+        min: 3,
+        tone: "caution", // no clear pin; walls far away
+      },
+    ],
+    note:
+      "Distance between spot and the strongest options 'pin' strike (in %). Small values mean high pin risk (spot trading very near a dominant strike); larger values mean walls are further away.",
+  },
+
+  /* -----------------------------------------------------------------------
    * Extras from dashboard context
    * --------------------------------------------------------------------- */
   basis_spread_annualized_pct: {

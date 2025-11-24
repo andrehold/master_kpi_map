@@ -2,27 +2,35 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchDvolHistory } from "../services/deribit";
 
 type DvolPoint = {
-  ts: number;          // your existing code uses .ts, so we keep this
+  ts: number;
+  closePct?: number;
+  openPct?: number;
+  highPct?: number;
+  lowPct?: number;
+  // keep some fallbacks in case fetchDvolHistory changes later
   close?: number;
   value?: number;
-  dvol?: number;
-  index?: number;
-  // [key: string]: any; // optionally add this if you like
 };
 
 /** Helper: extract the numeric DVOL value from a history point. */
 function getDvolValue(p: DvolPoint): number | undefined {
   if (!p) return undefined;
 
+  // Your sample shows closePct as the main field
+  if (typeof p.closePct === "number" && !Number.isNaN(p.closePct)) return p.closePct;
+
+  // Fallbacks, in case the shape changes in future
   if (typeof p.close === "number" && !Number.isNaN(p.close)) return p.close;
   if (typeof p.value === "number" && !Number.isNaN(p.value)) return p.value;
-  if (typeof p.dvol === "number" && !Number.isNaN(p.dvol)) return p.dvol;
-  if (typeof p.index === "number" && !Number.isNaN(p.index)) return p.index;
+  if (typeof p.openPct === "number" && !Number.isNaN(p.openPct)) return p.openPct;
 
   return undefined;
 }
 
-/** Compute IVR (rank 0..100) and IVP (percentile 0..100) from DVOL history. */
+/**
+ * Compute IV Rank (IVR, 0–100) and IV Percentile (IVP, 0–100)
+ * from DVOL history, following Deribit's definitions.
+ */
 export function useIvrFromDvol(currency: "BTC" | "ETH" = "BTC") {
   const [ivr, setIvr] = useState<number | null>(null);
   const [ivp, setIvp] = useState<number | null>(null);
@@ -35,14 +43,12 @@ export function useIvrFromDvol(currency: "BTC" | "ETH" = "BTC") {
     setError(null);
 
     try {
-      // Same call as before
+      // 400 daily points ≈ 400 days of DVOL
       const rawHist = (await fetchDvolHistory(
         currency,
         400,
         86400
       )) as DvolPoint[];
-
-      console.log("[DVOL sample]", rawHist[0]);
 
       if (!rawHist || rawHist.length === 0) {
         throw new Error("No DVOL history");
@@ -55,7 +61,7 @@ export function useIvrFromDvol(currency: "BTC" | "ETH" = "BTC") {
       const oneYearMs = 365 * 24 * 60 * 60 * 1000;
       const startTs = lastTs - oneYearMs;
 
-      // Only keep last ~1y
+      // Only use last ~1 year of data to match Deribit
       const window = hist.filter((p) => p.ts >= startTs);
 
       if (window.length === 0) {
@@ -67,13 +73,14 @@ export function useIvrFromDvol(currency: "BTC" | "ETH" = "BTC") {
         .filter((v): v is number => typeof v === "number");
 
       if (closes.length === 0) {
-        // This is the error you're seeing now: means the field name didn't match
-        throw new Error("No DVOL closes in 1y window");
+        // Helpful debug if this ever breaks again
+        console.warn("[useIvrFromDvol] no usable DVOL values, sample point:", window[0]);
+        throw new Error("No usable DVOL values in 1y window");
       }
 
       const current = closes[closes.length - 1];
 
-      // ---- IV Rank (range-based) ----
+      // ---- IV Rank: position between 1y min & max ----
       const lo = Math.min(...closes);
       const hi = Math.max(...closes);
       const span = hi - lo;
@@ -83,7 +90,7 @@ export function useIvrFromDvol(currency: "BTC" | "ETH" = "BTC") {
         ivrRaw = ((current - lo) / span) * 100;
       }
 
-      // ---- IV Percentile (time-below-based) ----
+      // ---- IV Percentile: share of periods with lower IV ----
       const periodsLower = closes.filter((v) => v < current).length;
       const pct = (periodsLower / closes.length) * 100;
 
@@ -102,7 +109,7 @@ export function useIvrFromDvol(currency: "BTC" | "ETH" = "BTC") {
     }
   }, [currency]);
 
-  // Auto-run once on mount
+  // Auto-run on mount & whenever currency changes
   useEffect(() => {
     void refresh();
   }, [refresh]);

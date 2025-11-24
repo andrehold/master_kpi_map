@@ -71,6 +71,7 @@ export const KPI_IDS = {
   vixVvix: "vix-vvix",
   volOfVol: "vol-of-vol",
   vvix: "vvix",
+  strikeMap: "strikeMap",
 } as const;
 
 export type KpiId = (typeof KPI_IDS)[keyof typeof KPI_IDS];
