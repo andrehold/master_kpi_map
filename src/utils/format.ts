@@ -103,4 +103,51 @@ export function fmtK(value: number | null | undefined): string {
       day: "numeric",
     });
   }
+
+  /**
+ * Strike like "70k" or "950".
+ */
+export function fmtStrike(value: number | null | undefined): string {
+  if (value == null || !isFinite(value)) return "—";
+  const v = Math.round(value);
+  if (Math.abs(v) >= 1000) return `${Math.round(v / 1000)}k`;
+  return String(v);
+}
+
+/**
+ * Distance from spot as signed percent, e.g. "+3.2%".
+ */
+export function fmtDistPct(
+  value: number | null | undefined,
+  decimals = 1
+): string {
+  if (value == null || !isFinite(value)) return "—";
+  const sign = value >= 0 ? "+" : "";
+  return `${sign}${value.toFixed(decimals)}%`;
+}
+
+/**
+ * Signed delta, e.g. "+0.123".
+ */
+export function fmtDelta(
+  value: number | null | undefined,
+  decimals = 3
+): string {
+  if (value == null || !isFinite(value)) return "—";
+  const sign = value >= 0 ? "+" : "";
+  return `${sign}${value.toFixed(decimals)}`;
+}
+
+/**
+ * Signed premium in USD, e.g. "+$3.20" / "-$0.75".
+ */
+export function fmtPremiumUsd(
+  value: number | null | undefined
+): string {
+  if (value == null || !isFinite(value)) return "—";
+  const sign = value >= 0 ? "+" : "-";
+  const abs = Math.abs(value);
+  const decimals = abs >= 1000 ? 0 : 2;
+  return `${sign}$${abs.toFixed(decimals)}`;
+}
   

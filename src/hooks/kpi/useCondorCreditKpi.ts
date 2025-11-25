@@ -1,18 +1,23 @@
 // src/hook/kpi/useCondorCreditKpi.ts
 import type { ReactNode } from "react";
 import type { useCondorCreditPctOfEM } from "../domain/useCondorCreditPctOfEM";
-import { fmtK, fmtUsdShort } from "../../utils/format"; // adjust path if needed
+import {
+  fmtStrike,
+  fmtDistPct,
+  fmtDelta,
+  fmtPremiumUsd,
+  fmtUsdShort,
+} from "@/utils/format"; // adjust path if needed
 
-// Domain state type from your existing hook
 type CondorState = ReturnType<typeof useCondorCreditPctOfEM>;
 
 export interface CondorLegRow {
   id: string;
-  legLabel: string;   // "Short PUT", "Long CALL hedge"
-  strike: string;     // e.g. "70k"
-  distPct: string;    // e.g. "-18.7%"
-  delta: string;      // currently "—" (no per-leg delta yet)
-  premium: string;    // currently "—" (no per-leg premium yet)
+  legLabel: string;
+  strike: string;
+  distPct: string;
+  delta: string;
+  premium: string;
   section: "short" | "long";
 }
 
@@ -27,14 +32,13 @@ export interface CondorCreditKpiViewModel {
   meta?: string;
   extraBadge?: string | null;
   guidanceValue?: number | null;
-
   legsTable?: CondorLegTableSpec;
 }
 
 /**
  * View-model builder for the "Condor Credit % of EM" KPI.
  *
- * Uses CondorCreditPctOfEMPoint:
+ * Uses CondorCreditPctOfEMPoint from useCondorCreditPctOfEM:
  * - pctOfEm is already in percent units (e.g. 7.53 = 7.53%)
  */
 export function useCondorCreditKpi(
@@ -42,7 +46,7 @@ export function useCondorCreditKpi(
 ): CondorCreditKpiViewModel {
   const loading = !!state?.loading;
   const error = state?.error;
-  const data = state?.data; // CondorCreditPctOfEMPoint | null
+  const data = state?.data;
 
   let value: ReactNode = "—";
   let meta: string | undefined = "Awaiting data";
@@ -70,7 +74,6 @@ export function useCondorCreditKpi(
       expiryTimestamp,
     } = data;
 
-    // 🔑 pctOfEm is already a percentage (e.g. 7.53), so no extra *100
     const pct =
       typeof pctOfEm === "number" && isFinite(pctOfEm) ? pctOfEm : null;
 
@@ -95,77 +98,97 @@ export function useCondorCreditKpi(
 
     meta = parts.join(" · ");
 
-    if (condorCreditUsd != null && isFinite(condorCreditUsd) && emUsd != null && isFinite(emUsd)) {
+    if (
+      condorCreditUsd != null &&
+      isFinite(condorCreditUsd) &&
+      emUsd != null &&
+      isFinite(emUsd)
+    ) {
       extraBadge = `Condor ${fmtUsdShort(condorCreditUsd)} • EM ${fmtUsdShort(
         emUsd
       )}`;
     }
 
-    // Bands / guidance: feed % directly (no extra scaling)
     guidanceValue = pct;
   }
 
-  // --- 2) Legs mini table (from strikes + indexPrice) ----------------------
+  // --- 2) Legs mini table (from strikes + indexPrice + legs) ---------------
 
-  if (data && data.strikes && data.indexPrice && isFinite(data.indexPrice)) {
+  if (
+    data &&
+    data.strikes &&
+    data.indexPrice &&
+    isFinite(data.indexPrice) &&
+    (data as any).legs
+  ) {
     const { strikes, indexPrice } = data;
+    const legs = (data as any).legs as {
+      longPut?: { delta?: number | null; premiumUsd?: number | null };
+      shortPut?: { delta?: number | null; premiumUsd?: number | null };
+      shortCall?: { delta?: number | null; premiumUsd?: number | null };
+      longCall?: { delta?: number | null; premiumUsd?: number | null };
+    };
 
-    const legsRaw: Array<{
+    type LegKey = "longPut" | "shortPut" | "shortCall" | "longCall";
+
+    const config: Array<{
       id: string;
+      key: LegKey;
+      label: string;
       side: "short" | "long";
-      type: "call" | "put";
       strike: number;
     }> = [
       {
         id: "short-put",
+        key: "shortPut",
+        label: "Short PUT",
         side: "short",
-        type: "put",
         strike: strikes.shortPut,
       },
       {
-        id: "long-put",
-        side: "long",
-        type: "put",
-        strike: strikes.longPut,
-      },
-      {
         id: "short-call",
+        key: "shortCall",
+        label: "Short CALL",
         side: "short",
-        type: "call",
         strike: strikes.shortCall,
       },
       {
-        id: "long-call",
+        id: "long-put",
+        key: "longPut",
+        label: "Long PUT hedge",
         side: "long",
-        type: "call",
+        strike: strikes.longPut,
+      },
+      {
+        id: "long-call",
+        key: "longCall",
+        label: "Long CALL hedge",
+        side: "long",
         strike: strikes.longCall,
       },
     ];
 
-    const rows: CondorLegRow[] = legsRaw.map((leg, idx) => {
+    const rows: CondorLegRow[] = config.map((legCfg) => {
       const distPctNum =
         indexPrice && isFinite(indexPrice)
-          ? (leg.strike / indexPrice - 1) * 100
+          ? (legCfg.strike / indexPrice - 1) * 100
           : null;
 
-      const legLabel =
-        leg.side === "short"
-          ? `Short ${leg.type.toUpperCase()}`
-          : `Long ${leg.type.toUpperCase()} hedge`;
+      const legMeta = (legs as any)[legCfg.key] as
+        | { delta?: number | null; premiumUsd?: number | null }
+        | undefined;
 
-      const distPct =
-        distPctNum != null
-          ? `${distPctNum >= 0 ? "+" : ""}${distPctNum.toFixed(1)}%`
-          : "—";
+      const deltaRaw = legMeta?.delta ?? null;
+      const premiumRaw = legMeta?.premiumUsd ?? null;
 
       return {
-        id: leg.id ?? `leg-${idx}`,
-        legLabel,
-        strike: fmtK(leg.strike),
-        distPct,
-        delta: "—",   // no per-leg greeks yet
-        premium: "—", // no per-leg premium yet
-        section: leg.side,
+        id: legCfg.id,
+        legLabel: legCfg.label,
+        strike: fmtStrike(legCfg.strike),
+        distPct: fmtDistPct(distPctNum),
+        delta: fmtDelta(deltaRaw),
+        premium: fmtPremiumUsd(premiumRaw),
+        section: legCfg.side,
       };
     });
 

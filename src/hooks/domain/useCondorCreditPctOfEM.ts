@@ -16,6 +16,7 @@ type BookSummary = {
   ask_price?: number | null;
   last_price?: number | null;
   mark_iv?: number | null; // Deribit IV (decimal or percent)
+  delta?: number | null;   // option delta for 1 long contract
 };
 
 export type CondorCreditPctOfEMPoint = {
@@ -37,6 +38,12 @@ export type CondorCreditPctOfEMPoint = {
     shortPut: string;
     shortCall: string;
     longCall: string;
+  };
+  legs: {
+    longPut: { delta: number | null; premiumUsd: number | null };
+    shortPut: { delta: number | null; premiumUsd: number | null };
+    shortCall: { delta: number | null; premiumUsd: number | null };
+    longCall: { delta: number | null; premiumUsd: number | null };
   };
 };
 
@@ -102,6 +109,11 @@ export function useCondorCreditPctOfEM(params: {
 }
 
 // === helpers =======================================================
+
+function normalizeDelta(value: number | null | undefined): number | null {
+  if (value == null || !isFinite(value)) return null;
+  return value;
+}
 
 async function fetchCondorCreditPctOfEM(
   currency: Currency
@@ -223,10 +235,33 @@ async function fetchCondorCreditPctOfEM(
   const shortCallPrice = extractMarkPrice(shortCallSummary);
   const longCallPrice = extractMarkPrice(longCallSummary);
 
+  // --- per-leg deltas -------------------------------------------------
+  const longPutDeltaRaw = longPutSummary.delta ?? null;
+  const shortPutDeltaRaw = shortPutSummary.delta ?? null;
+  const shortCallDeltaRaw = shortCallSummary.delta ?? null;
+  const longCallDeltaRaw = longCallSummary.delta ?? null;
+
+  const longPutDelta = normalizeDelta(longPutDeltaRaw);
+  const shortPutDelta = normalizeDelta(shortPutDeltaRaw);
+  const shortCallDelta = normalizeDelta(shortCallDeltaRaw);
+  const longCallDelta = normalizeDelta(longCallDeltaRaw);
+
+  // Position deltas: flip sign for short legs
+  const posLongPutDelta = longPutDelta;
+  const posShortPutDelta = shortPutDelta != null ? -shortPutDelta : null;
+  const posShortCallDelta = shortCallDelta != null ? -shortCallDelta : null;
+  const posLongCallDelta = longCallDelta;
+
   // Deribit option prices are denominated in underlying (BTC / ETH).
   // Convert to USD so EM and credit are comparable.
   const creditInUnderlying =
     shortPutPrice + shortCallPrice - (longPutPrice + longCallPrice);
+
+  // Per-leg premiums in USD (positive = credit, negative = debit)
+  const longPutPremiumUsd = -longPutPrice * indexPrice;
+  const shortPutPremiumUsd = shortPutPrice * indexPrice;
+  const shortCallPremiumUsd = shortCallPrice * indexPrice;
+  const longCallPremiumUsd = -longCallPrice * indexPrice;
 
   const condorCreditUsd = creditInUnderlying * indexPrice;
 
@@ -255,20 +290,38 @@ async function fetchCondorCreditPctOfEM(
       shortCall: shortCallInst.instrument_name,
       longCall: longCallInst.instrument_name,
     },
+    legs: {
+      longPut: {
+        delta: posLongPutDelta,
+        premiumUsd: isFinite(longPutPremiumUsd) ? longPutPremiumUsd : null,
+      },
+      shortPut: {
+        delta: posShortPutDelta,
+        premiumUsd: isFinite(shortPutPremiumUsd) ? shortPutPremiumUsd : null,
+      },
+      shortCall: {
+        delta: posShortCallDelta,
+        premiumUsd: isFinite(shortCallPremiumUsd) ? shortCallPremiumUsd : null,
+      },
+      longCall: {
+        delta: posLongCallDelta,
+        premiumUsd: isFinite(longCallPremiumUsd) ? longCallPremiumUsd : null,
+      },
+    },
   };
 }
 
 async function getBookSummary(
   instrumentName: string
 ): Promise<BookSummary> {
-  const res = await dget<BookSummary[]>(
-    "/public/get_book_summary_by_instrument",
+  const res = await dget<BookSummary>(
+    "/public/ticker",
     { instrument_name: instrumentName }
   );
-  if (!res || !res.length) {
-    throw new Error(`No book summary for instrument ${instrumentName}`);
+  if (!res) {
+    throw new Error(`No ticker for instrument ${instrumentName}`);
   }
-  return res[0];
+  return res;
 }
 
 function extractMarkPrice(summary: BookSummary): number {
@@ -278,9 +331,9 @@ function extractMarkPrice(summary: BookSummary): number {
 
   const mid =
     bid_price != null &&
-    isFinite(bid_price) &&
-    ask_price != null &&
-    isFinite(ask_price)
+      isFinite(bid_price) &&
+      ask_price != null &&
+      isFinite(ask_price)
       ? (bid_price + ask_price) / 2
       : undefined;
 
