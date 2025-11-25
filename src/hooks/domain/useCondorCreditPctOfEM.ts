@@ -61,24 +61,15 @@ export function useCondorCreditPctOfEM(params: {
     let intervalId: number | undefined;
 
     async function loadOnce() {
+      setState((s) => ({ ...s, loading: true, error: null }));
+
       try {
-        if (!cancelled) {
-          setState((s) => ({ ...s, loading: true, error: null }));
-        }
-
         const data = await fetchCondorCreditPctOfEM(currency);
-
-        if (!cancelled) {
-          setState({ data, loading: false, error: null });
-        }
+        if (cancelled) return; // ✅ check once before setState
+        setState({ data, loading: false, error: null });
       } catch (err) {
-        if (!cancelled) {
-          setState((s) => ({
-            ...s,
-            loading: false,
-            error: err as Error,
-          }));
-        }
+        if (cancelled) return;
+        setState((s) => ({ ...s, loading: false, error: err as Error }));
       }
     }
 
