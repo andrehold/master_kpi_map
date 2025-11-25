@@ -38,9 +38,9 @@ export type OIConcentrationMetrics = {
 };
 
 export type UseOICOptions = {
-  currency: Currency;
+  currency?: Currency;       // optional -> default to BTC
   expiry?: "front" | "all";  // default "front"
-  windowPct?: number;        // ±window, e.g., 0.25 for ±25%
+  windowPct?: number;        // ±window, e.g. 0.25 for ±25%
   topN?: number;             // default 3
   pollMs?: number;           // default 60_000; 0 disables polling
 };
@@ -51,15 +51,18 @@ function isDbg() {
     if (typeof window !== "undefined") {
       // Matches your deribit.ts debug switches
       // @ts-ignore
-      if (window.__DERIBIT_DEBUG__ === true) return true;
-      if (localStorage.getItem("deribitDebug") === "1") return true;
+      if ((window as any).__DERIBIT_DEBUG__ === true) return true;
+      if (window.localStorage.getItem("deribitDebug") === "1") return true;
     }
   } catch {}
   return false;
 }
 function dlog(...args: any[]) {
   if (!isDbg()) return;
-  try { console.log("[oic]", ...args); } catch {}
+  try {
+    // eslint-disable-next-line no-console
+    console.log("[oic]", ...args);
+  } catch {}
 }
 
 // ---- Deribit shapes --------------------------------------------------------
@@ -71,17 +74,21 @@ type DeribitBookSummary = {
   option_type?: "call" | "put";
 };
 
-type DeribitBookSummaryResponse = {
-  result?: DeribitBookSummary[];
-} | DeribitBookSummary[];
+type DeribitBookSummaryResponse =
+  | { result?: DeribitBookSummary[] }
+  | DeribitBookSummary[];
 
-function unwrapResult<T>(r: { result?: T } | T | null | undefined): T | undefined {
+function unwrapResult<T>(
+  r: { result?: T } | T | null | undefined
+): T | undefined {
   if (!r) return undefined;
   // @ts-ignore
   return (r.result ?? r) as T;
 }
 
-function parseStrikeFromInstrument(instrument: string): number | undefined {
+function parseStrikeFromInstrument(
+  instrument: string
+): number | undefined {
   // Example: BTC-30DEC22-40000-C
   const parts = instrument.split("-");
   if (parts.length < 4) return undefined;
@@ -90,18 +97,24 @@ function parseStrikeFromInstrument(instrument: string): number | undefined {
   return Number.isFinite(v) ? v : undefined;
 }
 
-function parseTypeFromInstrument(instrument: string): "call" | "put" | undefined {
-  const last = instrument.split("-").pop();
-  if (!last) return;
-  if (last.toUpperCase() === "C") return "call";
-  if (last.toUpperCase() === "P") return "put";
-  return;
+function parseTypeFromInstrument(
+  instrument: string
+): "call" | "put" | undefined {
+  // Example: BTC-30DEC22-40000-C / BTC-30DEC22-40000-P
+  const parts = instrument.split("-");
+  const last = parts[parts.length - 1];
+  if (last === "C") return "call";
+  if (last === "P") return "put";
+  return undefined;
 }
 
-function calcEntropy(p: number[]): number {
+// ---- concentration helpers -------------------------------------------------
+function calcEntropy(shares: number[]): number {
   // Shannon entropy (nats)
   let s = 0;
-  for (const x of p) if (x > 0) s += x * Math.log(1 / x);
+  for (const x of shares) {
+    if (x > 0) s += x * Math.log(1 / x);
+  }
   return s;
 }
 
@@ -112,19 +125,24 @@ function calcGini(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const total = sorted.reduce((a, b) => a + b, 0);
   if (total <= 0) return 0;
+
   let cum = 0;
   let B = 0;
   for (let i = 0; i < n; i++) {
     cum += sorted[i];
     B += cum;
   }
-  return 1 + 1 / n - (2 * B) / (n * total);
+  B /= n * total;
+
+  const gini = 1 + 1 / n - 2 * B;
+  return gini;
 }
 
+// ---- main hook -------------------------------------------------------------
 export function useOpenInterestConcentration({
   currency,
   expiry = "front",
-  windowPct,
+  windowPct = 0.25,
   topN = 3,
   pollMs = 60_000,
 }: UseOICOptions) {
@@ -135,17 +153,23 @@ export function useOpenInterestConcentration({
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const alive = useRef(true);
 
+  // Always use a real currency so we never send "undefined" to Deribit
+  const effectiveCurrency: Currency = currency ?? "BTC";
+
   async function fetchOnce() {
     try {
       setError(null);
 
       // 1) Pull all option summaries (includes per-instrument open_interest)
-      dlog("fetch summaries", { currency });
-      const raw = await dget<DeribitBookSummaryResponse>("/public/get_book_summary_by_currency", {
-        currency,
-        kind: "option",
-        expired: false,
-      });
+      dlog("fetch summaries", { effectiveCurrency });
+      const raw = await dget<DeribitBookSummaryResponse>(
+        "/public/get_book_summary_by_currency",
+        {
+          currency: effectiveCurrency,
+          kind: "option",
+          expired: false,
+        }
+      );
       const list = unwrapResult<DeribitBookSummary[]>(raw) ?? [];
       const scannedCount = list.length;
 
@@ -165,7 +189,7 @@ export function useOpenInterestConcentration({
       // 3) Index price only if windowing is requested
       let indexPrice: number | undefined = undefined;
       if (typeof windowPct === "number" && windowPct > 0) {
-        const idx = await getIndexPrice(currency as any);
+        const idx = await getIndexPrice(effectiveCurrency);
         if (typeof idx === "number") indexPrice = idx;
         else if (idx && typeof idx === "object") {
           // @ts-ignore
@@ -177,7 +201,8 @@ export function useOpenInterestConcentration({
       const byStrike = new Map<number, OIStrikeBucket>();
 
       const strikeInWindow = (strike: number) => {
-        if (!indexPrice || typeof windowPct !== "number" || windowPct <= 0) return true;
+        if (!indexPrice || typeof windowPct !== "number" || windowPct <= 0)
+          return true;
         const lo = indexPrice * (1 - windowPct);
         const hi = indexPrice * (1 + windowPct);
         return strike >= lo && strike <= hi;
@@ -187,6 +212,7 @@ export function useOpenInterestConcentration({
         if (expiry === "front" && typeof selectedExpiryTs === "number") {
           if (it.expiration_timestamp !== selectedExpiryTs) continue;
         }
+
         const oi = Number(it.open_interest ?? 0);
         if (!(oi > 0)) continue;
 
@@ -198,7 +224,9 @@ export function useOpenInterestConcentration({
 
         if (!strikeInWindow(strike)) continue;
 
-        const type = (it.option_type as "call" | "put" | undefined) ?? parseTypeFromInstrument(it.instrument_name);
+        const type =
+          (it.option_type as "call" | "put" | undefined) ??
+          parseTypeFromInstrument(it.instrument_name);
 
         let bucket = byStrike.get(strike);
         if (!bucket) {
@@ -219,7 +247,9 @@ export function useOpenInterestConcentration({
       const p = totalOi > 0 ? rankedStrikes.map((x) => x.oi / totalOi) : [];
 
       const top1Share = p[0] ?? 0;
-      const topNShare = p.slice(0, Math.max(1, topN)).reduce((a, b) => a + b, 0);
+      const topNShare = p
+        .slice(0, Math.max(1, topN))
+        .reduce((a, b) => a + b, 0);
       const hhi = p.reduce((a, b) => a + b * b, 0);
       const hhiNorm = hhi;
       const entropy = calcEntropy(p);
@@ -231,7 +261,7 @@ export function useOpenInterestConcentration({
 
       const m: OIConcentrationMetrics = {
         ts,
-        currency,
+        currency: effectiveCurrency,
         expiryScope: expiry,
         windowPct,
         indexPrice,
@@ -258,13 +288,14 @@ export function useOpenInterestConcentration({
       if (!alive.current) return;
       setError(err);
       setLoading(false);
-      dlog("error", err);
+      dlog("fetchOnce error", err);
     }
   }
 
   useEffect(() => {
     alive.current = true;
     setLoading(true);
+
     fetchOnce();
 
     if (timer.current) {
@@ -281,5 +312,8 @@ export function useOpenInterestConcentration({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currency, expiry, windowPct, topN, pollMs]);
 
-  return useMemo(() => ({ loading, error, metrics }), [loading, error, metrics]);
+  return useMemo(
+    () => ({ loading, error, metrics }),
+    [loading, error, metrics]
+  );
 }

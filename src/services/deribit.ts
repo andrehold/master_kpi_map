@@ -40,6 +40,12 @@ export type DvolPoint = {
 export type BookSummaryRow = {
   instrument_name: string;
   open_interest?: number;
+  mark_price?: number | null;
+  bid_price?: number | null;
+  ask_price?: number | null;
+  last_price?: number | null;
+  mark_iv?: number | null;
+  delta?: number | null;
 };
 
 export type IndexPriceMeta = { 
@@ -331,20 +337,39 @@ export async function getInstruments(currency: 'BTC' | 'ETH') {
 }
 
 export async function getBookSummaryByCurrency(
-  currency: 'BTC' | 'ETH'
+  currency: Currency | undefined
 ): Promise<Map<string, number>> {
-  const res = await dget<{ result?: BookSummaryRow[]; }>(
-    '/public/get_book_summary_by_currency',
-    { currency, kind: 'option' }
+  // 👇 robust default – never send "undefined" to Deribit
+  const effective: Currency = currency ?? "BTC";
+
+  const res = await dget<{ result?: BookSummaryRow[] }>(
+    "/public/get_book_summary_by_currency",
+    { currency: effective, kind: "option" }
   );
+
   const rows: BookSummaryRow[] = (res as any)?.result ?? (res as any) ?? [];
   const map = new Map<string, number>();
+
   for (const r of rows) {
-    if (r && r.instrument_name && typeof r.open_interest === 'number') {
+    if (r && r.instrument_name && typeof r.open_interest === "number") {
       map.set(r.instrument_name, r.open_interest);
     }
   }
+
   return map;
+}
+
+export async function getOptionBookSummary(
+  instrumentName: string
+): Promise<BookSummaryRow> {
+  const res = await dget<BookSummaryRow[]>(
+    "/public/get_book_summary_by_instrument",
+    { instrument_name: instrumentName }
+  );
+  if (!res?.length) {
+    throw new Error(`No book summary for instrument ${instrumentName}`);
+  }
+  return res[0]; // now has mark_price, delta, etc.
 }
 
 

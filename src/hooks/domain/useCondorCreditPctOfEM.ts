@@ -1,7 +1,7 @@
 // src/hooks/useCondorCreditPctOfEM.ts
 
 import { useEffect, useState } from "react";
-import { dget, type DeribitInstrument } from "../../services/deribit";
+import { dget, getOptionBookSummary, type DeribitInstrument, type BookSummaryRow } from "../../services/deribit";
 import { pickNearestInstrumentByType } from "../../lib/deribitOptionMath";
 import { ceilExpiry, expectedMove } from "../../lib/selectExpiries";
 
@@ -9,15 +9,6 @@ type Currency = "BTC" | "ETH";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TARGET_DTE_DAYS = 30;
-
-type BookSummary = {
-  mark_price?: number | null;
-  bid_price?: number | null;
-  ask_price?: number | null;
-  last_price?: number | null;
-  mark_iv?: number | null; // Deribit IV (decimal or percent)
-  delta?: number | null;   // option delta for 1 long contract
-};
 
 export type CondorCreditPctOfEMPoint = {
   currency: Currency;
@@ -178,7 +169,7 @@ async function fetchCondorCreditPctOfEM(
   if (!atmCall) {
     throw new Error("Unable to find ATM call");
   }
-  const atmSummary = await getBookSummary(atmCall.instrument_name);
+  const atmSummary = await getOptionBookSummary(atmCall.instrument_name);
 
   // Deribit sometimes gives IV in percent; normalize to decimal.
   const rawIv = atmSummary.mark_iv ?? 0;
@@ -224,10 +215,10 @@ async function fetchCondorCreditPctOfEM(
     shortCallSummary,
     longCallSummary,
   ] = await Promise.all([
-    getBookSummary(longPutInst.instrument_name),
-    getBookSummary(shortPutInst.instrument_name),
-    getBookSummary(shortCallInst.instrument_name),
-    getBookSummary(longCallInst.instrument_name),
+    getOptionBookSummary(longPutInst.instrument_name),
+    getOptionBookSummary(shortPutInst.instrument_name),
+    getOptionBookSummary(shortCallInst.instrument_name),
+    getOptionBookSummary(longCallInst.instrument_name),
   ]);
 
   const longPutPrice = extractMarkPrice(longPutSummary);
@@ -313,18 +304,18 @@ async function fetchCondorCreditPctOfEM(
 
 async function getBookSummary(
   instrumentName: string
-): Promise<BookSummary> {
-  const res = await dget<BookSummary>(
-    "/public/ticker",
+): Promise<BookSummaryRow> {
+  const res = await dget<BookSummaryRow[]>(
+    "/public/get_book_summary_by_instrument",
     { instrument_name: instrumentName }
   );
-  if (!res) {
-    throw new Error(`No ticker for instrument ${instrumentName}`);
+  if (!res || !res.length) {
+    throw new Error(`No book summary for instrument ${instrumentName}`);
   }
-  return res;
+  return res[0];
 }
 
-function extractMarkPrice(summary: BookSummary): number {
+function extractMarkPrice(summary: BookSummaryRow): number {
   const { mark_price, bid_price, ask_price, last_price } = summary;
 
   if (mark_price != null && isFinite(mark_price)) return mark_price;
