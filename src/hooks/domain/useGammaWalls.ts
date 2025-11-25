@@ -1,5 +1,5 @@
-// src/hooks/useGammaWalls.ts
-import { useEffect, useMemo, useRef, useState } from "react";
+// src/hooks/domain/useGammaWalls.ts
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   getIndexPrice,
   getInstruments,
@@ -17,29 +17,48 @@ export type GammaByStrike = {
 
 export function useGammaWalls(opts?: {
   currency?: "BTC" | "ETH";
-  windowPct?: number;   // strikes within ±(windowPct) of spot
-  topN?: number;        // how many walls to surface for badges
-  pollMs?: number;      // 0 = no polling
+  windowPct?: number;
+  topN?: number;
+  pollMs?: number;
   enabled?: boolean;
 }) {
-  const { currency = "BTC", windowPct = 0.10, topN = 3, pollMs = 30000, enabled = true } = opts;
+  const { 
+    currency = "BTC", 
+    windowPct = 0.10, 
+    topN = 3, 
+    pollMs = 30000, 
+    enabled = true 
+  } = opts || {};
 
   const [data, setData] = useState<GammaByStrike[] | null>(null);
   const [indexPrice, setIndexPrice] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mountedRef = useRef(true);
 
-  async function run() {
-    if (!enabled) return;
-    setLoading(prev => (data ? prev : true));
+  // ✅ Stable fetch function stored in ref
+  const fetchRef = useRef<() => Promise<void>>();
+  
+  fetchRef.current = useCallback(async () => {
+    if (!enabled || !mountedRef.current) {
+      setLoading(false);
+      return;
+    }
+
+    // Only show loading on initial load, not on refreshes
+    setLoading(prev => data === null ? true : prev);
     setError(null);
+
     try {
       const [spot, instruments, oiMap] = await Promise.all([
         getIndexPrice(currency),
         getInstruments(currency),
         getBookSummaryByCurrency(currency),
       ]);
+
+      if (!mountedRef.current) return;
+
       setIndexPrice(spot);
 
       const near = instruments.filter(
@@ -50,7 +69,6 @@ export function useGammaWalls(opts?: {
           Math.abs(i.strike - spot) / spot <= windowPct
       );
 
-      // get gamma via ticker per instrument (your deribit.ts rate-gate will coalesce)
       const rows = await Promise.all(
         near.map(async (i: any) => {
           const t = await getTicker(i.instrument_name);
@@ -65,8 +83,10 @@ export function useGammaWalls(opts?: {
         })
       );
 
-      // aggregate gamma exposure to USD per strike: gamma * S^2 * OI * contractSize(=1)
+      if (!mountedRef.current) return;
+
       const byStrike = new Map<number, { call: number; put: number }>();
+      
       for (const r of rows) {
         if (!(r.gamma && r.oi > 0)) continue;
         const usdGamma = r.gamma * spot * spot * r.oi;
@@ -78,7 +98,7 @@ export function useGammaWalls(opts?: {
 
       const out: GammaByStrike[] = [];
       for (const [strike, { call, put }] of byStrike) {
-        const net = call - put; // sign convention: calls – puts
+        const net = call - put;
         out.push({
           strike,
           gex_call_usd: call,
@@ -88,48 +108,71 @@ export function useGammaWalls(opts?: {
         });
       }
 
-      // sort by |GEX| descending, then by proximity to spot
       out.sort((a, b) => {
         if (b.gex_abs_usd !== a.gex_abs_usd) return b.gex_abs_usd - a.gex_abs_usd;
         return Math.abs(a.strike - spot) - Math.abs(b.strike - spot);
       });
 
+      if (!mountedRef.current) return;
       setData(out);
+      setError(null);
     } catch (e: any) {
+      if (!mountedRef.current) return;
       setError(e?.message ?? "Failed to build gamma walls");
       setData(null);
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
-  }
+  }, [enabled, currency, windowPct, data]); // ✅ Include data to check initial state
 
+  // ✅ Single effect with stable dependencies
   useEffect(() => {
-    // clear any existing timer
+    mountedRef.current = true;
+
+    // Clear any existing timer
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
 
-    // Always fetch once on mount/options change
-    run();
+    // Initial fetch
+    fetchRef.current?.();
 
-    // Only set up polling when pollMs > 0
+    // Setup polling only if enabled and pollMs > 0
     if (enabled && pollMs > 0) {
-      timerRef.current = setInterval(run, pollMs);
+      timerRef.current = setInterval(() => {
+        fetchRef.current?.();
+      }, pollMs);
     }
 
     return () => {
+      mountedRef.current = false;
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
     };
-  }, [run, enabled, pollMs]);
+  }, [enabled, pollMs, currency, windowPct]); // ✅ Only primitives
 
   const top = useMemo(() => {
     if (!data) return null;
     return data.slice(0, topN);
   }, [data, topN]);
 
-  return { data, top, indexPrice, loading, error, refresh: run };
+  const refresh = useCallback(() => {
+    fetchRef.current?.();
+  }, []);
+
+  return { 
+    data, 
+    top, 
+    indexPrice, 
+    loading, 
+    error, 
+    refresh,
+    // Add walls alias for backward compatibility if needed
+    walls: data,
+  };
 }
