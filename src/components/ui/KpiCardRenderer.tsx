@@ -1,7 +1,6 @@
 import { type ComponentProps } from "react";
 import KpiCard from "./KpiCard";
 import LiquidityStressCard from "./LiquidityStressCard";
-import ClientPortfolioCard from "./ClientPortfolioCard";
 
 import type { KPIDef } from "../../data/kpis";
 import type { Samples } from "../../utils/samples";
@@ -18,6 +17,7 @@ import { useEmRibbonKpi } from "../../hooks/kpi/useEmRibbonKpi";
 import { useCondorCreditKpi } from "../../hooks/kpi/useCondorCreditKpi";
 
 import { KPI_IDS } from "../../kpi/kpiIds";
+import { getClientPortfolioModel, type ClientPortfolioRow } from "../../kpi/clientPortfolios";
 import { KpiMiniTable } from "./KpiMiniTable";
 
 type SkewState = ReturnType<typeof useDeribitSkew25D>;
@@ -527,13 +527,69 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
   }
 
   if (kpi.id.startsWith("portfolio-client-")) {
-    return (
-      <ClientPortfolioCard
-        key={kpi.id}
-        kpi={kpi}
-        locale={locale}
+    const model = getClientPortfolioModel(kpi.id);
+
+    if (!model) {
+      return renderCard({
+        value: "—",
+        meta: "No client config found",
+      });
+    }
+
+    const footer = (
+      <KpiMiniTable<ClientPortfolioRow>
+        title="PnL & Greeks vs limits"
+        rows={model.rows}
+        getKey={(r) => r.id}
+        columns={[
+          {
+            id: "metric",
+            header: "Metric",
+            render: (r) => r.metric,
+          },
+          {
+            id: "value",
+            header: "Value",
+            align: "right",
+            render: (r) => <span className="tabular-nums">{r.actual}</span>,
+          },
+          {
+            id: "threshold",
+            header: "Threshold",
+            align: "right",
+            render: (r) => (
+              <span className="inline-flex items-center gap-1 tabular-nums">
+                {r.threshold}
+                <span
+                  className={[
+                    "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium border",
+                    r.ok
+                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                      : "border-red-500/40 bg-red-500/10 text-red-400",
+                  ].join(" ")}
+                  aria-label={r.ok ? "Within limit" : "Limit breached"}
+                >
+                  {r.ok ? "OK" : "Breach"}
+                </span>
+              </span>
+            ),
+          },
+        ]}
       />
     );
+
+    const meta = model.baseCurrency
+      ? `Base: ${model.baseCurrency}${
+          model.notes ? ` • ${model.notes}` : ""
+        }`
+      : model.notes;
+
+    return renderCard({
+      value: `${model.pnlPct.toFixed(2)}%`,
+      meta,
+      extraBadge: model.health,
+      footer,
+    });
   }
 
   return renderCard();
