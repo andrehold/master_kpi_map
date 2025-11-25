@@ -136,6 +136,7 @@ export function useDeribitSkew25D(opts: Options = {}) {
 
   useEffect(() => {
     let cancelled = false;
+    let timerId: number | undefined;
 
     async function run() {
       try {
@@ -246,7 +247,10 @@ export function useDeribitSkew25D(opts: Options = {}) {
     }
 
     run();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (timerId) clearTimeout(timerId);
+    };
   }, [currency, targetDays, maxPerSide, concurrency, retries, refreshIndex]);
 
   // expose a refresh method to the UI
