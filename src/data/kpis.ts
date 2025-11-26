@@ -83,7 +83,7 @@ export const KPI_GROUPS: KPIGroup[] = [
     kpis: [
       { id: KPI_IDS.atmIv, name: "ATM Implied Volatility (IV)", strategies: ["Expected Move", "Range-Bound Premium", "Carry Trade", "0DTE Overwrite"], valueType: "percent" },
       { id: KPI_IDS.ivr, name: "IV Rank / Percentile (IVR)", strategies: ["Expected Move", "Range-Bound Premium", "Carry Trade", "0DTE Overwrite"], valueType: "ivrank" },
-      { id: KPI_IDS.termStructure, name: "IV Term Structure (Contango vs Backwardation)", strategies: ["Expected Move", "Carry Trade", "0DTE Overwrite"], valueType: "text" },
+      { id: KPI_IDS.termStructure, name: "IV Term Structure", strategies: ["Expected Move", "Carry Trade", "0DTE Overwrite"], valueType: "text" },
       { id: KPI_IDS.skew25dRr, name: "Skew (25Δ Risk Reversal)", strategies: ["Expected Move", "Weekend Vol", "Carry Trade", "0DTE Overwrite"], valueType: "price" },
       { id: KPI_IDS.volOfVol, name: "Vol-of-Vol (VVIX/MOVE/intraday IV)", strategies: ["Expected Move", "0DTE Overwrite"], valueType: "index" },
       { id: KPI_IDS.tsKink, name: "Term Structure Kink (0DTE vs 1–3DTE IV)", strategies: ["0DTE Overwrite"], valueType: "percent" },
