@@ -1,281 +1,275 @@
-// src/hooks/useStrikeMap.ts
 import { useMemo } from "react";
-import { useDeribitPerpMark } from "@/hooks/domain/useDeribitPerpMark";
-import { useGammaWalls } from "@/hooks/domain/useGammaWalls";
-import { useOpenInterestConcentration } from "@/hooks/domain/useOpenInterestConcentration";
-import {
-  StrikeLevelKind,
-  StrikeMapBucket,
+import type {
   StrikeMapState,
+  StrikeMapBucket,
   StrikeMapTableRow,
-} from "@/kpi/strikeMapTypes";
+} from "../../kpi/strikeMapTypes";
 
-export interface UseStrikeMapOptions {
-  currency?: "BTC" | "ETH";
-  windowPct?: number; // +/- percentage window around spot, e.g. 0.15 = ±15%
-  topN?: number;      // number of support/resistance levels for the mini table
+export interface StrikeMapSourcePoint {
+  strike: number;
+  /** Absolute gamma exposure in USD (or normalized units). */
+  gammaAbs?: number;
+  /** Signed gamma exposure (for call/put dominance, optional). */
+  gammaSigned?: number;
+  /** Open interest size (contracts or normalized). */
+  oiAbs?: number;
 }
 
 /**
- * Combines gamma walls + OI concentration into a unified "strike map":
- * - finds the strongest "pin" strike
- * - identifies main support / resistance strikes
- * - returns normalized buckets for a compact heat strip
- * - returns rows for the miniTable (support / resistance sections)
+ * Parameters for deriving a StrikeMapState from combined gamma + OI data.
  */
-export function useStrikeMap({
-  currency = "BTC",
-  windowPct = 0.15,
-  topN = 3,
-}: UseStrikeMapOptions = {}): StrikeMapState {
-  // --- 1) Raw inputs from existing hooks -----------------------------------
+export interface UseStrikeMapParams {
+  /** Current underlying spot. Used to classify levels into support/resistance/magnet. */
+  spot?: number | null;
+  /**
+   * Window size expressed as a fraction of spot.
+   * Example: 0.05 = ±5% window around spot. Defaults to 0.05.
+   */
+  windowPct?: number;
+  /** Upstream loading flag (e.g. gammaWalls.loading || oiConcentration.loading). */
+  loading: boolean;
+  /** Upstream error, if any. */
+  error: string | null;
+  /** Combined data points built from gamma walls + OI concentration. */
+  points: StrikeMapSourcePoint[];
+}
 
-  const {
-    mark: spot,
-    loading: markLoading,
-    error: markError,
-  } = useDeribitPerpMark({ currency });
+const DEFAULT_WINDOW_PCT = 0.05;
+const MIN_SCORE = 0.15;
+const GAMMA_WEIGHT = 0.6;
+const OI_WEIGHT = 0.4;
+const MAX_LEVELS_PER_SIDE = 3;
 
-  const {
-    walls: rawWalls,
-    loading: gammaLoading,
-    error: gammaError,
-  } = useGammaWalls({ currency, windowPct, topN: 50, pollMs: 0 } as any);
+/**
+ * React hook wrapper around the pure builder. Keeps the heavy lifting in a memo.
+ */
+export function useStrikeMapFromPoints(params: UseStrikeMapParams): StrikeMapState {
+  // If you want aggressive perf you can destructure instead of `[params]`,
+  // but this is fine for now.
+  return useMemo(() => buildStrikeMapStateFromPoints(params), [params]);
+}
 
-  const {
-    levels: rawOiLevels,
-    loading: oiLoading,
-    error: oiError,
-  } = useOpenInterestConcentration({ currency } as any);
+/**
+ * Pure function: derive StrikeMapState from generic gamma/OI input.
+ */
+export function buildStrikeMapStateFromPoints(params: UseStrikeMapParams): StrikeMapState {
+  const { spot, windowPct = DEFAULT_WINDOW_PCT, loading, error, points } = params;
 
-  const loading = markLoading || gammaLoading || oiLoading;
+  const base: StrikeMapState = {
+    loading,
+    error,
+    pinStrike: null,
+    pinDistancePct: null,
+    mainSupportStrike: null,
+    mainResistanceStrike: null,
+    buckets: [],
+    tableRows: [],
+  };
 
-  const error =
-    (markError as string | null) ||
-    (gammaError as string | null) ||
-    (oiError as string | null) ||
-    null;
+  if (!points || points.length === 0) {
+    return base;
+  }
 
-  // --- 2) Derived state -----------------------------------------------------
-
-  return useMemo<StrikeMapState>(() => {
-    if (!spot || loading) {
-      return {
-        loading,
-        error,
-        pinStrike: null,
-        pinDistancePct: null,
-        mainSupportStrike: null,
-        mainResistanceStrike: null,
-        buckets: [],
-        tableRows: [],
-      };
-    }
-
-    type Entry = {
-      strike: number;
-      gammaNotional: number;
-      callOi: number;
-      putOi: number;
+  // If we don't know spot we can still compute scores, but can't say support/resistance.
+  if (spot == null || !Number.isFinite(spot)) {
+    const { buckets } = scoreBucketsWithoutSpot(points);
+    return {
+      ...base,
+      buckets,
     };
+  }
 
-    const entriesByStrike = new Map<number, Entry>();
+  const window = Math.abs(spot) * windowPct;
+  const lower = spot - window;
+  const upper = spot + window;
 
-    const windowLow = spot * (1 - windowPct);
-    const windowHigh = spot * (1 + windowPct);
+  // Aggregate by strike and keep only strikes in window.
+  const aggregated = aggregatePoints(points).filter(
+    (p) => p.strike >= lower && p.strike <= upper,
+  );
 
-    const getEntry = (strike: number): Entry => {
-      let existing = entriesByStrike.get(strike);
-      if (!existing) {
-        existing = { strike, gammaNotional: 0, callOi: 0, putOi: 0 };
-        entriesByStrike.set(strike, existing);
-      }
-      return existing;
-    };
+  if (aggregated.length === 0) {
+    return base;
+  }
 
-    // 2a) Fold in gamma walls
-    // TODO: adapt to your actual gamma wall shape
-    const wallsArray: any[] = Array.isArray(rawWalls) ? (rawWalls as any[]) : [];
-    for (const wall of wallsArray) {
-      const strike = (wall as any).strike as number | undefined;
-      if (typeof strike !== "number") continue;
-      if (strike < windowLow || strike > windowHigh) continue;
+  // Normalize gamma / OI components.
+  let maxGammaAbs = 0;
+  let maxOiAbs = 0;
+  for (const p of aggregated) {
+    if (p.gammaAbs > maxGammaAbs) maxGammaAbs = p.gammaAbs;
+    if (p.oiAbs > maxOiAbs) maxOiAbs = p.oiAbs;
+  }
 
-      const e = getEntry(strike);
-      const gammaSize =
-        Math.abs(
-          (wall as any).gammaNotional ??
-          (wall as any).gammaAbs ??
-          (wall as any).size ??
-          0,
-        ) || 0;
+  const buckets: StrikeMapBucket[] = aggregated.map((p) => {
+    const gammaScore =
+      maxGammaAbs > 0 && p.gammaAbs > 0 ? p.gammaAbs / maxGammaAbs : 0;
+    const oiScore = maxOiAbs > 0 && p.oiAbs > 0 ? p.oiAbs / maxOiAbs : 0;
+    const score = GAMMA_WEIGHT * gammaScore + OI_WEIGHT * oiScore;
 
-      e.gammaNotional += gammaSize;
-    }
+    let kind: StrikeMapBucket["kind"] = "none";
 
-    // 2b) Fold in OI levels
-    // TODO: adapt to your actual OI level shape
-    const levelsArray: any[] = Array.isArray(rawOiLevels) ? (rawOiLevels as any[]) : [];
-    for (const level of levelsArray) {
-      const strike = (level as any).strike as number | undefined;
-      if (typeof strike !== "number") continue;
-      if (strike < windowLow || strike > windowHigh) continue;
+    if (score >= MIN_SCORE) {
+      const distance = (p.strike - spot) / spot;
+      const absDistance = Math.abs(distance);
 
-      const e = getEntry(strike);
-      const callOi =
-        (level as any).callOi ??
-        (level as any).calls ??
-        (level as any).callOpenInterest ??
-        0;
-      const putOi =
-        (level as any).putOi ??
-        (level as any).puts ??
-        (level as any).putOpenInterest ??
-        0;
-
-      e.callOi += Number(callOi) || 0;
-      e.putOi += Number(putOi) || 0;
-    }
-
-    const entries = Array.from(entriesByStrike.values()).sort(
-      (a, b) => a.strike - b.strike,
-    );
-
-    if (!entries.length) {
-      return {
-        loading: false,
-        error,
-        pinStrike: null,
-        pinDistancePct: null,
-        mainSupportStrike: null,
-        mainResistanceStrike: null,
-        buckets: [],
-        tableRows: [],
-      };
-    }
-
-    // --- 3) Normalize scores & classify each strike ------------------------
-
-    const maxGamma = entries.reduce(
-      (m, e) => Math.max(m, e.gammaNotional),
-      0,
-    );
-    const maxOi = entries.reduce(
-      (m, e) => Math.max(m, e.callOi + e.putOi),
-      0,
-    );
-
-    const GAMMA_WEIGHT = 0.7;
-    const OI_WEIGHT = 0.3;
-
-    const buckets: StrikeMapBucket[] = [];
-    const supports: { entry: Entry; score: number }[] = [];
-    const resistances: { entry: Entry; score: number }[] = [];
-
-    const nearSpotThreshold = spot * 0.0025; // ~0.25%
-
-    for (const e of entries) {
-      const totalOi = e.callOi + e.putOi;
-      const gammaNorm = maxGamma > 0 ? e.gammaNotional / maxGamma : 0;
-      const oiNorm = maxOi > 0 ? totalOi / maxOi : 0;
-
-      const score =
-        GAMMA_WEIGHT * gammaNorm +
-        OI_WEIGHT * oiNorm;
-
-      let kind: StrikeLevelKind | "none" = "none";
-
-      const distance = Math.abs(e.strike - spot);
-      const isNearSpot = distance <= nearSpotThreshold;
-
-      if (isNearSpot && score > 0.2) {
+      // Close to spot → "magnet", otherwise classify purely by side.
+      if (absDistance < windowPct * 0.25) {
         kind = "magnet";
-      } else if (e.strike < spot && e.putOi >= e.callOi && score > 0.05) {
-        kind = "support";
-      } else if (e.strike > spot && e.callOi >= e.putOi && score > 0.05) {
-        kind = "resistance";
-      }
-
-      buckets.push({
-        strike: e.strike,
-        score: Math.max(0, Math.min(1, score)),
-        kind,
-      });
-
-      if (kind === "support") supports.push({ entry: e, score });
-      if (kind === "resistance") resistances.push({ entry: e, score });
-    }
-
-    // --- 4) Derive main support / resistance & pin strike ------------------
-
-    supports.sort((a, b) => b.score - a.score);
-    resistances.sort((a, b) => b.score - a.score);
-
-    const mainSupportStrike =
-      supports.length > 0 ? supports[0].entry.strike : null;
-
-    const mainResistanceStrike =
-      resistances.length > 0 ? resistances[0].entry.strike : null;
-
-    let pinStrike: number | null = null;
-    let pinScore = -Infinity;
-    let pinDistance = Infinity;
-
-    for (let i = 0; i < entries.length; i++) {
-      const e = entries[i];
-      const bucket = buckets[i];
-      const s = bucket?.score ?? 0;
-
-      const distance = Math.abs(e.strike - spot);
-      const betterScore = s > pinScore + 1e-6;
-      const sameScoreCloser = Math.abs(s - pinScore) <= 1e-6 && distance < pinDistance;
-
-      if (betterScore || sameScoreCloser) {
-        pinStrike = e.strike;
-        pinScore = s;
-        pinDistance = distance;
+      } else {
+        kind = p.strike < spot ? "support" : "resistance";
       }
     }
-
-    const pinDistancePct =
-      pinStrike != null
-        ? Math.abs(pinStrike / spot - 1) * 100
-        : null;
-
-    // --- 5) Build miniTable rows -------------------------------------------
-
-    const tableRows: StrikeMapTableRow[] = [];
-
-    const takeSupport = supports.slice(0, topN);
-    const takeResistance = resistances.slice(0, topN);
-
-    takeSupport.forEach((s, idx) => {
-      tableRows.push({
-        section: "support",
-        label: idx === 0 ? "Major support" : `Support #${idx + 1}`,
-        strike: s.entry.strike,
-        score: s.score,
-      });
-    });
-
-    takeResistance.forEach((r, idx) => {
-      tableRows.push({
-        section: "resistance",
-        label: idx === 0 ? "Major resistance" : `Resistance #${idx + 1}`,
-        strike: r.entry.strike,
-        score: r.score,
-      });
-    });
 
     return {
-      loading: false,
-      error,
-      pinStrike,
-      pinDistancePct,
-      mainSupportStrike,
-      mainResistanceStrike,
-      buckets,
-      tableRows,
+      strike: p.strike,
+      score,
+      kind,
     };
-  }, [spot, rawWalls, rawOiLevels, windowPct, topN, loading, error]);
+  });
+
+  // Derive pin / main support / main resistance from buckets.
+  const supportBuckets = buckets.filter((b) => b.kind === "support");
+  const resistanceBuckets = buckets.filter((b) => b.kind === "resistance");
+  const magnetBuckets = buckets.filter((b) => b.kind === "magnet");
+  const srBuckets = buckets.filter(
+    (b) => b.kind === "support" || b.kind === "resistance",
+  );
+
+  const pinBucket =
+    magnetBuckets.length > 0
+      ? maxByScore(magnetBuckets)
+      : srBuckets.length > 0
+        ? maxByScore(srBuckets)
+        : null;
+
+  const pinStrike = pinBucket ? pinBucket.strike : null;
+  const pinDistancePct =
+    pinBucket && spot ? (pinBucket.strike - spot) / spot : null;
+
+  const mainSupport = supportBuckets.length > 0 ? maxByScore(supportBuckets) : null;
+  const mainResistance =
+    resistanceBuckets.length > 0 ? maxByScore(resistanceBuckets) : null;
+
+  const mainSupportStrike = mainSupport ? mainSupport.strike : null;
+  const mainResistanceStrike = mainResistance ? mainResistance.strike : null;
+
+  const tableRows: StrikeMapTableRow[] = [];
+
+  const sortedSupports = [...supportBuckets]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, MAX_LEVELS_PER_SIDE);
+
+  const sortedResistances = [...resistanceBuckets]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, MAX_LEVELS_PER_SIDE);
+
+  sortedSupports.forEach((b, idx) => {
+    tableRows.push({
+      section: "support",
+      label: idx === 0 ? "Main support" : `Support #${idx + 1}`,
+      strike: b.strike,
+      score: b.score,
+    });
+  });
+
+  sortedResistances.forEach((b, idx) => {
+    tableRows.push({
+      section: "resistance",
+      label: idx === 0 ? "Main resistance" : `Resistance #${idx + 1}`,
+      strike: b.strike,
+      score: b.score,
+    });
+  });
+
+  return {
+    ...base,
+    pinStrike,
+    pinDistancePct,
+    mainSupportStrike,
+    mainResistanceStrike,
+    buckets,
+    tableRows,
+  };
+}
+
+/**
+ * Aggregate multiple source points for the same strike.
+ */
+function aggregatePoints(
+  points: StrikeMapSourcePoint[],
+): Array<{
+  strike: number;
+  gammaAbs: number;
+  gammaSigned: number;
+  oiAbs: number;
+}> {
+  const byStrike = new Map<
+    number,
+    { gammaAbs: number; gammaSigned: number; oiAbs: number }
+  >();
+
+  for (const p of points) {
+    if (!Number.isFinite(p.strike)) continue;
+    const existing =
+      byStrike.get(p.strike) ?? { gammaAbs: 0, gammaSigned: 0, oiAbs: 0 };
+
+    const gammaAbs = p.gammaAbs ?? 0;
+    const gammaSigned = p.gammaSigned ?? 0;
+    const oiAbs = p.oiAbs ?? 0;
+
+    existing.gammaAbs += Math.abs(gammaAbs);
+    existing.gammaSigned += gammaSigned;
+    existing.oiAbs += Math.abs(oiAbs);
+
+    byStrike.set(p.strike, existing);
+  }
+
+  return Array.from(byStrike.entries()).map(([strike, agg]) => ({
+    strike,
+    gammaAbs: agg.gammaAbs,
+    gammaSigned: agg.gammaSigned,
+    oiAbs: agg.oiAbs,
+  }));
+}
+
+/**
+ * Fallback scoring when no spot is available:
+ * only fill buckets with scores and "none"/"magnet" kinds.
+ */
+function scoreBucketsWithoutSpot(
+  points: StrikeMapSourcePoint[],
+): { buckets: StrikeMapBucket[] } {
+  const aggregated = aggregatePoints(points);
+  if (aggregated.length === 0) {
+    return { buckets: [] };
+  }
+
+  let maxGammaAbs = 0;
+  let maxOiAbs = 0;
+  for (const p of aggregated) {
+    if (p.gammaAbs > maxGammaAbs) maxGammaAbs = p.gammaAbs;
+    if (p.oiAbs > maxOiAbs) maxOiAbs = p.oiAbs;
+  }
+
+  const buckets: StrikeMapBucket[] = aggregated.map((p) => {
+    const gammaScore =
+      maxGammaAbs > 0 && p.gammaAbs > 0 ? p.gammaAbs / maxGammaAbs : 0;
+    const oiScore = maxOiAbs > 0 && p.oiAbs > 0 ? p.oiAbs / maxOiAbs : 0;
+    const score = GAMMA_WEIGHT * gammaScore + OI_WEIGHT * oiScore;
+
+    return {
+      strike: p.strike,
+      score,
+      kind: score >= MIN_SCORE ? "magnet" : "none",
+    };
+  });
+
+  return { buckets };
+}
+
+function maxByScore<T extends { score: number }>(items: T[]): T {
+  return items.reduce(
+    (best, item) => (item.score > best.score ? item : best),
+    items[0],
+  );
 }

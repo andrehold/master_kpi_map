@@ -4,6 +4,7 @@ import LiquidityStressCard from "./LiquidityStressCard";
 
 import type { KPIDef } from "../../data/kpis";
 import type { Samples } from "../../utils/samples";
+
 import type { useDeribitSkew25D } from "../../hooks/domain/useDeribitSkew25D";
 import type { useTermStructureKink } from "../../hooks/domain/useTermStructureKink";
 import type { useCondorCreditPctOfEM } from "../../hooks/domain/useCondorCreditPctOfEM";
@@ -11,10 +12,14 @@ import type { useIVTermStructure } from "../../hooks/domain/useIVTermStructure";
 import type { useOpenInterestConcentration } from "../../hooks/domain/useOpenInterestConcentration";
 import type { useGammaWalls } from "../../hooks/domain/useGammaWalls";
 
+import type { StrikeMapState } from "../../kpi/strikeMapTypes";
+import type { StrikeMapTableRow } from "../../kpi/strikeMapTypes";
+
 import { useOiConcentrationKpi } from "../../hooks/kpi/useOiConcentrationKpi";
 import { useGammaWallsKpi } from "../../hooks/kpi/useGammaWallsKpi";
 import { useEmRibbonKpi } from "../../hooks/kpi/useEmRibbonKpi";
 import { useCondorCreditKpi } from "../../hooks/kpi/useCondorCreditKpi";
+import { useStrikeMapKpi } from "../../hooks/kpi/useStrikeMapKpi";
 
 import { KPI_IDS } from "../../kpi/kpiIds";
 import { getClientPortfolioModel, type ClientPortfolioRow } from "../../kpi/clientPortfolios";
@@ -78,6 +83,7 @@ export type KpiCardRendererContext = {
   };
   oiConcentration: OIConcentrationState;
   gammaWalls: GammaWallsState;
+  strikeMap?: StrikeMapState;
 };
 
 type Props = {
@@ -86,8 +92,6 @@ type Props = {
 };
 
 type CardProps = ComponentProps<typeof KpiCard>;
-
-const EXPECTED_MOVE_PRIMARY_TENOR = 30;
 
 type ExpectedMoveRow = {
   days: number;
@@ -579,9 +583,8 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     );
 
     const meta = model.baseCurrency
-      ? `Base: ${model.baseCurrency}${
-          model.notes ? ` • ${model.notes}` : ""
-        }`
+      ? `Base: ${model.baseCurrency}${model.notes ? ` • ${model.notes}` : ""
+      }`
       : model.notes;
 
     return renderCard({
@@ -589,6 +592,99 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       meta,
       extraBadge: model.health,
       footer,
+    });
+  }
+
+  if (kpi.id === KPI_IDS.strikeMap) {
+    const vm = useStrikeMapKpi(
+      context.gammaWalls,
+      context.oiConcentration,
+      locale,
+    );
+
+    let footer: CardProps["footer"];
+
+    if (vm.status === "error") {
+      footer = (
+        <div className="rounded-md border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-400">
+          Failed to build strike map: {vm.errorMessage ?? "Unknown error"}
+        </div>
+      );
+    } else if (
+      vm.status === "unavailable" ||
+      vm.status === "loading" ||
+      vm.status === "empty"
+    ) {
+      footer = (
+        <div className="text-xs text-[var(--fg-muted)]">
+          {vm.message ??
+            (vm.status === "unavailable"
+              ? "Strike map unavailable"
+              : vm.status === "loading"
+                ? "Loading support/resistance…"
+                : "No significant levels in scope")}
+        </div>
+      );
+    } else {
+      // status === "ok"
+      const rows = vm.table?.rows ?? [];
+
+      footer =
+        rows.length > 0 ? (
+          <KpiMiniTable<StrikeMapTableRow>
+            title={vm.table?.title ?? "Key S/R levels"}
+            rows={rows}
+            getKey={(r) => `${r.section}-${r.label}-${r.strike}`}
+            columns={[
+              {
+                id: "section",
+                header: "Side",
+                render: (r) =>
+                  r.section === "support" ? "Support" : "Resistance",
+              },
+              {
+                id: "label",
+                header: "Level",
+                render: (r) => r.label,
+              },
+              {
+                id: "strike",
+                header: "Strike",
+                align: "right",
+                render: (r) => {
+                  const v = r.strike;
+                  if (typeof v !== "number" || !Number.isFinite(v)) return "—";
+                  return v.toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                  });
+                },
+              },
+              {
+                id: "score",
+                header: "Score",
+                align: "right",
+                render: (r) => {
+                  const v = r.score;
+                  if (typeof v !== "number" || !Number.isFinite(v)) return "—";
+                  return `${Math.round(v * 100)}%`;
+                },
+              },
+            ]}
+          />
+        ) : (
+          <div className="text-xs text-[var(--fg-muted)]">
+            No significant levels in scope
+          </div>
+        );
+    }
+
+    return renderCard({
+      value: vm.value,
+      meta: vm.meta,
+      extraBadge: vm.extraBadge ?? null,
+      footer,
+      infoKey: kpi.id,
+      guidanceValue: vm.guidanceValue ?? null,
     });
   }
 
