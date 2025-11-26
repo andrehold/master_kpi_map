@@ -1,6 +1,5 @@
 import { type ComponentProps } from "react";
 import KpiCard from "./KpiCard";
-import LiquidityStressCard from "./LiquidityStressCard";
 
 import type { KPIDef } from "../../data/kpis";
 import type { Samples } from "../../utils/samples";
@@ -20,6 +19,7 @@ import { useGammaWallsKpi } from "../../hooks/kpi/useGammaWallsKpi";
 import { useEmRibbonKpi } from "../../hooks/kpi/useEmRibbonKpi";
 import { useCondorCreditKpi } from "../../hooks/kpi/useCondorCreditKpi";
 import { useStrikeMapKpi } from "../../hooks/kpi/useStrikeMapKpi";
+import { useLiquidityStressKpi } from "../../hooks/kpi/useLiquidityStressKpi";
 
 import { KPI_IDS } from "../../kpi/kpiIds";
 import { getClientPortfolioModel, type ClientPortfolioRow } from "../../kpi/clientPortfolios";
@@ -518,16 +518,67 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
   }
 
   if (kpi.id === KPI_IDS.liquidityStress) {
-    return (
-      <LiquidityStressCard
-        key={kpi.id}
-        kpi={kpi}
-        currency="BTC"
-        windowPct={0.005}
-        clipSize={10}
-        pollMs={0}
-      />
-    );
+    const vm = useLiquidityStressKpi({
+      currency: "BTC",
+      windowPct: 0.005, // ±0.5%
+      clipSize: 10,     // 10 BTC notional clip
+      pollMs: 0,        // no polling from the card
+    });
+  
+    let footer: CardProps["footer"];
+  
+    if (vm.table) {
+      type Row = (typeof vm.table.rows)[number];
+  
+      footer = (
+        <KpiMiniTable<Row>
+          title={vm.table.title}
+          rows={vm.table.rows}
+          getKey={(r) => r.id}
+          sections={vm.table.sections}
+          columns={[
+            {
+              id: "label",
+              header: "Market",
+              render: (r) => r.label,
+            },
+            {
+              id: "spread",
+              header: "Spread",
+              align: "right",
+              render: (r) => r.spread,
+            },
+            {
+              id: "depth",
+              header: "Depth",
+              align: "right",
+              render: (r) => r.depth,
+            },
+            {
+              id: "stress",
+              header: "Stress",
+              align: "right",
+              render: (r) => r.stress,
+            },
+          ]}
+        />
+      );
+    } else if (vm.footerMessage) {
+      footer = (
+        <div className="text-xs text-[var(--fg-muted)]">
+          {vm.footerMessage}
+        </div>
+      );
+    }
+  
+    return renderCard({
+      value: vm.value,
+      meta: vm.meta,
+      extraBadge: vm.extraBadge ?? null,
+      footer,
+      infoKey: kpi.id,
+      guidanceValue: vm.guidanceValue ?? null,
+    });
   }
 
   if (kpi.id.startsWith("portfolio-client-")) {
