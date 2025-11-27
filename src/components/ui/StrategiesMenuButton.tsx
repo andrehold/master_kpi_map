@@ -11,10 +11,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./Tool
 import { useToast } from "./Use-toast";
 
 import { ListChecks, ChevronLeft, Download, PanelRightOpen, Cog, Loader2 } from "lucide-react";
-import { STRATEGY_CATALOG, type StrategyKey } from "@/data/kpis";
+import { STRATEGY_CATALOG, type StrategyKey } from "../../data/kpis";
 
 // Horizon scan (others can be added in the map below)
-import { runHorizonScanAndDownload } from "@/services/horizonScan";
+import { runHorizonScanAndDownload } from "../../services/horizonScan";
 
 type Props = {
   label?: string; // default "Strategies"

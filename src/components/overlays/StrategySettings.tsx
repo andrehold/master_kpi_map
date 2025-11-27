@@ -1,7 +1,7 @@
 import * as React from "react";
-import { SideSheet } from "@/components/ui/SideSheet";
-import { Button } from "@/components/ui/Button";
-import { STRATEGY_CATALOG, type StrategyKey } from "@/data/kpis";
+import { SideSheet } from "../../components/ui/SideSheet";
+import { Button } from "../../components/ui/Button";
+import { STRATEGY_CATALOG, type StrategyKey } from "../../data/kpis";
 
 export function StrategySettings({
   open,

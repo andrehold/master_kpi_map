@@ -31,7 +31,7 @@ import { GuidanceSwitch } from "./components/ui/Guidance";
 
 // UI primitives + data-driven Strategies menu
 import { ToastProvider } from "./components/ui/Use-toast";
-import { StrategiesMenuButton } from "@/components/ui/StrategiesMenuButton";
+import { StrategiesMenuButton } from "./components/ui/StrategiesMenuButton";
 
 // Generic strategy overlays
 import StrategyOverlay from "./components/overlays/StrategyOverlay";

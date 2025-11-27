@@ -1,8 +1,8 @@
 // src/components/ui/StrategyOverlay.tsx (updated)
 import * as React from "react";
-import { SideSheet } from "@/components/ui/SideSheet";
+import { SideSheet } from "../../components/ui/SideSheet";
 import { Button } from "../ui/Button";
-import { STRATEGY_CATALOG, type StrategyKey } from "@/data/kpis";
+import { STRATEGY_CATALOG, type StrategyKey } from "../../data/kpis";
 
 // Horizon scan & CSV (others can be added later)
 import {
@@ -10,10 +10,10 @@ import {
   horizonRowsToCSV,
   downloadCSV,
   type HorizonRow,
-} from "@/services/horizonScan";
+} from "../../services/horizonScan";
 
 // Weekend Vol hook
-import { useWeekendVol } from "@/hooks/domain/useWeekendVol";
+import { useWeekendVol } from "../../hooks/domain/useWeekendVol";
 
 type OverlayProps = {
   open: boolean;

@@ -7,7 +7,7 @@ import {
   fmtDelta,
   fmtPremiumUsd,
   fmtUsdShort,
-} from "@/utils/format"; // adjust path if needed
+} from "../../utils/format"; // adjust path if needed
 
 type CondorState = ReturnType<typeof useCondorCreditPctOfEM>;
 
