@@ -20,6 +20,8 @@ import { useEmRibbonKpi } from "../../hooks/kpi/useEmRibbonKpi";
 import { useCondorCreditKpi } from "../../hooks/kpi/useCondorCreditKpi";
 import { useStrikeMapKpi } from "../../hooks/kpi/useStrikeMapKpi";
 import { useLiquidityStressKpi } from "../../hooks/kpi/useLiquidityStressKpi";
+import { useIVTermStructureKpi } from "../../hooks/kpi/useIVTermStructureKpi";
+import { useVixKpi } from "../../hooks/kpi/useVixKpi";
 
 import { KPI_IDS } from "../../kpi/kpiIds";
 import { getClientPortfolioModel, type ClientPortfolioRow } from "../../kpi/clientPortfolios";
@@ -152,23 +154,25 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     });
   }
 
-  if (kpi.id === KPI_IDS.termStructure && context.termStructure) {
-    const tsData = context.termStructure;
-    const labelTitle = tsData.label === "insufficient"
-      ? "Insufficient"
-      : tsData.label[0].toUpperCase() + tsData.label.slice(1);
-    const premiumPct = tsData.termPremium != null ? (tsData.termPremium * 100) : null;
-    const sign = premiumPct != null && premiumPct >= 0 ? "+" : "";
-    const meta = tsData.slopePerYear != null
-      ? `Slope ${(tsData.slopePerYear * 100).toFixed(2)}%/yr · n=${tsData.n}`
-      : `n=${tsData.n}`;
-    const extraBadge = tsData.points.length >= 2
-      ? `${tsData.points[0]?.expiryISO} → ${tsData.points[tsData.points.length - 1]?.expiryISO}`
-      : "Awaiting data";
+  if (kpi.id === KPI_IDS.termStructure) {
+    const model = useIVTermStructureKpi();
+    if (!model) return;
+  
     return renderCard({
-      value: labelTitle + (premiumPct != null ? ` (${sign}${premiumPct.toFixed(1)}%)` : ""),
-      meta,
-      extraBadge,
+      value: model.value,
+      meta: model.meta,
+      extraBadge: model.extraBadge,
+      footer: (
+        <KpiMiniTable
+          title={model.footer?.title}
+          rows={model.footer?.rows ?? []}
+          getKey={(r) => r.id}
+          columns={[
+            { id: "tenor", header: "Tenor", render: (r) => r.tenor },
+            { id: "expiry", header: "Expiry", align: "right", render: (r) => r.expiry },
+          ]}
+        />
+      ),
     });
   }
 
@@ -738,6 +742,37 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       guidanceValue: vm.guidanceValue ?? null,
     });
   }
+
+  if (kpi.id === KPI_IDS.vix) {
+    const vm = useVixKpi();
+
+    let value: CardProps["value"] = samples[kpi.id];
+    let meta: string | undefined = vm.meta;
+    let extraBadge: string | null = vm.extraBadge ?? null;
+
+    if (vm.status === "loading") {
+      value = "…";
+      meta = "loading";
+    } else if (vm.status === "error") {
+      value = "—";
+      meta = vm.errorMessage ?? "error";
+    } else if (vm.value != null) {
+      value = vm.value; // formatted "18.3"
+      // meta already includes FRED + date
+    } else {
+      value = "—";
+      meta = "Awaiting data";
+    }
+
+    return renderCard({
+      value,
+      meta,
+      extraBadge,
+      infoKey: KPI_IDS.vix,
+      guidanceValue: vm.guidanceValue ?? null, // drives bandsId="vix"
+    });
+  }
+
 
   return renderCard();
 }

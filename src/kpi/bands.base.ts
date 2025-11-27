@@ -144,7 +144,7 @@ export const BAND_BASE: Record<string, BandBaseSet> = {
   vix: {
     id: "vix",
     valueScale: "raw",
-    hasBar: false,
+    hasBar: true,
     thresholds: [
       { id: "calm", max: 15, tone: "good" },
       { id: "normal", min: 15, max: 25, tone: "neutral" },

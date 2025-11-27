@@ -14,6 +14,8 @@
       "short-horizon-atr": "Short-horizon realized σ / intraday ATR normalized vs expected move.",
       "em-ribbon": "Recent expected-move bands vs closes; quick read of over/under moves.",
   
+      "vix": "Level of the S&P 500 implied volatility index (VIX); daily close sourced from FRED (series VIXCLS).",
+      "vvix": "Level of the VIX-of-VIX index (VVIX); proxy for volatility of volatility.",
       "vix-vvix": "Equity vol (VIX) and vol-of-vol (VVIX) regime and jump risk.",
       "cross-asset-vol": "Rates (MOVE), FX, and credit vol benchmarks for cross-asset stress.",
       "implied-corr": "Correlation implied by index vs constituents; crowding/systemic risk.",

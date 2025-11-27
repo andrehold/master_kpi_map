@@ -28,9 +28,10 @@ export type FredObservation = {
   
   // Use Vite dev proxy in development to avoid CORS; fall back to absolute in prod
   const FRED_BASE =
-    typeof import.meta !== "undefined" && (import.meta as any).env?.DEV
-      ? "/fred" // configure Vite dev proxy for this in vite.config.ts
-      : "https://api.stlouisfed.org/fred";
+  typeof import.meta !== "undefined" && (import.meta as any).env?.DEV
+    ? "/fred" // dev: go through Vite proxy
+    : "/api/fred"; // prod: go through serverless function
+  
   
   // Expect an API key in env (rename if you prefer another key name)
   const FRED_API_KEY: string =
@@ -303,6 +304,13 @@ export type FredObservation = {
     inflight.set(key, p);
     return p;
   }
+
+  export type LatestVix = {
+    value: number;  // VIX level (index points)
+    date: string;   // "YYYY-MM-DD" from FRED
+    ts: number;     // timestamp (ms since epoch) for that date
+  };
+
   
   /**
    * Convenience helper: fetch just the latest observation for a series.
@@ -319,4 +327,25 @@ export type FredObservation = {
     });
     return obs[0] ?? null;
   }
-  
+
+  /**
+   * Convenience helper specifically for VIX (CBOE Volatility Index).
+   * Uses the generic getLatestObservation and adds a timestamp.
+   */
+  export async function getLatestVix(): Promise<LatestVix | null> {
+    // FRED series_id for VIX is "VIXCLS"
+    const latest = await getLatestObservation("VIXCLS");
+    if (!latest || latest.value == null) {
+      return null;
+    }
+
+    const { date, value } = latest;
+    // Interpret the FRED date as UTC midnight
+    const ts = Date.parse(date + "T00:00:00Z");
+
+    return {
+      value,
+      date,
+      ts,
+    };
+  }

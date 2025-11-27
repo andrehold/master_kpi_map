@@ -72,7 +72,7 @@
   
     "rv_em_ratio": {
       "title": "RV ÷ EM (ratio)",
-      "description": "Compares realized volatility to expected move.",
+      "description": "Compares realized volatility to expected move (VIXCLS from FRED)",
       "bands": {
         "em_overpriced":  { "label": "<0.8", "guidance": "EM overpriced → short vol edge; prefer defined-risk shorts." },
         "neutral":        { "label": "0.8–1.2", "guidance": "Neutral: maintain standard sizing or diversify structures." },

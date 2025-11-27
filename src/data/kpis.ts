@@ -46,8 +46,8 @@ export const KPIS: KpiMeta[] = [
   { id: KPI_IDS.ivRv, title: "IV – RV Spread", guidanceKey: "iv_rv_spread" },
   { id: KPI_IDS.emHitRate, title: "EM Hit Rate (90d)", valueType: "percent", guidanceKey: "em_hit_rate_90d" },
   { id: KPI_IDS.rvEm, title: "RV ÷ EM", valueType: "ratio", guidanceKey: "rv_em_ratio" },
-  { id: KPI_IDS.vix, title: "VIX", guidanceKey: "vix" },
-  { id: KPI_IDS.vvix, title: "VVIX", guidanceKey: "vvix" },
+  { id: KPI_IDS.vix, title: "VIX", valueType: "raw", guidanceKey: "vix" },
+  { id: KPI_IDS.vvix, title: "VVIX", valueType: "raw", guidanceKey: "vvix" },
   { id: KPI_IDS.funding, title: "Funding Rate (ann.)", valueType: "percent", guidanceKey: "funding_rate_annualized" },
   { id: KPI_IDS.eventWindow, title: "Macro Event Window", guidanceKey: "macro_event_tminus_days" },
   { id: KPI_IDS.spread, title: "Bid–Ask Spread %", valueType: "percent", guidanceKey: "bid_ask_spread_pct" },
@@ -106,6 +106,7 @@ export const KPI_GROUPS: KPIGroup[] = [
     title: "3. Market Regime & Macro Filters",
     kpis: [
       { id: KPI_IDS.vixVvix, name: "VIX / VVIX levels & jumps", strategies: ["Expected Move"], valueType: "index" },
+      { id: KPI_IDS.vix, name: "VIX", strategies: ["Expected Move"], valueType: "index" },
       { id: KPI_IDS.crossAssetVol, name: "Cross-asset vol benchmarks (MOVE/FX/Credit)", strategies: ["Expected Move"], valueType: "index" },
       { id: KPI_IDS.impliedCorr, name: "Equity correlation (implied correlation index)", strategies: ["Expected Move"], valueType: "percent" },
       { id: KPI_IDS.macroEvents, name: "Macro risk events (Fed/CPI/NFP/etc.)", strategies: ["Expected Move", "Weekend Vol", "Range-Bound Premium", "Carry Trade", "0DTE Overwrite", "Box Financing"], valueType: "text" },
@@ -277,6 +278,18 @@ export const KPI_INFO: Partial<Record<KpiId, KpiInfoDoc>> = {
       "Rule of thumb for BTC 30D: <20% = weak; 20–25% = borderline; 25–35% = healthy; ≥40% = very rich but double-check RV/EM, skew and event risk.",
       "Here we use BTC options, ~30-calendar-day expiries and a symmetric condor around spot; EM is the 1σ move based on DVOL.",
       "Use alongside IVR, RV/EM, liquidity and OI concentration when deciding whether to deploy or scale condor risk."
+    ]
+  },
+  [KPI_IDS.vix]: {
+    title: "VIX – Equity volatility regime",
+    paragraphs: [
+      "Definition: VIX is the S&P 500 implied volatility index, quoted in annualized % vol. It approximates the market’s 30-day forward volatility for US equities.",
+      "Computation: In this dashboard we use the daily close of the FRED series VIXCLS as a proxy for spot VIX. Intraday moves are not captured; this is a regime-level signal, not a trading tick."
+    ],
+    bullets: [
+      "How to read: <15 → calm regime; 15–25 → normal; ≥25 → stressed regime with elevated gap risk and correlation.",
+      "Best use: Combine with IVR, VVIX/vol-of-vol, and cross-asset vol to judge whether to add or reduce short-vol structures.",
+      "Caveats: VIX can stay elevated or depressed for long periods; don’t treat every move above 25 as an automatic mean-reversion trade."
     ]
   },
 };
