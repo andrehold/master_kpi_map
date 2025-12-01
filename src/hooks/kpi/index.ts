@@ -6,3 +6,5 @@ export * from "./useStrikeMapKpi";
 export * from "./useLiquidityStressKpi";
 export * from "./useIVTermStructureKpi";
 export * from "./useVixKpi";
+export * from "./useRealizedVolKpi";
+export * from "./useIvRvSpreadKpi";

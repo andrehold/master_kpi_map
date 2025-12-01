@@ -23,6 +23,8 @@ import {
   useLiquidityStressKpi,
   useIVTermStructureKpi,
   useVixKpi,
+  useRealizedVolKpi,
+  useIvRvSpreadKpi,
 } from "../../hooks/kpi";
 
 import { KPI_IDS } from "../../kpi/kpiIds";
@@ -138,22 +140,93 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     });
   }
 
-  if (kpi.id === KPI_IDS.rv && context.rv.value != null) {
-    return renderCard({
-      value: `${(context.rv.value * 100).toFixed(1)}%`,
-      meta: context.rv.ts ? `20D RV · ${new Date(context.rv.ts).toLocaleDateString()}` : "20D RV",
-      extraBadge: context.rv.loading ? "Refreshing…" : null,
-    });
+  if (kpi.id === KPI_IDS.rv) {
+    const vm = useRealizedVolKpi({ currency: "BTC" });
+
+    const footer =
+      vm.table && (
+        <KpiMiniTable
+          title={vm.table.title}
+          rows={vm.table.rows}
+          getKey={(r) => r.id}
+          columns={[
+            { id: "window", header: "Window", render: (r) => r.windowLabel },
+            {
+              id: "rv",
+              header: "RV (ann.)",
+              align: "right",
+              render: (r) => r.rv,
+            },
+            {
+              id: "asOf",
+              header: "Updated",
+              align: "right",
+              render: (r) => r.asOf,
+            },
+          ]}
+        />
+      );
+
+    return (
+      <KpiCard
+        kpi={kpi}
+        locale={locale}
+        value={vm.value}
+        meta={vm.meta}
+        extraBadge={vm.extraBadge}
+        footer={footer}
+        infoKey={kpi.id}
+        guidanceValue={vm.guidanceValue ?? null}
+      />
+    );
   }
 
-  if (kpi.id === KPI_IDS.ivRvSpread && context.dvolPct != null && context.rv.value != null) {
-    const spread = context.dvolPct - (context.rv.value * 100);
-    const sign = spread >= 0 ? "+" : "";
-    return renderCard({
-      value: `${sign}${spread.toFixed(1)}%`,
-      meta: "IV − RV",
-      extraBadge: `IV ${context.dvolPct.toFixed(1)} • RV ${(context.rv.value * 100).toFixed(1)}`,
+  if (kpi.id === KPI_IDS.ivRvSpread) {
+    const vm = useIvRvSpreadKpi({
+      dvolPct: context.dvolPct ?? null,
+      currency: "BTC",
     });
+
+    const footer =
+      vm.table && (
+        <KpiMiniTable
+          title={vm.table.title}
+          rows={vm.table.rows}
+          getKey={(r) => r.id}
+          columns={[
+            {
+              id: "window",
+              header: "RV window",
+              render: (r) => r.windowLabel,
+            },
+            {
+              id: "rv",
+              header: "RV (ann.)",
+              align: "right",
+              render: (r) => r.rv,
+            },
+            {
+              id: "spread",
+              header: "IV − RV",
+              align: "right",
+              render: (r) => r.spread,
+            },
+          ]}
+        />
+      );
+
+    return (
+      <KpiCard
+        kpi={kpi}
+        locale={locale}
+        value={vm.value}
+        meta={vm.meta}
+        extraBadge={vm.extraBadge}
+        footer={footer}
+        infoKey={kpi.id}
+        guidanceValue={vm.guidanceValue ?? null}
+      />
+    );
   }
 
   if (kpi.id === KPI_IDS.termStructure) {
