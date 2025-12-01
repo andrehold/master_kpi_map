@@ -14,14 +14,16 @@ import type { useGammaWalls } from "../../hooks/domain/useGammaWalls";
 import type { StrikeMapState } from "../../kpi/strikeMapTypes";
 import type { StrikeMapTableRow } from "../../kpi/strikeMapTypes";
 
-import { useOiConcentrationKpi } from "../../hooks/kpi/useOiConcentrationKpi";
-import { useGammaWallsKpi } from "../../hooks/kpi/useGammaWallsKpi";
-import { useEmRibbonKpi } from "../../hooks/kpi/useEmRibbonKpi";
-import { useCondorCreditKpi } from "../../hooks/kpi/useCondorCreditKpi";
-import { useStrikeMapKpi } from "../../hooks/kpi/useStrikeMapKpi";
-import { useLiquidityStressKpi } from "../../hooks/kpi/useLiquidityStressKpi";
-import { useIVTermStructureKpi } from "../../hooks/kpi/useIVTermStructureKpi";
-import { useVixKpi } from "../../hooks/kpi/useVixKpi";
+import {
+  useOiConcentrationKpi,
+  useGammaWallsKpi,
+  useEmRibbonKpi,
+  useCondorCreditKpi,
+  useStrikeMapKpi,
+  useLiquidityStressKpi,
+  useIVTermStructureKpi,
+  useVixKpi,
+} from "../../hooks/kpi";
 
 import { KPI_IDS } from "../../kpi/kpiIds";
 import { getClientPortfolioModel, type ClientPortfolioRow } from "../../kpi/clientPortfolios";
@@ -156,13 +158,23 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
 
   if (kpi.id === KPI_IDS.termStructure) {
     const model = useIVTermStructureKpi();
-    if (!model) return;
+    if (!model) {
+      return renderCard({
+        // optional: show something nicer than the raw sample
+        meta: "Awaiting term structure data",
+      });
+    }
+
+    const footerHasRows =
+    model.footer &&
+    Array.isArray(model.footer.rows) &&
+    model.footer.rows.length > 0;
   
     return renderCard({
       value: model.value,
       meta: model.meta,
       extraBadge: model.extraBadge,
-      footer: (
+      footer: footerHasRows ? (
         <KpiMiniTable
           title={model.footer?.title}
           rows={model.footer?.rows ?? []}
@@ -172,7 +184,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
             { id: "expiry", header: "Expiry", align: "right", render: (r) => r.expiry },
           ]}
         />
-      ),
+      ) : undefined,
     });
   }
 
