@@ -160,16 +160,15 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     const model = useIVTermStructureKpi();
     if (!model) {
       return renderCard({
-        // optional: show something nicer than the raw sample
         meta: "Awaiting term structure data",
       });
     }
 
     const footerHasRows =
-    model.footer &&
-    Array.isArray(model.footer.rows) &&
-    model.footer.rows.length > 0;
-  
+      model.footer &&
+      Array.isArray(model.footer.rows) &&
+      model.footer.rows.length > 0;
+
     return renderCard({
       value: model.value,
       meta: model.meta,
@@ -181,6 +180,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
           getKey={(r) => r.id}
           columns={[
             { id: "tenor", header: "Tenor", render: (r) => r.tenor },
+            { id: "iv", header: "IV", align: "right", render: (r) => r.iv },
             { id: "expiry", header: "Expiry", align: "right", render: (r) => r.expiry },
           ]}
         />
@@ -540,12 +540,12 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       clipSize: 10,     // 10 BTC notional clip
       pollMs: 0,        // no polling from the card
     });
-  
+
     let footer: CardProps["footer"];
-  
+
     if (vm.table) {
       type Row = (typeof vm.table.rows)[number];
-  
+
       footer = (
         <KpiMiniTable<Row>
           title={vm.table.title}
@@ -586,7 +586,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
         </div>
       );
     }
-  
+
     return renderCard({
       value: vm.value,
       meta: vm.meta,

@@ -8,6 +8,9 @@ export type IVTermStructureLabel =
   | "flat"
   | "insufficient";
 
+export const TERM_MIN_DTE_DAYS = 4;   // ignore ultra-short 0–3DTE noise
+export const TERM_MAX_DTE_DAYS = 400; // keep roughly up to ~1y
+
 /** OLS slope of IV (y) vs time-to-maturity in years (x). IV is decimal (0.55 = 55%). */
 export function linregSlope(ttmYears: number[], ivs: number[]): number | null {
   const n = Math.min(ttmYears.length, ivs.length);
@@ -43,7 +46,8 @@ export function getTermStructureStats(points: IVPoint[]): {
   label: IVTermStructureLabel;
 } {
   const usable = points
-    .filter(p => typeof p.iv === "number" && isFinite(p.iv as number) && p.dteDays > 0)
+    .filter(p => typeof p.iv === "number" && isFinite(p.iv as number) && p.dteDays >= TERM_MIN_DTE_DAYS &&
+      p.dteDays <= TERM_MAX_DTE_DAYS)
     .sort((a, b) => a.dteDays - b.dteDays);
 
   const n = usable.length;
