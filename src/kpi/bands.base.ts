@@ -114,16 +114,16 @@ export const BAND_BASE: Record<string, BandBaseSet> = {
     note: "IV − RV in vol points (annualized).",
   },
 
-  em_hit_rate_90d: {
-    id: "em_hit_rate_90d",
+  hit_rate_expected_move: {
+    id: "hit_rate_expected_move",
     valueScale: "percent",
     hasBar: true,
     thresholds: [
-      { id: "overpriced_long_edge", max: 50, tone: "caution" }, // long vol edge
-      { id: "balanced", min: 60, max: 70, tone: "neutral" },
-      { id: "sell_premium", min: 75, tone: "good" },
+      { id: "poor", max: 50, tone: "avoid" },
+      { id: "ok", min: 50, max: 70, tone: "caution" },
+      { id: "good", min: 70, tone: "good" },
     ],
-    note: "Expected Move hit rate over 90d window, in %.",
+    note: "Share of days where realized move stayed within 1σ expected move over lookback window.",
   },
 
   rv_em_ratio: {

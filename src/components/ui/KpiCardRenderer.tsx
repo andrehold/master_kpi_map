@@ -25,10 +25,14 @@ import {
   useVixKpi,
   useRealizedVolKpi,
   useIvRvSpreadKpi,
+  useHitRateOfExpectedMoveKpi,
 } from "../../hooks/kpi";
 
 import { KPI_IDS } from "../../kpi/kpiIds";
-import { getClientPortfolioModel, type ClientPortfolioRow } from "../../kpi/clientPortfolios";
+import {
+  getClientPortfolioModel,
+  type ClientPortfolioRow,
+} from "../../kpi/clientPortfolios";
 import { KpiMiniTable } from "./KpiMiniTable";
 
 type SkewState = ReturnType<typeof useDeribitSkew25D>;
@@ -115,7 +119,10 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     locale,
   };
 
-  const renderCard = (overrides?: Partial<CardProps>, key: string = kpi.id) => (
+  const renderCard = (
+    overrides?: Partial<CardProps>,
+    key: string = kpi.id,
+  ) => (
     <KpiCard
       key={key}
       {...baseProps}
@@ -253,8 +260,18 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
           getKey={(r) => r.id}
           columns={[
             { id: "tenor", header: "Tenor", render: (r) => r.tenor },
-            { id: "iv", header: "IV", align: "right", render: (r) => r.iv },
-            { id: "expiry", header: "Expiry", align: "right", render: (r) => r.expiry },
+            {
+              id: "iv",
+              header: "IV",
+              align: "right",
+              render: (r) => r.iv,
+            },
+            {
+              id: "expiry",
+              header: "Expiry",
+              align: "right",
+              render: (r) => r.expiry,
+            },
           ]}
         />
       ) : undefined,
@@ -278,10 +295,14 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
         const vp = state.skew * 100;
         const sign = vp >= 0 ? "+" : "";
         value = `${sign}${vp.toFixed(2)}`;
-        meta = state.expiryLabel ? `${label} · ${state.expiryLabel}` : label;
+        meta = state.expiryLabel
+          ? `${label} · ${state.expiryLabel}`
+          : label;
 
         if (state.ivC25 != null && state.ivP25 != null) {
-          extraBadge = `C25 ${(state.ivC25 * 100).toFixed(1)} • P25 ${(state.ivP25 * 100).toFixed(1)}`;
+          extraBadge = `C25 ${(state.ivC25 * 100).toFixed(1)} • P25 ${(state.ivP25 * 100).toFixed(
+            1,
+          )}`;
         } else {
           extraBadge = "Interpolating…";
         }
@@ -340,7 +361,6 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     return renderCard({ value, meta, extraBadge, footer });
   }
 
-
   if (kpi.id === KPI_IDS.tsKink) {
     const { loading, error, data } = context.skew.kink;
     let value = samples[kpi.id];
@@ -357,11 +377,18 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       const vp = data.kinkPoints * 100;
       const sign = vp >= 0 ? "+" : "";
       value = `${sign}${vp.toFixed(2)}%`;
-      meta = `0DTE − mean(1–3DTE)${data.indexPrice ? ` · S ${Math.round(data.indexPrice)}` : ""}`;
-      const iv0 = data.iv0dte != null ? (data.iv0dte * 100).toFixed(1) : "—";
-      const m13 = data.mean1to3 != null ? (data.mean1to3 * 100).toFixed(1) : "—";
-      const ratio = data.kinkRatio != null ? `${data.kinkRatio.toFixed(2)}×` : null;
-      badge = ratio ? `0D ${iv0} • 1–3D ${m13} • ${ratio}` : `0D ${iv0} • 1–3D ${m13}`;
+      meta = `0DTE − mean(1–3DTE)${
+        data.indexPrice ? ` · S ${Math.round(data.indexPrice)}` : ""
+      }`;
+      const iv0 =
+        data.iv0dte != null ? (data.iv0dte * 100).toFixed(1) : "—";
+      const m13 =
+        data.mean1to3 != null ? (data.mean1to3 * 100).toFixed(1) : "—";
+      const ratio =
+        data.kinkRatio != null ? `${data.kinkRatio.toFixed(2)}×` : null;
+      badge = ratio
+        ? `0D ${iv0} • 1–3D ${m13} • ${ratio}`
+        : `0D ${iv0} • 1–3D ${m13}`;
     } else {
       meta = "Awaiting data";
     }
@@ -371,11 +398,20 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
 
   if (kpi.id === KPI_IDS.rvEmFactor) {
     const { ratio, loading, error, rvAnn, ivAnn, tenorDays } = context.rvem;
-    const value = loading ? "…" : (ratio != null ? `${ratio.toFixed(2)}×` : "—");
-    const meta = loading ? "loading" : (error ? "error" : `BTC ${tenorDays}D · RV ÷ IV`);
-    const extraBadge = (rvAnn != null && ivAnn != null)
-      ? `IV ${(ivAnn * 100).toFixed(1)} • RV ${(rvAnn * 100).toFixed(1)}`
-      : null;
+    const value = loading
+      ? "…"
+      : ratio != null
+        ? `${ratio.toFixed(2)}×`
+        : "—";
+    const meta = loading
+      ? "loading"
+      : error
+        ? "error"
+        : `BTC ${tenorDays}D · RV ÷ IV`;
+    const extraBadge =
+      rvAnn != null && ivAnn != null
+        ? `IV ${(ivAnn * 100).toFixed(1)} • RV ${(rvAnn * 100).toFixed(1)}`
+        : null;
     return renderCard({ value, meta, extraBadge });
   }
 
@@ -393,7 +429,9 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       meta = "error";
     } else if (current8h != null) {
       value = `${(current8h * 100).toFixed(3)}%`;
-      meta = ts ? `Deribit 8h · ${new Date(ts).toLocaleTimeString()}` : "Deribit 8h";
+      meta = ts
+        ? `Deribit 8h · ${new Date(ts).toLocaleTimeString()}`
+        : "Deribit 8h";
       if (avg7d8h != null) {
         badge = `7d avg ${(avg7d8h * 100).toFixed(3)}%`;
       }
@@ -421,9 +459,24 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
           emptyLabel={vm.table.emptyLabel}
           columns={[
             { id: "tenor", header: "Tenor", render: (r) => r.tenor },
-            { id: "expiry", header: "Expiry", align: "right", render: (r) => r.expiry },
-            { id: "abs", header: "±$ Move", align: "right", render: (r) => r.abs },
-            { id: "pct", header: "±%", align: "right", render: (r) => r.pct },
+            {
+              id: "expiry",
+              header: "Expiry",
+              align: "right",
+              render: (r) => r.expiry,
+            },
+            {
+              id: "abs",
+              header: "±$ Move",
+              align: "right",
+              render: (r) => r.abs,
+            },
+            {
+              id: "pct",
+              header: "±%",
+              align: "right",
+              render: (r) => r.pct,
+            },
           ]}
         />
       );
@@ -453,10 +506,30 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
           sections={vm.legsTable.sections}
           columns={[
             { id: "legLabel", header: "Leg", render: (r) => r.legLabel },
-            { id: "strike", header: "Strike", align: "right", render: (r) => r.strike },
-            { id: "distPct", header: "Dist", align: "right", render: (r) => r.distPct },
-            { id: "delta", header: "Δ", align: "right", render: (r) => r.delta },
-            { id: "premium", header: "Premium", align: "right", render: (r) => r.premium },
+            {
+              id: "strike",
+              header: "Strike",
+              align: "right",
+              render: (r) => r.strike,
+            },
+            {
+              id: "distPct",
+              header: "Dist",
+              align: "right",
+              render: (r) => r.distPct,
+            },
+            {
+              id: "delta",
+              header: "Δ",
+              align: "right",
+              render: (r) => r.delta,
+            },
+            {
+              id: "premium",
+              header: "Premium",
+              align: "right",
+              render: (r) => r.premium,
+            },
           ]}
         />
       );
@@ -472,6 +545,106 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     });
   }
 
+  // --- Hit Rate of Expected Move ---------------------------------------------
+  if (kpi.id === KPI_IDS.emHitRate) {
+    const vm = useHitRateOfExpectedMoveKpi("BTC", {
+      horizonDays: 1,
+      lookbackDays: 30,
+    });
+
+    let value: CardProps["value"] = samples[kpi.id];
+    let meta: string | undefined;
+    let extraBadge: string | null = null;
+    let footer: CardProps["footer"];
+
+    if (vm.status === "loading") {
+      value = "…";
+      meta = "loading";
+      extraBadge = "Awaiting data";
+    } else if (vm.status === "error") {
+      value = "—";
+      meta = vm.errorMessage ?? "error";
+      extraBadge = "Error";
+    } else {
+      // status === "ready"
+      value = vm.formatted;
+      meta = vm.message ?? "Hit rate of 1D expected move";
+
+      if (vm.meta) {
+        type Row = { id: string; label: string; value: string };
+
+        const rows: Row[] = [
+          {
+            id: "horizon",
+            label: "Horizon",
+            value: `${vm.meta.horizonDays}D`,
+          },
+          {
+            id: "lookback",
+            label: "Lookback window",
+            value: `${vm.meta.lookbackDays}D`,
+          },
+          {
+            id: "hits",
+            label: "Hits",
+            value: vm.meta.hits.toString(),
+          },
+          {
+            id: "misses",
+            label: "Misses",
+            value: vm.meta.misses.toString(),
+          },
+          {
+            id: "total",
+            label: "Evaluated intervals",
+            value: vm.meta.total.toString(),
+          },
+        ];
+
+        footer = (
+          <KpiMiniTable<Row>
+            title="Hit rate stats"
+            rows={rows}
+            getKey={(r) => r.id}
+            columns={[
+              {
+                id: "label",
+                header: "Metric",
+                render: (r) => r.label,
+              },
+              {
+                id: "value",
+                header: "Value",
+                align: "right",
+                render: (r) => r.value,
+              },
+            ]}
+          />
+        );
+
+        if (vm.meta.total > 0) {
+          extraBadge = `${vm.meta.hits}/${vm.meta.total} in ${vm.meta.lookbackDays}d`;
+        } else {
+          extraBadge = "Awaiting data";
+        }
+      } else {
+        extraBadge = "Awaiting data";
+      }
+    }
+
+    return renderCard({
+      value,
+      meta,
+      extraBadge,
+      footer,
+      infoKey: kpi.id,
+      guidanceValue:
+        typeof vm.value === "number" && Number.isFinite(vm.value)
+          ? vm.value
+          : null,
+    });
+  }
+  // ---------------------------------------------------------------------------
 
   if (kpi.id === KPI_IDS.spotPerpBasis) {
     const { loading, error, pct, abs, ts } = context.basis;
@@ -489,9 +662,13 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       const pctValue = pct * 100;
       const sign = pctValue >= 0 ? "+" : "";
       value = `${sign}${pctValue.toFixed(2)}%`;
-      meta = ts ? `BTC spot vs perp · ${new Date(ts).toLocaleTimeString()}` : "BTC spot vs perp";
+      meta = ts
+        ? `BTC spot vs perp · ${new Date(ts).toLocaleTimeString()}`
+        : "BTC spot vs perp";
       if (abs != null && Number.isFinite(abs)) {
-        badge = `Δ ${abs >= 0 ? `+$${abs.toFixed(2)}` : `-$${Math.abs(abs).toFixed(2)}`}`;
+        badge = `Δ ${
+          abs >= 0 ? `+$${abs.toFixed(2)}` : `-$${Math.abs(abs).toFixed(2)}`
+        }`;
       }
     } else {
       value = "—";
@@ -565,7 +742,6 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     });
   }
 
-
   if (kpi.id === KPI_IDS.oiConcentration) {
     const vm = useOiConcentrationKpi({ topN: 3, windowPct: 0.25 });
 
@@ -610,8 +786,8 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     const vm = useLiquidityStressKpi({
       currency: "BTC",
       windowPct: 0.005, // ±0.5%
-      clipSize: 10,     // 10 BTC notional clip
-      pollMs: 0,        // no polling from the card
+      clipSize: 10, // 10 BTC notional clip
+      pollMs: 0, // no polling from the card
     });
 
     let footer: CardProps["footer"];
@@ -695,7 +871,9 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
             id: "value",
             header: "Value",
             align: "right",
-            render: (r) => <span className="tabular-nums">{r.actual}</span>,
+            render: (r) => (
+              <span className="tabular-nums">{r.actual}</span>
+            ),
           },
           {
             id: "threshold",
@@ -723,8 +901,9 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     );
 
     const meta = model.baseCurrency
-      ? `Base: ${model.baseCurrency}${model.notes ? ` • ${model.notes}` : ""
-      }`
+      ? `Base: ${model.baseCurrency}${
+          model.notes ? ` • ${model.notes}` : ""
+        }`
       : model.notes;
 
     return renderCard({
@@ -793,7 +972,9 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
                 align: "right",
                 render: (r) => {
                   const v = r.strike;
-                  if (typeof v !== "number" || !Number.isFinite(v)) return "—";
+                  if (typeof v !== "number" || !Number.isFinite(v)) {
+                    return "—";
+                  }
                   return v.toLocaleString(undefined, {
                     maximumFractionDigits: 0,
                   });
@@ -805,7 +986,9 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
                 align: "right",
                 render: (r) => {
                   const v = r.score;
-                  if (typeof v !== "number" || !Number.isFinite(v)) return "—";
+                  if (typeof v !== "number" || !Number.isFinite(v)) {
+                    return "—";
+                  }
                   return `${Math.round(v * 100)}%`;
                 },
               },
@@ -842,7 +1025,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       value = "—";
       meta = vm.errorMessage ?? "error";
     } else if (vm.value != null) {
-      value = vm.value; // formatted "18.3"
+      value = vm.value; // already formatted e.g. "18.3"
       // meta already includes FRED + date
     } else {
       value = "—";
@@ -857,7 +1040,6 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       guidanceValue: vm.guidanceValue ?? null, // drives bandsId="vix"
     });
   }
-
 
   return renderCard();
 }

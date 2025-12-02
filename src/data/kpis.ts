@@ -74,6 +74,7 @@ export const KPIS: KpiMeta[] = [
     title: "Strike support / resistance",
     guidanceKey: "strikeMap", // ⬅️ must match BAND_BASE key
   },
+  
 ];
 
 export const KPI_GROUPS: KPIGroup[] = [

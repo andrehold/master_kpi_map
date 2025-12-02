@@ -5,6 +5,7 @@ import { KPI_IDS, type KpiId } from "../../kpi/kpiIds";
 // Existing KPI-level hooks
 import { useIVTermStructureKpi } from "./useIVTermStructureKpi";
 import { useVixKpi } from "./useVixKpi";
+import { useHitRateOfExpectedMoveKpi } from "./index";
 
 // Domain-level hooks (no dedicated KPI view-models yet)
 import { useDeribitDvol } from "../domain/useDeribitDvol";
@@ -36,6 +37,10 @@ export function useKpiDashboardState(): KpiDashboardState {
   // --- Existing KPI hooks ---
   const term = useIVTermStructureKpi();
   const vix = useVixKpi();
+  const hitRate = useHitRateOfExpectedMoveKpi("BTC", {
+    horizonDays: 1,
+    lookbackDays: 30,
+  });
 
   // --- Domain hooks (global KPIs we want in the checklist) ---
   const dvol = useDeribitDvol("BTC");               // DVOL in percent (≈ ATM IV 30D)
@@ -62,11 +67,11 @@ export function useKpiDashboardState(): KpiDashboardState {
   if (term) {
     let formatted = "n/a";
     let numeric: number | null = null;
-  
+
     if (term.value) {
       // value is a string like "Short premium (−3.4%)"
       formatted = term.value;
-  
+
       // try to extract the first numeric chunk, e.g. "+3.4" or "-3.4"
       const m = term.value.match(/-?\d+(\.\d+)?/);
       if (m) {
@@ -76,7 +81,7 @@ export function useKpiDashboardState(): KpiDashboardState {
       // fallback if you ever decide to use message/errorMessage
       formatted = term.message;
     }
-  
+
     setSnapshot(KPI_IDS.termStructure, {
       value: numeric,
       formatted,

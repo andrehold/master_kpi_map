@@ -382,7 +382,7 @@ export async function getOptionBookSummary(
  * @returns array of { ts, closePct, openPct?, highPct?, lowPct? } sorted ascending
  */
 export async function fetchDvolHistory(
-  currency: 'BTC' | 'ETH',
+  currency: Currency,
   limit = 400,
   resolutionSec = 86400
 ): Promise<DvolPoint[]> {
@@ -433,7 +433,7 @@ export type PriceCandle = { ts: number; open?: number; high?: number; low?: numb
 
 /** Fetch close prices for PERPETUAL future as spot proxy. */
 export async function fetchPerpHistory(
-  currency: 'BTC' | 'ETH',
+  currency: Currency,
   limit = 400,
   resolutionSec = 86400
 ): Promise<PriceCandle[]> {

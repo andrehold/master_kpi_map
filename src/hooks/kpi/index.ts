@@ -8,3 +8,4 @@ export * from "./useIVTermStructureKpi";
 export * from "./useVixKpi";
 export * from "./useRealizedVolKpi";
 export * from "./useIvRvSpreadKpi";
+export * from "./useHitRateOfExpectedMoveKpi";
