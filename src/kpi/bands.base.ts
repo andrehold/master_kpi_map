@@ -1,6 +1,7 @@
 // src/kpi/bands.base.ts
 // Numeric/logic-only corridors for KPI guidance.
 // Copy/text (labels, guidance) should live in i18n JSON and be merged at runtime.
+import { KPI_IDS } from "../kpi/kpiIds";
 
 export type Tone = "good" | "caution" | "avoid" | "neutral";
 
@@ -114,16 +115,19 @@ export const BAND_BASE: Record<string, BandBaseSet> = {
     note: "IV − RV in vol points (annualized).",
   },
 
-  hit_rate_expected_move: {
-    id: "hit_rate_expected_move",
+  [KPI_IDS.emHitRate]: {
+    id: KPI_IDS.emHitRate,
     valueScale: "percent",
     hasBar: true,
     thresholds: [
-      { id: "poor", max: 50, tone: "avoid" },
-      { id: "ok", min: 50, max: 70, tone: "caution" },
-      { id: "good", min: 70, tone: "good" },
+      // <50% → EM overpriced / long edge
+      { id: "overpriced_long_edge", max: 50, tone: "avoid" },
+      // 60–70% → balanced carry regime
+      { id: "balanced", min: 60, max: 70, tone: "neutral" },
+      // ≥75% → very carry-friendly (sell premium)
+      { id: "sell_premium", min: 75, tone: "good" },
     ],
-    note: "Share of days where realized move stayed within 1σ expected move over lookback window.",
+    note: "Share of sessions staying within the 1D expected move over a 90-day rolling window.",
   },
 
   rv_em_ratio: {
@@ -246,8 +250,8 @@ export const BAND_BASE: Record<string, BandBaseSet> = {
   /* -----------------------------------------------------------------------
    * 5) Strategy-Specific Health
    * --------------------------------------------------------------------- */
-  condorCreditEm: {
-    id: "condorCreditEm",
+  [KPI_IDS.condorCreditEm]: {
+    id: KPI_IDS.condorCreditEm,
     valueScale: "percent",
     hasBar: true,
     thresholds: [

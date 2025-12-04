@@ -60,7 +60,7 @@
       }
     },
   
-    "em_hit_rate_90d": {
+    "em-hit-rate": {
       "title": "Hit Rate of Expected Move (90d rolling)",
       "description": "Share of sessions staying within the daily expected move.",
       "bands": {

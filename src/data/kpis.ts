@@ -38,13 +38,13 @@ export interface KPIGroup {
 }
 
 export const KPIS: KpiMeta[] = [
-  { id: KPI_IDS.ivr, title: "IV Rank (1y)", valueType: "percent", guidanceKey: "ivr" },
+  { id: KPI_IDS.ivr, title: "IV Rank (1y)", valueType: "percent", guidanceKey: KPI_IDS.ivr },
   { id: KPI_IDS.atmIv, title: "ATM IV", valueType: "percent", guidanceKey: "atm_iv" },
   { id: KPI_IDS.termStructure, title: "Term Structure", guidanceKey: "term_structure_spread" },
   { id: KPI_IDS.skew, title: "25Δ Risk Reversal", guidanceKey: "skew_rr25" },
   { id: KPI_IDS.volOfVol, title: "Vol of Vol", guidanceKey: "vol_of_vol" },
   { id: KPI_IDS.ivRv, title: "IV – RV Spread", guidanceKey: "iv_rv_spread" },
-  { id: KPI_IDS.emHitRate, title: "EM Hit Rate (90d)", valueType: "percent", guidanceKey: "em_hit_rate_90d" },
+  { id: KPI_IDS.emHitRate, title: "EM Hit Rate (90d)", valueType: "percent", guidanceKey: KPI_IDS.emHitRate },
   { id: KPI_IDS.rvEm, title: "RV ÷ EM", valueType: "ratio", guidanceKey: "rv_em_ratio" },
   { id: KPI_IDS.vix, title: "VIX", valueType: "raw", guidanceKey: "vix" },
   { id: KPI_IDS.vvix, title: "VVIX", valueType: "raw", guidanceKey: "vvix" },
@@ -54,7 +54,7 @@ export const KPIS: KpiMeta[] = [
   { id: KPI_IDS.tobDepth, title: "TOB Depth", guidanceKey: "tob_depth_contracts" },
   { id: KPI_IDS.liquidityStress, title: "Liquidity Stress (spreads/depth)", valueType: "percent", guidanceKey: "liquidityStress" },
   { id: KPI_IDS.oiConcentration, title: "OI Concentration %", valueType: "percent", guidanceKey: "oi_concentration_pct" },
-  { id: KPI_IDS.condorCredit, title: "Condor Credit % of EM", valueType: "percent", guidanceKey: "condor_credit_pct_of_em" },
+  { id: KPI_IDS.condorCredit, title: "Condor Credit % of EM", valueType: "percent", guidanceKey: KPI_IDS.condorCreditEm },
   { id: KPI_IDS.maxlossCredit, title: "Max Loss ÷ Credit", valueType: "ratio", guidanceKey: "maxloss_credit_ratio" },
   { id: KPI_IDS.pnlVsCredit, title: "PnL vs Credit %", valueType: "percent", guidanceKey: "pnl_vs_credit_pct" },
   { id: KPI_IDS.deltaExposure, title: "Delta Exposure % NAV", valueType: "percent", guidanceKey: "delta_exposure_pct_nav" },

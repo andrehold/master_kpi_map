@@ -62,7 +62,8 @@ function safeGetBandSet(id?: unknown, locale?: string): BandSet | null {
   if (!id) return null;
   try {
     return getBandSet(id as BandBaseIds, locale);
-  } catch {
+  } catch (err) {
+    console.warn("[Guidance] safeGetBandSet failed for", id, err);
     return null; // tolerate missing bands (info-only KPI)
   }
 }

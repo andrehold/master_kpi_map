@@ -377,9 +377,8 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       const vp = data.kinkPoints * 100;
       const sign = vp >= 0 ? "+" : "";
       value = `${sign}${vp.toFixed(2)}%`;
-      meta = `0DTE − mean(1–3DTE)${
-        data.indexPrice ? ` · S ${Math.round(data.indexPrice)}` : ""
-      }`;
+      meta = `0DTE − mean(1–3DTE)${data.indexPrice ? ` · S ${Math.round(data.indexPrice)}` : ""
+        }`;
       const iv0 =
         data.iv0dte != null ? (data.iv0dte * 100).toFixed(1) : "—";
       const m13 =
@@ -552,10 +551,11 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       lookbackDays: 30,
     });
 
-    let value: CardProps["value"] = samples[kpi.id];
-    let meta: string | undefined;
+    let value: CardProps["value"] = vm.formatted;
+    let meta: string | undefined = vm.message ?? "Hit rate of 1D expected move";
     let extraBadge: string | null = null;
     let footer: CardProps["footer"];
+    let guidanceValue: number | null = null;
 
     if (vm.status === "loading") {
       value = "…";
@@ -567,37 +567,44 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       extraBadge = "Error";
     } else {
       // status === "ready"
-      value = vm.formatted;
-      meta = vm.message ?? "Hit rate of 1D expected move";
-
       if (vm.meta) {
+        const { horizonDays, lookbackDays, hits, misses, total } = vm.meta;
+
+        // --- compute guidance value for the little bar ---
+        if (typeof hits === "number" && typeof total === "number" && total > 0) {
+          guidanceValue = (hits / total) * 100; // 0–100 %
+          extraBadge = `${hits}/${total} within EM`;
+        } else {
+          extraBadge = "Awaiting data";
+        }
+
         type Row = { id: string; label: string; value: string };
 
         const rows: Row[] = [
           {
             id: "horizon",
             label: "Horizon",
-            value: `${vm.meta.horizonDays}D`,
+            value: `${horizonDays}D`,
           },
           {
             id: "lookback",
             label: "Lookback window",
-            value: `${vm.meta.lookbackDays}D`,
+            value: `${lookbackDays}D`,
           },
           {
             id: "hits",
-            label: "Hits",
-            value: vm.meta.hits.toString(),
+            label: "Within EM",
+            value: String(hits),
           },
           {
             id: "misses",
-            label: "Misses",
-            value: vm.meta.misses.toString(),
+            label: "Outside EM",
+            value: String(misses),
           },
           {
             id: "total",
             label: "Evaluated intervals",
-            value: vm.meta.total.toString(),
+            value: String(total),
           },
         ];
 
@@ -607,11 +614,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
             rows={rows}
             getKey={(r) => r.id}
             columns={[
-              {
-                id: "label",
-                header: "Metric",
-                render: (r) => r.label,
-              },
+              { id: "label", header: "Metric", render: (r) => r.label },
               {
                 id: "value",
                 header: "Value",
@@ -621,12 +624,6 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
             ]}
           />
         );
-
-        if (vm.meta.total > 0) {
-          extraBadge = `${vm.meta.hits}/${vm.meta.total} in ${vm.meta.lookbackDays}d`;
-        } else {
-          extraBadge = "Awaiting data";
-        }
       } else {
         extraBadge = "Awaiting data";
       }
@@ -637,11 +634,8 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       meta,
       extraBadge,
       footer,
-      infoKey: kpi.id,
-      guidanceValue:
-        typeof vm.value === "number" && Number.isFinite(vm.value)
-          ? vm.value
-          : null,
+      infoKey: KPI_IDS.emHitRate,  // turns guidance on
+      guidanceValue,               // <- now a real 0–100 number
     });
   }
   // ---------------------------------------------------------------------------
@@ -666,9 +660,8 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
         ? `BTC spot vs perp · ${new Date(ts).toLocaleTimeString()}`
         : "BTC spot vs perp";
       if (abs != null && Number.isFinite(abs)) {
-        badge = `Δ ${
-          abs >= 0 ? `+$${abs.toFixed(2)}` : `-$${Math.abs(abs).toFixed(2)}`
-        }`;
+        badge = `Δ ${abs >= 0 ? `+$${abs.toFixed(2)}` : `-$${Math.abs(abs).toFixed(2)}`
+          }`;
       }
     } else {
       value = "—";
@@ -901,9 +894,8 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     );
 
     const meta = model.baseCurrency
-      ? `Base: ${model.baseCurrency}${
-          model.notes ? ` • ${model.notes}` : ""
-        }`
+      ? `Base: ${model.baseCurrency}${model.notes ? ` • ${model.notes}` : ""
+      }`
       : model.notes;
 
     return renderCard({
