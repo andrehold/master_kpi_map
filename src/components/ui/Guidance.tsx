@@ -5,7 +5,7 @@
 // - Numeric thresholds come from src/kpi/bands.base.ts
 
 import * as React from "react";
-import { BAND_BASE } from "../../kpi/bands.base";
+import { BAND_BASE, BandBaseIds } from "../../kpi/bands.base";
 import { KPI_INFO, type KpiInfoDoc } from "../../data/kpis";
 
 /* ------------------------------- Types ----------------------------------- */
@@ -30,7 +30,6 @@ export type BandSet = {
   /** Ordered low→high bands; slot 0 = lowest band */
   bands: Band[];
 };
-export type BandBaseIds = keyof typeof BAND_BASE;
 
 export type KpiGuidanceHandle = {
   open: () => void;
