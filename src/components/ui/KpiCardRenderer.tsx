@@ -889,7 +889,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     });
   }
 
-  if (kpi.id.startsWith("portfolio-client-")) {
+  if (typeof kpi.id === "string" && kpi.id.startsWith("portfolio-client-")) {
     const model = getClientPortfolioModel(kpi.id);
 
     if (!model) {

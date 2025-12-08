@@ -45,6 +45,8 @@ export default function KpiCard({
 
   const showSample = !looksLoading && (!hasBadges || isEmptyKpiValue(value));
 
+  const resolvedInfoKey = infoKey ?? kpi.id;
+
   return (
     <div className="group rounded-2xl border border-[var(--border)] bg-[var(--surface-950)] p-4">
       <div className="grid grid-cols-[1fr_auto] items-start gap-x-4">
@@ -101,7 +103,7 @@ export default function KpiCard({
             ref={drawerRef}
             trigger="external"
             kpiId={kpi.id}
-            infoKey={infoKey!}
+            infoKey={resolvedInfoKey}
             value={guidanceValue ?? null}
             locale={locale}
           />
