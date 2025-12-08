@@ -27,6 +27,7 @@ import {
   useIvRvSpreadKpi,
   useHitRateOfExpectedMoveKpi,
   useTimeToFirstBreachKpi,
+  useSpotVsSmaKpi, 
 } from "../../hooks/kpi";
 
 import { KPI_IDS } from "../../kpi/kpiIds";
@@ -670,6 +671,54 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     }
 
     return renderCard({ value, meta, extraBadge: badge });
+  }
+
+  if (kpi.id === KPI_IDS.spotVsSma) {
+    const vm = useSpotVsSmaKpi("BTC");
+
+    let value: CardProps["value"] = vm.value ?? samples[kpi.id];
+    let meta: string | undefined = vm.meta;
+    let extraBadge: string | null = vm.extraBadge ?? null;
+
+    if (vm.status === "loading") {
+      value = "…";
+      meta = "loading";
+      extraBadge = "Fetching SMAs…";
+    } else if (vm.status === "error") {
+      value = "—";
+      meta = vm.errorMessage ?? "error";
+      extraBadge = "Error";
+    }
+
+    const footer =
+      vm.rows && vm.rows.length > 0 ? (
+        <KpiMiniTable
+          title="Spot vs SMAs"
+          rows={vm.rows}
+          getKey={(r) => r.id}
+          columns={[
+            {
+              id: "tenor",
+              header: "Tenor",
+              render: (r) => `${r.tenor}D`,
+            },
+            {
+              id: "text",
+              header: "Status",
+              align: "right",
+              render: (r) => r.text,
+            },
+          ]}
+        />
+      ) : undefined;
+
+    return renderCard({
+      value,
+      meta,
+      extraBadge,
+      footer,
+      infoKey: kpi.id,
+    });
   }
 
   if (kpi.id === KPI_IDS.gammaWalls) {

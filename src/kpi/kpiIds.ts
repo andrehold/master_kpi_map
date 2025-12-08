@@ -62,6 +62,7 @@ export const KPI_IDS = {
   spread: "spread",
   stressTests: "stress-tests",
   strikeMap: "strikeMap",
+  spotVsSma: "spot-vs-sma",
   termStructure: "term-structure",
   timeToFill: "time-to-fill",
   timeToFirstBreach: "time-to-first-breach",

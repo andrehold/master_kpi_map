@@ -58,6 +58,8 @@
   
       "latency": "End-to-end automation latency (ms).",
       "data-freshness": "Book/update staleness; data freshness for decisions.",
-      "uptime": "Automation uptime and safety/kill-switch trigger counts."
+      "uptime": "Automation uptime and safety/kill-switch trigger counts.",
+
+      "spot-vs-sma": "Spot distance vs 20/50/100/200D simple moving averages; >0% = above SMA."
     }
   }

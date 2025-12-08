@@ -74,8 +74,14 @@ export const KPIS: KpiMeta[] = [
     title: "Strike support / resistance",
     guidanceKey: "strikeMap", // ⬅️ must match BAND_BASE key
   },
+  {
+    id: KPI_IDS.spotVsSma,
+    title: "Spot vs SMAs",
+    valueType: "percent",
+  },
   { id: KPI_IDS.timeToFirstBreach, title: "Time to First Breach %", valueType: "percent" },
-  
+
+
 ];
 
 export const KPI_GROUPS: KPIGroup[] = [
@@ -187,6 +193,12 @@ export const KPI_GROUPS: KPIGroup[] = [
         name: "Strike support / resistance",
         strategies: ["Weekend Vol", "0DTE Overwrite"],
         valueType: "price",
+      },
+      {
+        id: KPI_IDS.spotVsSma,
+        name: "Spot vs SMAs (20/50/100/200D)",
+        strategies: ["Weekend Vol", "0DTE Overwrite"],
+        valueType: "percent",
       },
     ],
   },
