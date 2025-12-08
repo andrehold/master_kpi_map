@@ -5,19 +5,30 @@
 // - Numeric thresholds come from src/kpi/bands.base.ts
 
 import * as React from "react";
-import BAND_BASE from "../../kpi/bands.base";
+import { BAND_BASE } from "../../kpi/bands.base";
 import { KPI_INFO, type KpiInfoDoc } from "../../data/kpis";
 
 /* ------------------------------- Types ----------------------------------- */
 export type Tone = "good" | "caution" | "avoid" | "neutral";
-export type Band = { id: string; min?: number; max?: number; label: string; guidance: string; tone?: Tone };
+export type Band = {
+  /** Index in the ordered thresholds/bands arrays */
+  slot: number;
+  min?: number;
+  max?: number;
+  label: string;
+  guidance: string;
+  tone?: Tone;
+};
+
 export type BandSet = {
-  id: string;
+  /** Registry key, aligned with BAND_BASE & bands.json keys */
+  id: BandBaseIds;
   title: string;
   description?: string;
   valueScale: "percent" | "raw" | "ratio";
   hasBar: boolean;
-  bands: Band[]; // ordered low→high
+  /** Ordered low→high bands; slot 0 = lowest band */
+  bands: Band[];
 };
 export type BandBaseIds = keyof typeof BAND_BASE;
 
@@ -40,21 +51,38 @@ function resolveDict(locale?: string) {
 function getBandSet(kpiId: BandBaseIds, locale?: string): BandSet {
   const base = (BAND_BASE as any)[kpiId];
   if (!base) throw new Error(`Unknown bands id: ${String(kpiId)}`);
-  const dict = resolveDict(locale)?.[kpiId] ?? resolveDict("en")?.[kpiId];
+
+  const dictRoot = resolveDict(locale);
+  const dictFallback = resolveDict("en");
+  const dict = dictRoot?.[kpiId] ?? dictFallback?.[kpiId];
   if (!dict) throw new Error(`Missing i18n for ${String(kpiId)} in ${locale ?? "en"}`);
 
+  const thresholds = Array.isArray(base.thresholds) ? base.thresholds : [];
+  const dictBands = Array.isArray(dict.bands) ? dict.bands : [];
+
   return {
-    id: base.id,
+    id: kpiId,
     title: dict.title,
     description: dict.description,
     valueScale: base.valueScale,
     hasBar: base.hasBar,
-    bands: base.thresholds.map((t: any) => {
-      const d = dict.bands?.[t.id];
-      if (!d) throw new Error(`Missing copy for band '${t.id}' in ${String(kpiId)} (${locale ?? "en"})`);
-      return { id: t.id, min: t.min, max: t.max, tone: t.tone, label: d.label, guidance: d.guidance } as Band;
+    bands: thresholds.map((t: any, idx: number) => {
+      const d = dictBands[idx];
+      if (!d) {
+        throw new Error(
+          `Missing copy for band #${idx} in ${String(kpiId)} (${locale ?? "en"})`
+        );
+      }
+      return {
+        slot: idx,
+        min: t.min,
+        max: t.max,
+        tone: t.tone,
+        label: d.label,
+        guidance: d.guidance,
+      } as Band;
     }),
-  } as BandSet;
+  };
 }
 
 /* --------------------------- Safe bands lookup --------------------------- */
@@ -147,7 +175,7 @@ export function BandBar({ value, set }: { value?: number | null; set: BandSet })
       {/* lanes */}
       <div className="absolute inset-0 grid grid-cols-3 gap-px opacity-60">
         {lanes.map((b, i) => (
-          <div key={b.id} className={i === 0 ? "bg-rose-500/50" : i === 1 ? "bg-emerald-500/40" : "bg-amber-500/40"} />
+          <div key={b.slot} className={i === 0 ? "bg-rose-500/50" : i === 1 ? "bg-emerald-500/40" : "bg-amber-500/40"} />
         ))}
       </div>
 
@@ -263,9 +291,9 @@ export function GuidanceDrawer({
                   <h3 className="mb-2 text-sm font-medium text-[var(--fg)]">Signal bands</h3>
                   <ul className="space-y-2">
                     {set.bands.map((b) => {
-                      const isActive = active?.id === b.id;
+                      const isActive = active?.slot === b.slot;
                       return (
-                        <li key={b.id} className={`rounded-xl border p-3 ${isActive ? "border-[var(--fg)] bg-[var(--surface-900)]" : "border-[var(--border)]"}`}>
+                        <li key={b.slot} className={`rounded-xl border p-3 ${isActive ? "border-[var(--fg)] bg-[var(--surface-900)]" : "border-[var(--border)]"}`}>
                           <div className="flex items-start gap-3">
                             <span className={`mt-1 h-2.5 w-2.5 rounded-full ${toneClass(b.tone)}`} />
                             <div className="min-w-0">
