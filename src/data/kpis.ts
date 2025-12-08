@@ -74,6 +74,7 @@ export const KPIS: KpiMeta[] = [
     title: "Strike support / resistance",
     guidanceKey: "strikeMap", // ⬅️ must match BAND_BASE key
   },
+  { id: KPI_IDS.timeToFirstBreach, title: "Time to First Breach %", valueType: "percent" },
   
 ];
 
@@ -97,6 +98,7 @@ export const KPI_GROUPS: KPIGroup[] = [
       { id: KPI_IDS.rv, name: "Realized Volatility (RV)", strategies: ["Expected Move", "Range-Bound Premium", "Carry Trade", "0DTE Overwrite"], valueType: "percent" },
       { id: KPI_IDS.ivRvSpread, name: "IV–RV Spread", strategies: ["Expected Move", "Range-Bound Premium", "Carry Trade"], valueType: "percent" },
       { id: KPI_IDS.emHitRate, name: "Hit Rate of Expected Move", strategies: ["Expected Move"], valueType: "percent" },
+      { id: KPI_IDS.timeToFirstBreach, name: "Time to First Breach %", strategies: ["Expected Move"], valueType: "percent" },
       { id: KPI_IDS.rvEmFactor, name: "Over/Under Pricing Factor (RV ÷ EM)", strategies: ["Expected Move"], valueType: "ratio" },
       { id: KPI_IDS.shortHorizonAtr, name: "Short-horizon realized σ / intraday ATR vs EM", strategies: ["0DTE Overwrite"], valueType: "sigma" },
       { id: KPI_IDS.emRibbon, name: "Expected Move Ribbon", strategies: ["Expected Move"], valueType: "custom" },
@@ -178,7 +180,7 @@ export const KPI_GROUPS: KPIGroup[] = [
   },
   {
     id: "strikes-positioning",
-    title: "Strikes & Positioning",
+    title: "9. Strikes & Positioning",
     kpis: [
       {
         id: KPI_IDS.strikeMap,
@@ -190,7 +192,7 @@ export const KPI_GROUPS: KPIGroup[] = [
   },
   {
     id: "client-portfolios",
-    title: "9. Client Portfolios",
+    title: "10. Client Portfolios",
     kpis: [
       {
         id: KPI_IDS.portfolioClientAlpha,

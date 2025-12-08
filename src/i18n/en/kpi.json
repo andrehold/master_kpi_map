@@ -10,6 +10,7 @@
       "rv": "Historical (realized) volatility over the selected window, annualized.",
       "iv-rv-spread": "IV minus RV; positive suggests an implied volatility risk premium.",
       "em-hit-rate": "Share of periods where spot stayed within the expected-move band.",
+      "time-to-first-breach": "Average time (as % of trade life) until spot first breaches the expected-move band within the horizon.",
       "rv-em-factor": "RV divided by expected-move-implied volatility; >1 = EM underpriced.",
       "short-horizon-atr": "Short-horizon realized σ / intraday ATR normalized vs expected move.",
       "em-ribbon": "Recent expected-move bands vs closes; quick read of over/under moves.",

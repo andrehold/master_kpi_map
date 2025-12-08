@@ -61,8 +61,10 @@ export const KPI_IDS = {
   spotPerpBasis: "spot-perp-basis",
   spread: "spread",
   stressTests: "stress-tests",
+  strikeMap: "strikeMap",
   termStructure: "term-structure",
   timeToFill: "time-to-fill",
+  timeToFirstBreach: "time-to-first-breach",
   tobDepth: "tob-depth",
   tsKink: "ts-kink",
   uptime: "uptime",
@@ -71,7 +73,6 @@ export const KPI_IDS = {
   vixVvix: "vix-vvix",
   volOfVol: "vol-of-vol",
   vvix: "vvix",
-  strikeMap: "strikeMap",
 } as const;
 
 export type KpiId = (typeof KPI_IDS)[keyof typeof KPI_IDS];

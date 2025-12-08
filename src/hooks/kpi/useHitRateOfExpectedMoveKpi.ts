@@ -42,6 +42,38 @@ export interface UseHitRateOfExpectedMoveOptions {
   lookbackDays?: number;
 }
 
+export type TimeToFirstBreachStatus = HitRateOfExpectedMoveStatus;
+
+export interface TimeToFirstBreachMeta {
+  /** Number of intervals actually evaluated */
+  total: number;
+  /** Intervals where EM was breached at least once within the horizon */
+  withBreach: number;
+  /** Intervals with no EM breach within the horizon */
+  withoutBreach: number;
+  /** Average time to first breach among breaching intervals (0–100%), NaN if no breaches */
+  avgBreachTimePct: number;
+  /** Horizon in calendar days used for EM & breach search */
+  horizonDays: number;
+  /** Intended lookback window (start points) in days */
+  lookbackDays: number;
+}
+
+export interface TimeToFirstBreachKpiViewModel {
+  status: TimeToFirstBreachStatus;
+  /** Average time to first breach in percent of trade life, or null if not computable */
+  value: number | null;
+  formatted: string;
+  meta?: TimeToFirstBreachMeta;
+  message?: string;
+  errorMessage?: string | null;
+}
+
+export interface UseTimeToFirstBreachOptions {
+  horizonDays?: number;
+  lookbackDays?: number;
+}
+
 /**
  * Hook: Hit Rate of Expected Move
  *
@@ -149,6 +181,99 @@ export function useHitRateOfExpectedMoveKpi(
   return state;
 }
 
+export function useTimeToFirstBreachKpi(
+    currency: "BTC" | "ETH",
+    opts: UseTimeToFirstBreachOptions = {}
+  ): TimeToFirstBreachKpiViewModel {
+    const horizonDays = opts.horizonDays ?? 1;
+    const lookbackDays = opts.lookbackDays ?? 30;
+  
+    const [state, setState] = useState<TimeToFirstBreachKpiViewModel>({
+      status: "loading",
+      value: null,
+      formatted: "…",
+      message: undefined,
+      errorMessage: null,
+    });
+  
+    useEffect(() => {
+      let cancelled = false;
+  
+      async function run() {
+        setState((prev) => ({
+          ...prev,
+          status: "loading",
+        }));
+  
+        try {
+          const limit = lookbackDays + horizonDays + 4;
+  
+          const [ivSeries, priceSeries] = await Promise.all([
+            fetchDvolHistory(currency, limit, 86400),
+            fetchPerpHistory(currency, limit, 86400),
+          ]);
+  
+          if (cancelled) return;
+  
+          const merged = mergeDailyIvAndSpot(ivSeries, priceSeries);
+  
+          const result = computeTimeToFirstBreachFromMerged(
+            merged,
+            horizonDays,
+            lookbackDays
+          );
+  
+          if (cancelled) return;
+  
+          const avg = result.avgBreachTimePct;
+          const isFiniteAvg =
+            typeof avg === "number" && Number.isFinite(avg);
+  
+          const formatted = isFiniteAvg ? `${avg.toFixed(0)}%` : "n/a";
+  
+          const message =
+            result.total > 0
+              ? `Based on last ${result.total} intervals (${result.withBreach} with breach)`
+              : "Insufficient data for Time to First Breach";
+  
+          setState({
+            status: "ready",
+            value: isFiniteAvg ? avg : null,
+            formatted,
+            meta: {
+              total: result.total,
+              withBreach: result.withBreach,
+              withoutBreach: result.withoutBreach,
+              avgBreachTimePct: avg,
+              horizonDays,
+              lookbackDays,
+            },
+            message,
+            errorMessage: null,
+          });
+        } catch (err: any) {
+          if (cancelled) return;
+  
+          setState({
+            status: "error",
+            value: null,
+            formatted: "n/a",
+            meta: undefined,
+            message: "Failed to load Time to First Breach",
+            errorMessage: err?.message ?? String(err),
+          });
+        }
+      }
+  
+      run();
+  
+      return () => {
+        cancelled = true;
+      };
+    }, [currency, horizonDays, lookbackDays]);
+  
+    return state;
+  }
 /* ------------------------------------------------------------------------- */
 /* Internal helpers                                                          */
 /* ------------------------------------------------------------------------- */
@@ -164,6 +289,17 @@ interface HitRateCalcResult {
   hits: number;
   misses: number;
   total: number;
+}
+
+interface TimeToFirstBreachCalcResult {
+  /** Average time to first breach among breaching intervals (0–100%), NaN if no breaches */
+  avgBreachTimePct: number;
+  /** Number of evaluated start intervals */
+  total: number;
+  /** Intervals where EM was breached at least once within the horizon */
+  withBreach: number;
+  /** Intervals with no EM breach within the horizon */
+  withoutBreach: number;
 }
 
 /**
@@ -240,6 +376,106 @@ function computeHitRateOfExpectedMove(
   };
 }
 
+/**
+ * Core calculation for "Time to First Breach" using the merged daily series.
+ *
+ * For each eligible start index i:
+ *   - Compute EM based on spot & IV at i for the given horizonDays
+ *   - Walk forward j = i1..ihorizonDays until we find the first day where
+ *     |S_j - S_i| > EM
+ *   - Record τ = (j - i) / horizonDays as the normalized time to first breach
+ *
+ * We then define:
+ *   avgBreachTimePct = mean(τ for breaching intervals) * 100
+ */
+function computeTimeToFirstBreachFromMerged(
+  merged: DailyMergedPoint[],
+  horizonDays: number,
+  lookbackDays: number
+): TimeToFirstBreachCalcResult {
+  if (horizonDays <= 0) {
+    throw new Error("horizonDays must be >= 1");
+  }
+  if (lookbackDays <= 0) {
+    throw new Error("lookbackDays must be >= 1");
+  }
+
+  if (merged.length === 0) {
+    return {
+      avgBreachTimePct: NaN,
+      total: 0,
+      withBreach: 0,
+      withoutBreach: 0,
+    };
+  }
+
+  // We only need (lookbackDays + horizonDays + 1) most recent days
+  const maxWindow = lookbackDays + horizonDays + 1;
+  const trimmed =
+    merged.length > maxWindow
+      ? merged.slice(merged.length - maxWindow)
+      : merged;
+
+  const n = trimmed.length;
+  const maxStartIdx = n - horizonDays;
+  const minStartIdx = Math.max(0, maxStartIdx - lookbackDays);
+
+  let total = 0;
+  let withBreach = 0;
+  let sumFraction = 0;
+
+  for (let i = minStartIdx; i < maxStartIdx; i++) {
+    const start = trimmed[i];
+
+    if (!isFiniteNumber(start.spot) || !isFiniteNumber(start.ivPct)) {
+      continue;
+    }
+
+    const spotStart = start.spot!;
+    const ivAnnual = start.ivPct! / 100;
+
+    const em = spotStart * ivAnnual * Math.sqrt(horizonDays / 365);
+
+    let breached = false;
+
+    // Walk forward up to horizonDays steps
+    for (let step = 1; step <= horizonDays; step++) {
+      const idx = i + step;
+      if (idx >= n) break;
+
+      const point = trimmed[idx];
+      if (!isFiniteNumber(point.spot)) {
+        continue;
+      }
+
+      const rm = Math.abs(point.spot! - spotStart);
+      if (rm > em) {
+        breached = true;
+        const fraction = step / horizonDays; // 0–1
+        sumFraction += fraction;
+        break;
+      }
+    }
+
+    total += 1;
+    if (breached) {
+      withBreach += 1;
+    }
+  }
+
+  const withoutBreach = total - withBreach;
+  const avgFraction = withBreach > 0 ? sumFraction / withBreach : NaN;
+  const avgBreachTimePct = Number.isFinite(avgFraction)
+    ? avgFraction * 100
+    : NaN;
+
+  return {
+    avgBreachTimePct,
+    total,
+    withBreach,
+    withoutBreach,
+  };
+}
 /**
  * Merge DVOL points and PERPETUAL closes into daily buckets.
  *
