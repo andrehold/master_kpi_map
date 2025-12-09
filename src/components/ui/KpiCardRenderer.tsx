@@ -239,7 +239,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
   }
 
   if (kpi.id === KPI_IDS.termStructure) {
-    const model = useIVTermStructureKpi();
+    const model = useIVTermStructureKpi(context.termStructure ?? null, locale);
     if (!model) {
       return renderCard({
         meta: "Awaiting term structure data",
