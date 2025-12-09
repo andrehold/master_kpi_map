@@ -22,7 +22,13 @@ export type DeribitInstrument = {
 export type DeribitTicker = {
   instrument_name: string;
   mark_iv?: number; // can be percent (45.8) or decimal (0.458)
-  greeks?: { delta?: number; gamma?: number };
+  greeks?: {
+    delta?: number;
+    gamma?: number;
+    vega?: number;
+    theta?: number;
+    rho?: number;
+  };
   best_bid_price?: number;
   best_ask_price?: number;
   last_price?: number;
@@ -51,6 +57,43 @@ export type BookSummaryRow = {
 export type IndexPriceMeta = { 
   price: number; 
   timestamp: number 
+};
+
+// ---------- Normalised option snapshot -------------------------------------
+
+export type OptionInstrument = {
+  // Identity / contract
+  currency: Currency;                // "BTC" | "ETH"
+  instrumentName: string;            // e.g. "BTC-27DEC24-90000-C"
+  kind: "option";                    // narrowed from DeribitInstrument["kind"]
+  optionType: "call" | "put";
+  strike: number;
+  expirationTimestamp: number;       // ms since epoch
+  expirationISO: string;             // convenience
+  dte: number;                       // days to expiry (can be fractional)
+
+  settlementPeriod?: string;         // "week", "month", "perpetual" (for futures)
+  tickSize?: number;
+  contractSize: number;              // underlying per contract (usually 1)
+
+  // Underlying / index context
+  indexPrice?: number;               // current index/spot
+  moneyness?: number;                // e.g. index / strike
+
+  // Book & trading data (book summary + ticker)
+  openInterest?: number | null;      // contracts
+  markPrice?: number | null;
+  bidPrice?: number | null;
+  askPrice?: number | null;
+  lastPrice?: number | null;
+  markIv?: number | null;            // as decimal (0.45) or pct (45.0)
+
+  // Greeks
+  delta?: number | null;
+  gamma?: number | null;
+  vega?: number | null;
+  theta?: number | null;
+  rho?: number | null;
 };
 
 // Use Vite dev proxy in development to avoid CORS; fall back to absolute in prod
@@ -494,4 +537,61 @@ export async function getContractSize(instrument_name: string): Promise<number> 
   } catch {
     return 1; // Deribit options are effectively 1 underlying per contract
   }
+}
+
+export function buildOptionInstrumentSnapshot(args: {
+  instrument: DeribitInstrument;
+  book?: BookSummaryRow;
+  ticker?: DeribitTicker;
+  indexPrice?: number;
+  contractSize?: number;
+}): OptionInstrument {
+  const {
+    instrument,
+    book,
+    ticker,
+    indexPrice,
+    contractSize = 1,
+  } = args;
+
+  const expiryMs = instrument.expiration_timestamp;
+  const now = Date.now();
+  const dte = Math.max(0, (expiryMs - now) / 86_400_000); // ms → days
+
+  const strike = instrument.strike ?? 0;
+  const spot = indexPrice;
+  const greeks = ticker?.greeks ?? {};
+
+  return {
+    currency: instrument.base_currency as Currency,
+    instrumentName: instrument.instrument_name,
+    kind: "option",
+    optionType: (instrument.option_type ?? "call") as "call" | "put",
+    strike,
+    expirationTimestamp: expiryMs,
+    expirationISO: new Date(expiryMs).toISOString(),
+    dte,
+    settlementPeriod: instrument.settlement_period,
+    tickSize: instrument.tick_size,
+    contractSize,
+
+    indexPrice: spot,
+    moneyness:
+      spot != null && strike > 0
+        ? spot / strike
+        : undefined,
+
+    openInterest: book?.open_interest ?? null,
+    markPrice: book?.mark_price ?? ticker?.mark_price ?? null,
+    bidPrice: book?.bid_price ?? ticker?.best_bid_price ?? null,
+    askPrice: book?.ask_price ?? ticker?.best_ask_price ?? null,
+    lastPrice: book?.last_price ?? ticker?.last_price ?? null,
+    markIv: book?.mark_iv ?? ticker?.mark_iv ?? null,
+
+    delta: book?.delta ?? greeks.delta ?? null,
+    gamma: greeks.gamma ?? null,
+    vega: (greeks as any).vega ?? null,
+    theta: (greeks as any).theta ?? null,
+    rho: (greeks as any).rho ?? null,
+  };
 }
