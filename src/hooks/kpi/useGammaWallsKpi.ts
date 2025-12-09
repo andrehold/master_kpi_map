@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import type { useGammaWalls } from "../domain/useGammaWalls"; // adjust path
-import { fmtK, fmtUsdShort } from "../../utils/format"; // adjust alias/path
+import type { useGammaWalls } from "../domain/useGammaWalls";
+import { fmtK, fmtUsdShort } from "../../utils/format";
 
 type GammaWallsState = ReturnType<typeof useGammaWalls>;
 
