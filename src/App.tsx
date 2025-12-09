@@ -3,7 +3,9 @@ import { TokenStyles, TOKENS, ThemeKey } from "./theme/tokens";
 import HeaderBar from "./components/ui/HeaderBar";
 import ControlsBar from "./components/ui/ControlsBar";
 import GroupHeader from "./components/ui/GroupHeader";
-import KpiCardRenderer, { type KpiCardRendererContext } from "./components/ui/KpiCardRenderer";
+import KpiCardRenderer, {
+  type KpiCardRendererContext,
+} from "./components/ui/KpiCardRenderer";
 
 import {
   STRATEGIES,
@@ -45,6 +47,9 @@ import { StrategiesMenuButton } from "./components/ui/StrategiesMenuButton";
 import StrategyOverlay from "./components/overlays/StrategyOverlay";
 import { StrategySettings } from "./components/overlays/StrategySettings";
 
+// Config overlay
+import { KpiConfigOverlay } from "./components/config/KpiConfigOverlay";
+
 export default function MasterKPIMapDemo() {
   const [search, setSearch] = useState("");
   const [activeStrategies, setActiveStrategies] = useState<Strategy[]>([]);
@@ -55,9 +60,12 @@ export default function MasterKPIMapDemo() {
     });
     return init;
   });
-  const [samples, setSamples] = useState<Samples>(() => buildSamples(KPI_GROUPS));
+  const [samples, setSamples] = useState<Samples>(() =>
+    buildSamples(KPI_GROUPS)
+  );
   const [theme, setTheme] = useState<ThemeKey>("light");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showConfig, setShowConfig] = useState(false); // NEW
   const RVEM_TENOR_DAYS = 20;
   const locale = "en";
 
@@ -181,11 +189,7 @@ export default function MasterKPIMapDemo() {
     horizons: EXPECTED_MOVE_TENORS,
   });
   const expectedMoveRows = useMemo(
-    () =>
-      buildExpectedMoveRows(
-        expectedMoveState.em,
-        expectedMoveState.points
-      ),
+    () => buildExpectedMoveRows(expectedMoveState.em, expectedMoveState.points),
     [expectedMoveState.em, expectedMoveState.points]
   );
 
@@ -227,14 +231,8 @@ export default function MasterKPIMapDemo() {
     }).filter((g) => g.kpis.length > 0);
   }, [search, activeStrategies]);
 
-  const totalKpis = KPI_GROUPS.reduce(
-    (acc, g) => acc + g.kpis.length,
-    0
-  );
-  const visibleKpis = filteredGroups.reduce(
-    (acc, g) => acc + g.kpis.length,
-    0
-  );
+  const totalKpis = KPI_GROUPS.reduce((acc, g) => acc + g.kpis.length, 0);
+  const visibleKpis = filteredGroups.reduce((acc, g) => acc + g.kpis.length, 0);
 
   function toggleStrategy(s: Strategy) {
     setActiveStrategies((prev) =>
@@ -432,6 +430,13 @@ export default function MasterKPIMapDemo() {
           onRefreshLive={refreshLive}
           onExportJSON={exportJSON}
           loadingAny={!!loadingAny}
+          onOpenConfig={() => setShowConfig(true)} // NEW
+        />
+
+        {/* Config overlay */}
+        <KpiConfigOverlay
+          open={showConfig}
+          onClose={() => setShowConfig(false)}
         />
 
         {/* Fixed Strategies utility (top-right), non-intrusive */}
@@ -539,10 +544,7 @@ function buildExpectedMoveRows(
   }));
 }
 
-function nearestExpiryTs(
-  points: IVPoint[],
-  days: number
-): number | null {
+function nearestExpiryTs(points: IVPoint[], days: number): number | null {
   if (!points.length) return null;
   let bestIndex = 0;
   let bestDiff = Math.abs(points[0].dteDays - days);

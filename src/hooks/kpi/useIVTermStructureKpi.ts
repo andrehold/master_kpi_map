@@ -1,113 +1,204 @@
-// src/hooks/kpi/useIVTermStructureKpi.ts
-import { useMemo } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { getTermStructureStats, type IVTermStructureLabel } from "../../lib/ivTerm";
+import { buildAtmIvPoints, type IVPoint, type AtmSelection } from "../../lib/atmIv";
+import { getKpiParamsFor } from "../../config/kpiConfig";
 import { KPI_IDS } from "../../kpi/kpiIds";
-import { useIVTermStructure } from "../domain/useIVTermStructure";
 
-type TermStructureRow = {
-  id: string;
-  tenor: string;
-  expiry: string;
-  iv: string;
+export type UseIVTermStructureOptions = {
+  currency?: "BTC" | "ETH";
+  bandPct?: number;
+  minDteHours?: number;
+  refreshMs?: number;
+
+  // selection passthrough
+  selection?: AtmSelection;   // "curated" | "all" (default "curated")
+
+  // Curated mode
+  maxExpiries?: number;       // default 8
+  nearDays?: number;          // default 14
+
+  // "All" mode
+  minDteDays?: number;        // default 2
+  maxDteDays?: number;        // default 400
+  maxAllExpiries?: number;    // default 48
 };
 
-export interface IVTermStructureKpiViewModel {
-  id: string;
-  value: string | null;
-  meta?: string;
-  extraBadge?: string | null;
-  footer?: {
-    title: string;
-    rows: TermStructureRow[];
+export type IVTermStructureData = {
+  asOf: number;
+  currency: string;
+  indexPrice: number | null;
+  /** ATM IV points used for stats / mini table (already filtered to configured curve tenors). */
+  points: IVPoint[];
+  n: number;
+  slopePerYear: number | null;
+  termPremium: number | null;
+  label: IVTermStructureLabel;
+};
+
+export function useIVTermStructureKPI({
+  currency = "BTC",
+  bandPct = 0,
+  minDteHours = 12,
+  refreshMs = 0,
+
+  selection = "curated",
+
+  maxExpiries = 8,
+  nearDays = 14,
+
+  minDteDays = 2,
+  maxDteDays = 400,
+  maxAllExpiries = 48,
+}: UseIVTermStructureOptions = {}) {
+  const [data, setData] = useState<IVTermStructureData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const timer = useRef<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const run = useCallback(
+    async (signal?: AbortSignal) => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const result = await buildAtmIvPoints({
+          currency,
+          minDteHours,
+          bandPct,
+          selection,
+          maxExpiries,
+          nearDays,
+          minDteDays,
+          maxDteDays,
+          maxAllExpiries,
+          signal,
+        });
+
+        if (signal?.aborted) {
+          return;
+        }
+
+        const { asOf, indexPrice, points: rawPoints } = result;
+
+        // Read current KPI config for term structure
+        const params = getKpiParamsFor(KPI_IDS.termStructure);
+        const curveTenors =
+          (params.curveTenors as number[] | undefined) ??
+          [1, 4, 7, 21, 30, 60];
+
+        // Project raw points onto configured curve tenors:
+        // for each tenor, pick the nearest available expiry, dedupe by expiry.
+        const points = projectToCurveTenors(rawPoints, curveTenors);
+
+        const stats = getTermStructureStats(points);
+
+        const next: IVTermStructureData = {
+          asOf,
+          currency,
+          indexPrice,
+          points,
+          n: stats.n,
+          slopePerYear: stats.slopePerYear,
+          termPremium: stats.termPremium,
+          label: stats.label,
+        };
+
+        setData(next);
+      } catch (e: any) {
+        if (signal?.aborted) return;
+        // eslint-disable-next-line no-console
+        console.error("useIVTermStructure error", e);
+        setError(e?.message ?? "Failed to load IV term structure");
+      } finally {
+        if (!signal?.aborted) {
+          setLoading(false);
+        }
+      }
+    },
+    [
+      currency,
+      bandPct,
+      minDteHours,
+      selection,
+      maxExpiries,
+      nearDays,
+      minDteDays,
+      maxDteDays,
+      maxAllExpiries,
+    ],
+  );
+
+  // initial load + reload when key options change
+  useEffect(() => {
+    const ctl = new AbortController();
+    abortRef.current = ctl;
+    run(ctl.signal);
+
+    return () => {
+      ctl.abort();
+      abortRef.current = null;
+    };
+  }, [run]);
+
+  // optional polling
+  useEffect(() => {
+    if (!refreshMs || refreshMs <= 0) return;
+    if (typeof window === "undefined") return;
+
+    timer.current = window.setInterval(() => {
+      const ctl = new AbortController();
+      run(ctl.signal);
+    }, refreshMs) as unknown as number;
+
+    return () => {
+      if (timer.current) {
+        window.clearInterval(timer.current);
+        timer.current = null;
+      }
+    };
+  }, [refreshMs, run]);
+
+  const reload = () => {
+    const ctl = new AbortController();
+    abortRef.current?.abort();
+    abortRef.current = ctl;
+    run(ctl.signal);
   };
-  message?: string;
-  errorMessage?: string | null;
+
+  return { data, loading, error, reload };
 }
 
-export function useIVTermStructureKpi(): IVTermStructureKpiViewModel | null {
-  const { data } = useIVTermStructure();
+/**
+ * For each target tenor, pick the nearest IV point by dteDays.
+ * Deduplicate by expiryTs so multiple tenors can't pick the same expiry.
+ * Result is sorted by dteDays ascending.
+ */
+function projectToCurveTenors(points: IVPoint[], curveTenors: number[]): IVPoint[] {
+  if (!points?.length || !curveTenors?.length) return points ?? [];
 
-  return useMemo(() => {
-    const ts = data;
-    if (!ts || !Array.isArray(ts.points) || ts.points.length === 0) {
-      return null;
+  const sorted = [...points].sort((a, b) => a.dteDays - b.dteDays);
+  const chosen: IVPoint[] = [];
+  const usedExpiry = new Set<number>();
+
+  for (const target of curveTenors) {
+    let best: IVPoint | null = null;
+    let bestDiff = Infinity;
+
+    for (const p of sorted) {
+      const diff = Math.abs(p.dteDays - target);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        best = p;
+      }
     }
 
-    // 👇 mini-table uses *all* valid tenors (incl. 1–4 DTE)
-    const rowsSource = ts.points
-      .filter(
-        (p) =>
-          typeof p.iv === "number" &&
-          Number.isFinite(p.iv as number) &&
-          typeof p.dteDays === "number" &&
-          p.dteDays > 0
-      )
-      .sort((a, b) => (a.dteDays ?? 0) - (b.dteDays ?? 0));
-
-    if (rowsSource.length === 0) {
-      return null;
+    if (best && !usedExpiry.has(best.expiryTs)) {
+      usedExpiry.add(best.expiryTs);
+      chosen.push(best);
     }
+  }
 
-    const labelTitle =
-      ts.label === "insufficient"
-        ? "Insufficient"
-        : ts.label.charAt(0).toUpperCase() + ts.label.slice(1);
-
-    const premiumPct =
-      ts.termPremium != null ? ts.termPremium * 100 : null;
-    const sign =
-      premiumPct != null && premiumPct >= 0 ? "+" : "";
-
-    const metaParts: string[] = [];
-    if (ts.slopePerYear != null) {
-      metaParts.push(`Slope ${(ts.slopePerYear * 100).toFixed(2)}%/yr`);
-    }
-    if (typeof ts.n === "number") {
-      metaParts.push(`n=${ts.n}`);
-    }
-    if (ts.indexPrice != null) {
-      metaParts.push(`S ${Math.round(ts.indexPrice)}`);
-    }
-    const meta = metaParts.join(" · ");
-
-    const first = rowsSource[0];
-    const last = rowsSource[rowsSource.length - 1];
-    const extraBadge =
-      typeof first.dteDays === "number" && typeof last.dteDays === "number"
-        ? `${Math.round(first.dteDays)}d → ${Math.round(last.dteDays)}d`
-        : undefined;
-
-    const rows: TermStructureRow[] = rowsSource.map((p, idx) => {
-      const dte = Math.max(0, Math.round(p.dteDays as number));
-      const tenor = dte < 365 ? `${dte}d` : `${(dte / 365).toFixed(1)}y`;
-      const expiry =
-        typeof p.expiryISO === "string"
-          ? p.expiryISO.slice(0, 10)
-          : "";
-      const ivPct =
-        typeof p.iv === "number" && Number.isFinite(p.iv as number)
-          ? `${(p.iv * 100).toFixed(1)}%`
-          : "—";
-
-      return {
-        id: `${KPI_IDS.termStructure}-${idx}`,
-        tenor,
-        expiry,
-        iv: ivPct,
-      };
-    });
-
-    return {
-      id: KPI_IDS.termStructure,
-      value:
-        premiumPct != null
-          ? `${labelTitle} (${sign}${premiumPct.toFixed(1)}%)`
-          : labelTitle,
-      meta,
-      extraBadge,
-      footer: {
-        title: "Term structure (ATM IV per tenor)",
-        rows,
-      },
-    };
-  }, [data]);
+  return chosen.sort((a, b) => a.dteDays - b.dteDays);
 }
