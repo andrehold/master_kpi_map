@@ -10,3 +10,4 @@ export * from "./useRealizedVolKpi";
 export * from "./useIvRvSpreadKpi";
 export * from "./useHitRateOfExpectedMoveKpi";
 export * from "./useSpotVsSmaKpi";
+export * from "./useAtmIvKpi";

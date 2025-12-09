@@ -27,7 +27,8 @@ import {
   useIvRvSpreadKpi,
   useHitRateOfExpectedMoveKpi,
   useTimeToFirstBreachKpi,
-  useSpotVsSmaKpi, 
+  useSpotVsSmaKpi,
+  useAtmIvKpi,
 } from "../../hooks/kpi";
 
 import { KPI_IDS } from "../../kpi/kpiIds";
@@ -132,10 +133,37 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     />
   );
 
-  if (kpi.id === KPI_IDS.atmIv && context.dvolPct != null) {
+  if (kpi.id === KPI_IDS.atmIv) {
+    const vm = useAtmIvKpi(
+      context.termStructure ?? null,
+      context.dvolPct ?? null,
+      locale
+    );
+  
+    if (!vm) {
+      return renderCard({ meta: "Awaiting ATM IV data" });
+    }
+  
     return renderCard({
-      value: `${context.dvolPct.toFixed(1)}%`,
-      meta: "DVOL 30D (proxy)",
+      value: vm.value ?? undefined,
+      meta: vm.meta,
+      footer: vm.footer ? (
+        <KpiMiniTable
+          title={vm.footer.title}
+          rows={vm.footer.rows}
+          getKey={(r) => r.id}
+          columns={[
+            { id: "tenor", header: "Tenor", render: (r) => r.tenor },
+            { id: "iv", header: "IV", align: "right", render: (r) => r.iv },
+            {
+              id: "expiry",
+              header: "Expiry",
+              align: "right",
+              render: (r) => r.expiry,
+            },
+          ]}
+        />
+      ) : undefined,
     });
   }
 
