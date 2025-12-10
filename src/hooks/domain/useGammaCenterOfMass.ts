@@ -2,11 +2,15 @@
 import { useMemo } from "react";
 import { useDeribitIndexPrice } from "./useDeribitIndexPrice";
 import { useGammaWalls, type GammaByStrike } from "./useGammaWalls";
+import { KPI_IDS } from "../../kpi/kpiIds";
+import { getKpiParam } from "../../config/kpiConfig";
 
 export type GammaComSide = "upside" | "downside" | "pinned" | "unknown";
 
 /** Gravity band half-width as a fraction of spot (e.g. 0.05 = ±5%) */
-const GRAVITY_BAND = 0.05; // use 0.10 for ±10%, etc.
+const gravityBandPct =
+  getKpiParam<number>(KPI_IDS.gammaCenterOfMass, "gravityBandPct") ?? 5;
+const gravityBand = gravityBandPct / 100;
 
 export interface GammaCenterOfMassValue {
   hasData: boolean;
@@ -128,7 +132,7 @@ export function useGammaCenterOfMass(): GammaCenterOfMassDomainState {
       weightedStrikeSum += w * strike;
 
       const relDist = Math.abs(strike - spot) / spot;
-      if (Number.isFinite(relDist) && relDist <= GRAVITY_BAND) {
+      if (Number.isFinite(relDist) && relDist <= gravityBand) {
         gravityWeightSum += w;
       }
     }

@@ -109,6 +109,24 @@ export const KPI_CONFIG_DEFS: KpiConfigDefinition[] = [
       },
     ],
   },
+  {
+    kpiId: KPI_IDS.gammaCenterOfMass,
+    label: "Gamma Center of Mass",
+    params: [
+      {
+        id: "gravityBandPct",
+        type: "number",
+        label: "Gamma gravity band (±%)",
+        description:
+          "Half-width of the spot band used to compute Gamma Gravity (share of gamma within ±band of spot).",
+        defaultValue: 5, // your previous GRAVITY_BAND = 0.05
+        min: 1,
+        max: 25,
+        step: 1,
+        unit: "%",
+      },
+    ],
+  },
   // Add more KPIs here as they become configurable
 ];
 

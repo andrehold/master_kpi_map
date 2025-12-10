@@ -1,5 +1,7 @@
 // src/hooks/kpi/useGammaCenterOfMassKpi.ts
 import { useGammaCenterOfMass } from "../domain/useGammaCenterOfMass";
+import { KPI_IDS } from "../../kpi/kpiIds";
+import { getKpiParam } from "../../config/kpiConfig";
 
 type GammaComFooterRow = {
   id: string;
@@ -47,11 +49,15 @@ export function useGammaCenterOfMassKpi(): GammaCenterOfMassKpiViewModel {
   const { loading, error, spot, value, bucketLabel, refresh } =
     useGammaCenterOfMass();
 
+  const gravityBandPct =
+    getKpiParam<number>(KPI_IDS.gammaCenterOfMass, "gravityBandPct") ?? 5;
+  const gravityBandLabel = `±${gravityBandPct.toFixed(0)}%`;
+
   const status: GammaCenterOfMassKpiViewModel["status"] = loading
     ? "loading"
     : error
-    ? "error"
-    : "ready";
+      ? "error"
+      : "ready";
 
   const raw = value?.distancePct;
   const hasDistance = typeof raw === "number" && Number.isFinite(raw);
@@ -136,7 +142,7 @@ export function useGammaCenterOfMassKpi(): GammaCenterOfMassKpiViewModel {
       const gravityPct = value.gravityShare * 100;
       rows.push({
         id: "gravity",
-        label: "Gamma gravity (near spot)",
+        label: `Gamma gravity (band ${gravityBandLabel})`,
         value: `${gravityPct.toFixed(0)}% of gamma`,
       });
     }
