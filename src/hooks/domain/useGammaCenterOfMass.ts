@@ -48,7 +48,7 @@ export function useGammaCenterOfMass(): GammaCenterOfMassDomainState {
   // prefer the same index the gamma hook uses, fall back to spot hook
   const spot: number | null =
     (gammaState?.indexPrice as number | undefined) ??
-    (spotState?.value as number | undefined) ??
+    (spotState?.price as number | undefined) ??
     null;
 
   const bucketLabel = "Gamma COM over current gamma surface";
@@ -84,12 +84,15 @@ export function useGammaCenterOfMass(): GammaCenterOfMassDomainState {
       const strike: number | undefined =
         row.strike ?? row.k ?? row.strikePrice;
 
-      const gammaAbs: number = Math.abs(
+      const magRaw: number =
+        (row.gex_abs_usd as number | undefined) ??
+        (row.gex_net_usd as number | undefined) ??
         (row.gamma as number | undefined) ??
-          (row.gammaUsd as number | undefined) ??
-          (row.totalGamma as number | undefined) ??
-          0
-      );
+        (row.gammaUsd as number | undefined) ??
+        (row.totalGamma as number | undefined) ??
+        0;
+
+      const gammaAbs = Math.abs(magRaw);
 
       if (
         typeof strike !== "number" ||
