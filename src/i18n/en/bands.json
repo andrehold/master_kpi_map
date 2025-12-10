@@ -574,5 +574,135 @@
         "guidance": "Kinked: potential stress; avoid aggressive short vol."
       }
     ]
+  },
+  "rv": {
+    "title": "Realized Volatility (RV)",
+    "description": "Historical realized volatility over the lookback window, annualized.",
+    "bands": [
+      {
+        "label": "<40%",
+        "guidance": "Very quiet regime; option premium limited, beware of sudden breakouts."
+      },
+      {
+        "label": "40–80%",
+        "guidance": "Typical realized volatility; baseline environment for EM / short-vol structures."
+      },
+      {
+        "label": ">80%",
+        "guidance": "High realized volatility; size down and prefer defined-risk structures."
+      }
+    ]
+  },
+  "ivRvSpread": {
+    "title": "IV–RV Spread",
+    "description": "Difference between implied and realized volatility; key for vol risk premium.",
+    "bands": [
+      {
+        "label": "<0",
+        "guidance": "IV below RV: buying vol has positive carry; short-vol is dangerous."
+      },
+      {
+        "label": "0–5 vol pts",
+        "guidance": "Mild premium: neutral to slightly favorable for selling vol."
+      },
+      {
+        "label": ">5 vol pts",
+        "guidance": "High premium: attractive environment for short vol, subject to regime."
+      }
+    ]
+  },
+  "rvEmFactor": {
+    "title": "RV ÷ EM factor",
+    "description": "Ratio of realized volatility to EM-implied volatility across the lookback window.",
+    "bands": [
+      {
+        "label": "<0.7",
+        "guidance": "Realized < EM; EM conservatively wide and carry-friendly for short structures."
+      },
+      {
+        "label": "0.7–1.3",
+        "guidance": "Realized close to EM; calibration is fair, edge mostly from selection and execution."
+      },
+      {
+        "label": ">1.3",
+        "guidance": "Realized > EM; EM underestimates moves; tread carefully with short-vol strategies."
+      }
+    ]
+  },
+  "timeToFirstBreach": {
+    "title": "Time to First Breach %",
+    "description": "Average share of option lifetime that passes before the EM band is first touched (or not at all).",
+    "bands": [
+      {
+        "label": "<30%",
+        "guidance": "Early breaches; EM too tight or regime too jumpy for comfortable short gamma."
+      },
+      {
+        "label": "30–60%",
+        "guidance": "Mixed behaviour; acceptable with sizing discipline."
+      },
+      {
+        "label": ">60%",
+        "guidance": "Late/rare breaches; EM provides a comfortable buffer for short-vol structures."
+      }
+    ]
+  },
+  "shortHorizonAtr": {
+    "title": "Short-horizon ATR / EM",
+    "description": "Short-horizon ATR (e.g. 1–3D) relative to the expected move.",
+    "bands": [
+      {
+        "label": "<0.5",
+        "guidance": "Intraday noise is small vs EM; environment is orderly for mean-reversion / carry."
+      },
+      {
+        "label": "0.5–1.0",
+        "guidance": "ATR in line with EM; standard regime."
+      },
+      {
+        "label": ">1.0",
+        "guidance": "Very choppy tape; ATR exceeds EM and realized risk is elevated."
+      }
+    ]
+  },
+  "gammaWalls": {
+    "title": "Gamma walls near strikes",
+    "description": "Strength and proximity of dominant gamma positions around key strikes.",
+    "bands": [
+      {
+        "label": "Weak / far",
+        "guidance": "No dominant walls; price action less anchored to specific strikes."
+      },
+      {
+        "label": "Moderate",
+        "guidance": "Some concentration; strikes can act as magnets or repel short-term moves."
+      },
+      {
+        "label": "Strong / close",
+        "guidance": "Large nearby walls; expect pinning dynamics and sharp moves when they are broken."
+      }
+    ]
+  },
+  "strikeMap": {
+    "title": "Strike support / resistance map",
+    "description": "Qualitative map of high OI / gamma strikes acting as support or resistance."
+  },
+  "spotVsSma": {
+    "title": "Spot vs SMAs",
+    "description": "Distance of spot from key simple moving averages (20/50/100/200D).",
+    "bands": [
+      {
+        "label": "<-5%",
+        "guidance": "Trading well below SMAs; momentum is down, be cautious with new longs."
+      },
+      {
+        "label": "-5% to +5%",
+        "guidance": "Near SMAs; neutral / balance zone, good area for mean-reversion structures."
+      },
+      {
+        "label": ">+5%",
+        "guidance": "Clearly above SMAs; positive momentum but risk of overextension grows."
+      }
+    ]
   }
 }

@@ -58,14 +58,15 @@ export const BAND_BASE: Record<string, BandBaseSet> = {
 
   [KPI_IDS.termStructure]: {
     valueScale: "percent",
-    hasBar: false,
+    hasBar: true,
     thresholds: [
-      { max: -5, tone: "avoid" },
-      { min: -5, max: 0, tone: "caution" },
-      { min: 0, tone: "good" },
+      { max: -3, tone: "avoid" },   // strong backwardation
+      { min: -3, max: 3, tone: "caution" }, // flat / mixed
+      { min: 3, tone: "good" },     // healthy contango
     ],
-    note: "Term structure (short–long IV spread).",
+    note: "Term structure (short–long IV spread, in vol points). Negative = backwardation, positive = contango.",
   },
+
   [KPI_IDS.gammaCenterOfMass]: {
     valueScale: "percent",
     hasBar: true,
@@ -96,6 +97,61 @@ export const BAND_BASE: Record<string, BandBaseSet> = {
     note: "Hit rate of expected move (within EM / total) over lookback window.",
   },
 
+  [KPI_IDS.rv]: {
+    valueScale: "percent",
+    hasBar: true,
+    thresholds: [
+      { max: 40, tone: "caution" },    // very quiet
+      { min: 40, max: 80, tone: "good" },
+      { min: 80, tone: "avoid" },      // very high RV
+    ],
+    note: "Realized volatility over the lookback window (annualized %).",
+  },
+
+  [KPI_IDS.ivRvSpread]: {
+    valueScale: "percent",
+    hasBar: true,
+    thresholds: [
+      { max: 0, tone: "avoid" },       // IV < RV: dangerous for short vol
+      { min: 0, max: 5, tone: "caution" },
+      { min: 5, tone: "good" },        // nice premium for selling vol
+    ],
+    note: "IV minus RV in vol points; positive values indicate an implied volatility risk premium.",
+  },
+
+  [KPI_IDS.timeToFirstBreach]: {
+    valueScale: "percent",
+    hasBar: true,
+    thresholds: [
+      { max: 30, tone: "avoid" },      // early breaches
+      { min: 30, max: 60, tone: "caution" },
+      { min: 60, tone: "good" },       // late / rare breaches
+    ],
+    note: "Average % of option lifetime until the EM band is first breached. Higher = safer EM for short gamma.",
+  },
+
+  [KPI_IDS.rvEmFactor]: {
+    valueScale: "ratio",
+    hasBar: true,
+    thresholds: [
+      { max: 0.7, tone: "good" },
+      { min: 0.7, max: 1.3, tone: "caution" },
+      { min: 1.3, tone: "avoid" },
+    ],
+    note: "RV ÷ EM factor. <1 means realized volatility has been below EM (carry-friendly); >1 means EM underestimates moves.",
+  },
+
+  [KPI_IDS.shortHorizonAtr]: {
+    valueScale: "ratio",
+    hasBar: true,
+    thresholds: [
+      { max: 0.5, tone: "good" },
+      { min: 0.5, max: 1, tone: "caution" },
+      { min: 1, tone: "avoid" },
+    ],
+    note: "Short-horizon ATR relative to EM. Higher values = choppier intraday tape and more noise around EM.",
+  },
+
   /* -----------------------------------------------------------------------
    * 3) Condor Credit % of EM
    * --------------------------------------------------------------------- */
@@ -108,6 +164,57 @@ export const BAND_BASE: Record<string, BandBaseSet> = {
       { min: 40, tone: "caution" },
     ],
     note: "Condor credit as % of expected move width.",
+  },
+  
+  [KPI_IDS.vix]: {
+    valueScale: "raw",
+    hasBar: true,
+    thresholds: [
+      { max: 15, tone: "caution" },   // complacent
+      { min: 15, max: 25, tone: "good" },
+      { min: 25, tone: "avoid" },     // stressed
+    ],
+    note: "VIX index level; higher values correspond to more stressed global risk regimes.",
+  },
+
+  [KPI_IDS.funding]: {
+    valueScale: "percent",
+    hasBar: true,
+    thresholds: [
+      { max: -10, tone: "avoid" },     // heavily negative funding
+      { min: -10, max: 10, tone: "neutral" },
+      { min: 10, tone: "caution" },    // very positive funding (crowded longs)
+    ],
+    note: "Annualized perpetual funding rate. Very negative = paying to be long; very positive = crowded long positioning.",
+  },
+
+  [KPI_IDS.basis]: {
+    valueScale: "percent",
+    hasBar: true,
+    thresholds: [
+      { max: -5, tone: "avoid" },
+      { min: -5, max: 5, tone: "neutral" },
+      { min: 5, tone: "caution" },
+    ],
+    note: "Spot–perpetual basis (annualized). Large positive basis indicates strong carry / long bias; large negative basis is stress.",
+  },
+
+  [KPI_IDS.oiConcentration]: {
+    valueScale: "percent",
+    hasBar: true,
+    thresholds: [
+      { max: 20, tone: "neutral" },
+      { min: 20, max: 50, tone: "good" },
+      { min: 50, tone: "caution" },
+    ],
+    note: "Share of OI concentrated near key strikes. High concentration implies pin risk or sharp moves when those zones break.",
+  },
+
+  [KPI_IDS.gammaWalls]: {
+    valueScale: "raw",
+    hasBar: false,
+    thresholds: [],
+    note: "Gamma wall strength / proximity indicator. Currently treated as info-only (no numeric band bar).",
   },
 
   /* -----------------------------------------------------------------------
@@ -122,5 +229,23 @@ export const BAND_BASE: Record<string, BandBaseSet> = {
       { min: 1, tone: "avoid" },
     ],
     note: "Liquidity stress proxy; higher = worse conditions.",
+  },
+
+  [KPI_IDS.spotVsSma]: {
+    valueScale: "percent",
+    hasBar: true,
+    thresholds: [
+      { max: -5, tone: "avoid" },
+      { min: -5, max: 5, tone: "neutral" },
+      { min: 5, tone: "caution" },
+    ],
+    note: "Distance of spot vs key SMAs (20/50/100/200D) in %. Positive = above SMAs, negative = below.",
+  },
+
+  [KPI_IDS.strikeMap]: {
+    valueScale: "raw",
+    hasBar: false,
+    thresholds: [],
+    note: "Qualitative strike support/resistance map. No numeric bands yet; info-only KPI.",
   },
 };
