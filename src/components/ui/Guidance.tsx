@@ -338,11 +338,17 @@ export function GuidanceDrawer({
 
 function renderInfoDoc(doc: KpiInfoDoc): React.ReactNode {
   return (
-    <div>
-      {(doc.paragraphs ?? []).map((p, i) => <p key={`p-${i}`}>{p}</p>)}
+    <div className="space-y-3">
+      {(doc.paragraphs ?? []).map((p, i) => (
+        <p key={`p-${i}`} className="leading-relaxed">
+          {p}
+        </p>
+      ))}
       {doc.bullets && doc.bullets.length > 0 && (
-        <ul className="list-disc pl-5">
-          {doc.bullets.map((b, i) => <li key={`b-${i}`}>{b}</li>)}
+        <ul className="list-disc pl-5 space-y-1">
+          {doc.bullets.map((b, i) => (
+            <li key={`b-${i}`}>{b}</li>
+          ))}
         </ul>
       )}
     </div>

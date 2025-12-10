@@ -296,6 +296,7 @@ export const KPI_INFO: Partial<Record<KpiId, KpiInfoDoc>> = {
       "Definition: A single 'center-of-mass' strike computed from the full options gamma surface (within a DTE bucket), weighted by gamma × open interest (and optionally by time-to-expiry).",
       "Why it matters: Shows where the options market is structurally 'heaviest' in gamma space—above, below, or right on top of spot.",
       "How to read: Positive % means the gamma COM sits above spot (upside structure heavier); negative % means below spot; near 0% means gamma is centered around spot, implying strong pin/support–resistance in the current area.",
+      "High gravity (e.g. 70%+) = most gamma mass is near spot → strong structural heaviness here. Low gravity (e.g. <30%) = gamma is scattered → no strong structural anchor.",
     ],
     bullets: [
       "Typical usage: spotting pin-risk zones and asymmetric structural risk above/below spot.",
