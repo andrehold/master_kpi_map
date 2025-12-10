@@ -1,3 +1,4 @@
+// src/hooks/kpi/useGammaCenterOfMassKpi.ts
 import { useGammaCenterOfMass } from "../domain/useGammaCenterOfMass";
 
 type GammaComFooterRow = {
@@ -10,17 +11,17 @@ export type GammaCenterOfMassKpiViewModel = {
   status: "loading" | "error" | "ready";
   /** formatted main value, e.g. "+4.2%" */
   value: string | null;
-  /** detail line if you still want it in meta */
+  /** detail line, if you still want it (can be omitted if you only use the mini table) */
   meta?: string;
-  /** short tag like "Structurally heavy here" / "Heavier upside structure" */
+  /** badge like "Heavier upside structure", "Structurally heavy here" */
   extraBadge?: string | null;
-  /** raw % distance for guidance bands */
+  /** raw % distance for guidance / bands */
   guidanceValue: number | null;
-  /** error message if any */
+  /** error text */
   errorMessage?: string;
-  /** reload callback */
+  /** manual reload */
   reload: () => void;
-  /** mini-table footer rows */
+  /** mini-table config */
   footer?: {
     title: string;
     rows: GammaComFooterRow[];
@@ -53,15 +54,14 @@ export function useGammaCenterOfMassKpi(): GammaCenterOfMassKpiViewModel {
     : "ready";
 
   const raw = value?.distancePct;
-  const hasDistance =
-    typeof raw === "number" && Number.isFinite(raw);
+  const hasDistance = typeof raw === "number" && Number.isFinite(raw);
 
-  const formatted =
+  const mainValue =
     hasDistance ? `${raw! >= 0 ? "+" : ""}${raw!.toFixed(1)}%` : null;
 
   const guidanceValue = hasDistance ? raw! : null;
 
-  // --- meta (optional, you can keep or simplify) ---
+  // --- optional meta string (you can keep or drop this) ---
   const metaParts: string[] = [];
 
   if (
@@ -70,13 +70,14 @@ export function useGammaCenterOfMassKpi(): GammaCenterOfMassKpiViewModel {
     spot != null &&
     Number.isFinite(spot)
   ) {
-    metaParts.push(
-      `K_COM ${Math.round(value.kCom).toLocaleString(undefined, {
-        maximumFractionDigits: 0,
-      })} vs Spot ${Math.round(spot).toLocaleString(undefined, {
-        maximumFractionDigits: 0,
-      })}`,
-    );
+    const kComStr = Math.round(value.kCom).toLocaleString(undefined, {
+      maximumFractionDigits: 0,
+    });
+    const spotStr = Math.round(spot).toLocaleString(undefined, {
+      maximumFractionDigits: 0,
+    });
+
+    metaParts.push(`K_COM ${kComStr} vs Spot ${spotStr}`);
   }
 
   if (bucketLabel) {
@@ -89,13 +90,14 @@ export function useGammaCenterOfMassKpi(): GammaCenterOfMassKpiViewModel {
     ? describeSide(value?.side, raw!)
     : null;
 
-  // --- footer for mini table ---
+  // --- footer for KpiMiniTable ---
   let footer: GammaCenterOfMassKpiViewModel["footer"] = undefined;
 
   if (
     !loading &&
     !error &&
     value &&
+    value.hasData &&
     typeof value.kCom === "number" &&
     spot != null &&
     Number.isFinite(spot)
@@ -124,12 +126,26 @@ export function useGammaCenterOfMassKpi(): GammaCenterOfMassKpiViewModel {
         label: "Γ-COM vs spot",
         value: `K_COM ${kComStr} vs Spot ${spotStr}`,
       },
-      {
-        id: "bucket",
-        label: "Bucket",
-        value: bucketValue,
-      },
     ];
+
+    // add Gamma Gravity row if available
+    if (
+      value.gravityShare != null &&
+      Number.isFinite(value.gravityShare)
+    ) {
+      const gravityPct = value.gravityShare * 100;
+      rows.push({
+        id: "gravity",
+        label: "Gamma gravity (near spot)",
+        value: `${gravityPct.toFixed(0)}% of gamma`,
+      });
+    }
+
+    rows.push({
+      id: "bucket",
+      label: "Bucket",
+      value: bucketValue,
+    });
 
     footer = {
       title: "Γ-COM context",
@@ -139,7 +155,7 @@ export function useGammaCenterOfMassKpi(): GammaCenterOfMassKpiViewModel {
 
   return {
     status,
-    value: formatted,
+    value: mainValue,
     meta,
     extraBadge,
     guidanceValue,
