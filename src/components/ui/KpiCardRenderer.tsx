@@ -1088,6 +1088,7 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
     let value: CardProps["value"] = vm.value ?? samples[kpi.id];
     let meta: string | undefined = vm.meta;
     let extraBadge: string | null = vm.extraBadge ?? null;
+    let footer: CardProps["footer"];
 
     if (vm.status === "loading") {
       value = "…";
@@ -1103,10 +1104,36 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       meta = "Awaiting data";
     }
 
+    if (vm.footer) {
+      type Row = (typeof vm.footer.rows)[number];
+
+      footer = (
+        <KpiMiniTable<Row>
+          title={vm.footer.title}
+          rows={vm.footer.rows}
+          getKey={(r) => r.id}
+          columns={[
+            {
+              id: "label",
+              header: "Metric",
+              render: (r) => r.label,
+            },
+            {
+              id: "value",
+              header: "Value",
+              align: "right",
+              render: (r) => r.value,
+            },
+          ]}
+        />
+      );
+    }
+
     return renderCard({
       value,
       meta,
       extraBadge,
+      footer,
       infoKey: KPI_IDS.gammaCenterOfMass,
       guidanceValue: vm.guidanceValue ?? null, // drives the bands bar
     });

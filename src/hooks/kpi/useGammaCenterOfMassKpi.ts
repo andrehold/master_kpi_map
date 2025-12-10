@@ -1,28 +1,34 @@
-// src/hooks/kpi/useGammaCenterOfMassKpi.ts
-import {
-  useGammaCenterOfMass,
-  type GammaComSide,
-} from "../domain/useGammaCenterOfMass";
+import { useGammaCenterOfMass } from "../domain/useGammaCenterOfMass";
 
-export type GammaCenterOfMassKpiViewModel = {
-  /** "loading" / "error" / "ready" – same pattern as useVixKpi */
-  status: "loading" | "error" | "ready";
-  /** Formatted main display, e.g. "+4.2%" (or null if no number yet) */
-  value: string | null;
-  /** Raw distance vs spot in %, used for guidance bands */
-  guidanceValue: number | null;
-  /** Secondary line, e.g. "K_COM 68,500 vs Spot 65,700 · 7–45D, e^{-T/30}" */
-  meta?: string;
-  /** Short tag, e.g. "Heavier upside structure" */
-  extraBadge?: string | null;
-  /** Error text for the card to show */
-  errorMessage?: string;
-  /** Allows manual reload from the UI later if you ever want it */
-  reload: () => void;
+type GammaComFooterRow = {
+  id: string;
+  label: string;
+  value: string;
 };
 
-function describeSide(side: GammaComSide, distancePct: number | null): string | null {
-  if (distancePct == null || !Number.isFinite(distancePct)) return null;
+export type GammaCenterOfMassKpiViewModel = {
+  status: "loading" | "error" | "ready";
+  /** formatted main value, e.g. "+4.2%" */
+  value: string | null;
+  /** detail line if you still want it in meta */
+  meta?: string;
+  /** short tag like "Structurally heavy here" / "Heavier upside structure" */
+  extraBadge?: string | null;
+  /** raw % distance for guidance bands */
+  guidanceValue: number | null;
+  /** error message if any */
+  errorMessage?: string;
+  /** reload callback */
+  reload: () => void;
+  /** mini-table footer rows */
+  footer?: {
+    title: string;
+    rows: GammaComFooterRow[];
+  };
+};
+
+function describeSide(side: string | undefined, pct: number | null): string | null {
+  if (pct == null || !Number.isFinite(pct)) return null;
 
   switch (side) {
     case "pinned":
@@ -40,53 +46,105 @@ export function useGammaCenterOfMassKpi(): GammaCenterOfMassKpiViewModel {
   const { loading, error, spot, value, bucketLabel, refresh } =
     useGammaCenterOfMass();
 
-  const distanceRaw = value?.distancePct;
-  const hasDistance =
-    typeof distanceRaw === "number" && Number.isFinite(distanceRaw);
-
   const status: GammaCenterOfMassKpiViewModel["status"] = loading
     ? "loading"
     : error
     ? "error"
     : "ready";
 
-  const formatted =
-    hasDistance
-      ? `${distanceRaw! >= 0 ? "+" : ""}${distanceRaw!.toFixed(1)}%`
-      : null;
+  const raw = value?.distancePct;
+  const hasDistance =
+    typeof raw === "number" && Number.isFinite(raw);
 
+  const formatted =
+    hasDistance ? `${raw! >= 0 ? "+" : ""}${raw!.toFixed(1)}%` : null;
+
+  const guidanceValue = hasDistance ? raw! : null;
+
+  // --- meta (optional, you can keep or simplify) ---
   const metaParts: string[] = [];
 
   if (
-    typeof value?.kCom === "number" &&
-    Number.isFinite(value.kCom) &&
-    typeof spot === "number" &&
+    value &&
+    typeof value.kCom === "number" &&
+    spot != null &&
     Number.isFinite(spot)
   ) {
     metaParts.push(
-      `K_COM ${Math.round(value.kCom).toLocaleString()} vs Spot ${Math.round(
-        spot
-      ).toLocaleString()}`
+      `K_COM ${Math.round(value.kCom).toLocaleString(undefined, {
+        maximumFractionDigits: 0,
+      })} vs Spot ${Math.round(spot).toLocaleString(undefined, {
+        maximumFractionDigits: 0,
+      })}`,
     );
   }
 
   if (bucketLabel) {
-    // e.g. "Bucket: 7–45D, weighted by e^{-T/30}"
     metaParts.push(bucketLabel);
   }
 
   const meta = metaParts.length ? metaParts.join(" · ") : undefined;
 
-  const extraBadge =
-    hasDistance ? describeSide(value!.side, distanceRaw!) : null;
+  const extraBadge = hasDistance
+    ? describeSide(value?.side, raw!)
+    : null;
+
+  // --- footer for mini table ---
+  let footer: GammaCenterOfMassKpiViewModel["footer"] = undefined;
+
+  if (
+    !loading &&
+    !error &&
+    value &&
+    typeof value.kCom === "number" &&
+    spot != null &&
+    Number.isFinite(spot)
+  ) {
+    const kComStr = Math.round(value.kCom).toLocaleString(undefined, {
+      maximumFractionDigits: 0,
+    });
+    const spotStr = Math.round(spot).toLocaleString(undefined, {
+      maximumFractionDigits: 0,
+    });
+
+    // normalise bucket string so we don't get "Bucket: Bucket: ..."
+    let bucketValue: string;
+    if (bucketLabel) {
+      const trimmed = bucketLabel.trim();
+      bucketValue = trimmed.startsWith("Bucket:")
+        ? trimmed.replace(/^Bucket:\s*/, "")
+        : trimmed;
+    } else {
+      bucketValue = "7–45D, weighted by e^{-T/30}";
+    }
+
+    const rows: GammaComFooterRow[] = [
+      {
+        id: "kcom",
+        label: "Γ-COM vs spot",
+        value: `K_COM ${kComStr} vs Spot ${spotStr}`,
+      },
+      {
+        id: "bucket",
+        label: "Bucket",
+        value: bucketValue,
+      },
+    ];
+
+    footer = {
+      title: "Γ-COM context",
+      rows,
+    };
+  }
 
   return {
     status,
     value: formatted,
-    guidanceValue: hasDistance ? distanceRaw! : null,
     meta,
     extraBadge,
+    guidanceValue,
     errorMessage: error ?? undefined,
     reload: refresh,
+    footer,
   };
 }
