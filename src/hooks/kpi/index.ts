@@ -11,3 +11,4 @@ export * from "./useIvRvSpreadKpi";
 export * from "./useHitRateOfExpectedMoveKpi";
 export * from "./useSpotVsSmaKpi";
 export * from "./useAtmIvKpi";
+export * from "./useGammaCenterOfMassKpi";

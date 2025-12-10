@@ -377,6 +377,24 @@
       }
     ]
   },
+  "gammaCenterOfMass": {
+    "title": "Gamma Center of Mass (Γ-COM distance)",
+    "description": "Global gamma center of mass vs spot; shows whether the options market is structurally loaded above, below, or right on top of spot.",
+    "bands": [
+      {
+        "label": "≲ −2%",
+        "guidance": "Structural gamma heaviness below spot; downside strikes carry more weight."
+      },
+      {
+        "label": "≈ 0%",
+        "guidance": "Structurally heavy right here; strong pin risk / support–resistance band around spot."
+      },
+      {
+        "label": "≳ +2%",
+        "guidance": "Structural gamma heaviness above spot; upside strikes carry more weight."
+      }
+    ]
+  },
   "fillRatio": {
     "title": "Fill Ratio %",
     "description": "Share of orders filled vs submitted.",

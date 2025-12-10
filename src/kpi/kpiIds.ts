@@ -26,6 +26,7 @@ export const KPI_IDS = {
   feesSpread: "feesSpread",
   fillRatio: "fillRatio",
   funding: "funding",
+  gammaCenterOfMass: "gammaCenterOfMass",
   gammaTheta: "gammaTheta",
   gammaWalls: "gammaWalls",
   impliedCorr: "impliedCorr",

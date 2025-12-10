@@ -30,6 +30,7 @@
     "maxlossCredit": "Maximum loss divided by credit received for defined-risk structures.",
     "pnlVsCredit": "Realized PnL relative to initial credit for short-premium structures.",
     "deltaExposure": "Delta exposure as % of NAV.",
+    "gammaCenterOfMass": "Gamma center of mass strike vs spot within a chosen DTE bucket (e.g. 7–45D); main KPI is distance in %, showing where the global gamma 'weight' sits relative to spot.",
     "gammaTheta": "Gamma exposure scaled by theta; risk of large intraday moves.",
     "rvEm": "Realized volatility relative to expected-move implied volatility.",
     "boxSpread": "Spread between synthetic and cash positions via box trades.",

@@ -66,6 +66,21 @@ export const BAND_BASE: Record<string, BandBaseSet> = {
     ],
     note: "Term structure (short–long IV spread).",
   },
+  [KPI_IDS.gammaCenterOfMass]: {
+    valueScale: "percent",
+    hasBar: true,
+    thresholds: [
+      // Large downside heaviness
+      { max: -2, tone: "caution" },
+
+      // Structurally heavy right here (pin zone)
+      { min: -2, max: 2, tone: "neutral" },
+
+      // Large upside heaviness
+      { min: 2, tone: "caution" },
+    ],
+    note: "Gamma center-of-mass distance vs spot (in %). Near 0% = pinned around spot; large ± values = structural bias.",
+  },
 
   /* -----------------------------------------------------------------------
    * 2) Expected Move Hit Rate

@@ -29,6 +29,7 @@ import {
   useTimeToFirstBreachKpi,
   useSpotVsSmaKpi,
   useAtmIvKpi,
+  useGammaCenterOfMassKpi,
 } from "../../hooks/kpi";
 
 import { KPI_IDS } from "../../kpi/kpiIds";
@@ -139,11 +140,11 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       context.dvolPct ?? null,
       locale
     );
-  
+
     if (!vm) {
       return renderCard({ meta: "Awaiting ATM IV data" });
     }
-  
+
     return renderCard({
       value: vm.value ?? undefined,
       meta: vm.meta,
@@ -1078,6 +1079,36 @@ export default function KpiCardRenderer({ kpi, context }: Props) {
       footer,
       infoKey: kpi.id,
       guidanceValue: vm.guidanceValue ?? null,
+    });
+  }
+
+  if (kpi.id === KPI_IDS.gammaCenterOfMass) {
+    const vm = useGammaCenterOfMassKpi();
+
+    let value: CardProps["value"] = vm.value ?? samples[kpi.id];
+    let meta: string | undefined = vm.meta;
+    let extraBadge: string | null = vm.extraBadge ?? null;
+
+    if (vm.status === "loading") {
+      value = "…";
+      meta = "loading";
+      extraBadge = "Computing Γ-COM…";
+    } else if (vm.status === "error") {
+      value = "—";
+      meta = vm.errorMessage ?? "error";
+      extraBadge = "Error";
+    } else if (!vm.value) {
+      // ready but no usable number yet
+      value = "—";
+      meta = "Awaiting data";
+    }
+
+    return renderCard({
+      value,
+      meta,
+      extraBadge,
+      infoKey: KPI_IDS.gammaCenterOfMass,
+      guidanceValue: vm.guidanceValue ?? null, // drives the bands bar
     });
   }
 

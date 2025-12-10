@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getIndexPriceMeta } from "../../services/deribit";
+import { Currency, DEFAULT_CURRENCY } from "../../config/currency";
 
-export function useDeribitIndexPrice(currency: "BTC" | "ETH", pollMs = 15000) {
+export function useDeribitIndexPrice(currency: Currency = DEFAULT_CURRENCY, pollMs = 15000) {
   const [price, setPrice] = useState<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
