@@ -1,6 +1,6 @@
 import React from "react";
 
-type Column<Row> = {
+export type Column<Row> = {
   id: string;
   header?: React.ReactNode;
   align?: "left" | "right";
