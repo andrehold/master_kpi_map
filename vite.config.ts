@@ -20,6 +20,10 @@ export default defineConfig({
         target: "https://api.stlouisfed.org",
         changeOrigin: true,
       },
+      "/api": {
+        target: "http://localhost:8787",
+        changeOrigin: true
+      }
     },
   },
 })

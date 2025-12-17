@@ -9,6 +9,7 @@ import type { useOpenInterestConcentration } from "../../../hooks/domain/useOpen
 import type { useGammaWalls } from "../../../hooks/domain/useGammaWalls";
 
 import type { StrikeMapState } from "../../../kpi/strikeMapTypes";
+import type { KpiId } from "../../../kpi/kpiIds";
 
 type SkewState = ReturnType<typeof useDeribitSkew25D>;
 type KinkData = ReturnType<typeof useTermStructureKink>["data"];
@@ -16,6 +17,44 @@ type CondorState = ReturnType<typeof useCondorCreditPctOfEM>;
 type TermStructureData = ReturnType<typeof useIVTermStructure>["data"];
 type OIConcentrationState = ReturnType<typeof useOpenInterestConcentration>;
 type GammaWallsState = ReturnType<typeof useGammaWalls>;
+
+//
+// Optional: "aggregated snapshot" types (kept for future use)
+//
+export type KpiPoint = {
+  key: string; // "main", "30d", "50d", ...
+  label: string; // human label
+  value: number | null;
+  formatted: string;
+};
+
+export type KpiSnapshot = {
+  runId: string;
+  kpiId: KpiId;
+  ts: number;
+  status: "loading" | "ready" | "error" | "empty";
+  main: KpiPoint | null;
+  mini: KpiPoint[];
+  meta?: string;
+  extraBadge?: string;
+  guidanceValue?: string | number | null;
+  error?: string;
+};
+
+export type KpiSnapshotPayload = {
+  kpiId: KpiId;
+  ts?: number; // optional; client can omit and App/backend can set Date.now()
+  status: "loading" | "ready" | "error" | "empty";
+  main: KpiPoint | null;
+  mini: KpiPoint[];
+  meta?: string;
+  extraBadge?: string;
+  guidanceValue?: string | number | null;
+  error?: string;
+};
+
+// allow sync or async sinks
+export type SnapshotSink = (snap: KpiSnapshotPayload) => void | Promise<void>;
 
 export type ExpectedMoveRow = {
   days: number;
@@ -88,6 +127,10 @@ export type KpiCardRendererContext = {
   gammaWalls: GammaWallsState;
 
   strikeMap?: StrikeMapState;
+
+  // persistence
+  runId?: string | null;
+  snapshotSink?: SnapshotSink;
 };
 
 export type KpiCardComponentProps = {
@@ -95,4 +138,4 @@ export type KpiCardComponentProps = {
   context: KpiCardRendererContext;
 };
 
-export type KpiCardComponent = (props: KpiCardComponentProps) => JSX.Element;
+export type KpiCardComponent = (props: KpiCardComponentProps) => JSX.Element | null;

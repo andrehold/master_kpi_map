@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { TokenStyles, TOKENS, ThemeKey } from "./theme/tokens";
+
 import HeaderBar from "./components/ui/HeaderBar";
 import ControlsBar from "./components/ui/ControlsBar";
 import KpiCardRenderer from "./components/ui/KpiCardRenderer";
@@ -26,6 +27,12 @@ import { KpiConfigOverlay } from "./components/config/KpiConfigOverlay";
 import { useRunId } from "./hooks/app/useRunId";
 import { useKpiDashboardContext } from "./hooks/app/useKpiDashboardContext";
 
+// ✅ import the shared types (don’t redefine them locally)
+import type {
+  KpiCardRendererContext,
+  KpiSnapshotPayload,
+} from "./components/ui/kpiCards/types";
+
 export default function MasterKPIMapDemo() {
   const currency = "BTC" as const;
   const locale = "en";
@@ -37,12 +44,50 @@ export default function MasterKPIMapDemo() {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(KPI_GROUPS.map((g) => [g.id, true]))
   );
+
   const [samples, setSamples] = useState<Samples>(() => buildSamples(KPI_GROUPS));
   const [theme, setTheme] = useState<ThemeKey>("light");
   const [showConfig, setShowConfig] = useState(false);
 
-  const { context: kpiCardContext, indexPrice, indexTs, errorText, loadingAny, refreshLive } =
-    useKpiDashboardContext({ currency, runId, samples, locale });
+  const {
+    context: kpiCardContext,
+    indexPrice,
+    indexTs,
+    errorText,
+    loadingAny,
+    refreshLive,
+  } = useKpiDashboardContext({ currency, runId, samples, locale });
+
+  // Cards/hooks can call context.snapshotSink?.({ kpiId, seriesKey, valueText, ... })
+  const snapshotSink = useCallback(
+    async (snap: KpiSnapshotPayload) => {
+      if (!runId) return;
+  
+      try {
+        await fetch("/api/snapshots", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            runId,
+            ts: snap.ts ?? Date.now(),
+            ...snap,
+          }),
+        });
+      } catch {
+        // silent
+      }
+    },
+    [runId]
+  );
+
+  const context: KpiCardRendererContext = useMemo(
+    () => ({
+      ...kpiCardContext,
+      runId,
+      snapshotSink,
+    }),
+    [kpiCardContext, runId, snapshotSink]
+  );
 
   const filteredGroups = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -74,12 +119,15 @@ export default function MasterKPIMapDemo() {
       prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
     );
   }
+
   function toggleGroup(id: string) {
     setOpenGroups((prev) => ({ ...prev, [id]: !prev[id] }));
   }
+
   function regenerate() {
     setSamples(buildSamples(KPI_GROUPS));
   }
+
   function exportJSON() {
     const payload = {
       generated_at: new Date().toISOString(),
@@ -89,11 +137,19 @@ export default function MasterKPIMapDemo() {
         title: g.title,
         kpis: g.kpis.map((kpiId) => {
           const def = makeKpiDef(kpiId);
-          return { id: def.id, name: def.name, strategies: def.strategies, value: samples[def.id] };
+          return {
+            id: def.id,
+            name: def.name,
+            strategies: def.strategies,
+            value: samples[def.id],
+          };
         }),
       })),
     };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -102,7 +158,6 @@ export default function MasterKPIMapDemo() {
     URL.revokeObjectURL(url);
   }
 
-  // overlays/settings
   const [overlayStrategy, setOverlayStrategy] = useState<StrategyKey | null>(null);
   const [settingsStrategy, setSettingsStrategy] = useState<StrategyKey | null>(null);
   const defaultUnderlying = currency;
@@ -160,13 +215,14 @@ export default function MasterKPIMapDemo() {
             openGroups={openGroups}
             onToggleGroup={toggleGroup}
             renderKpi={(kpiId) => (
-              <KpiCardRenderer kpi={makeKpiDef(kpiId)} context={kpiCardContext} />
+              <KpiCardRenderer kpi={makeKpiDef(kpiId)} context={context} />
             )}
           />
 
           <div className="text-xs text-[var(--fg-muted)] mt-10">
-            ATM IV shows <span className="font-semibold">DVOL 30D (proxy)</span> when updated.
-            IVR/IVP are computed from DVOL (52-week window). Samples are mock values until refreshed.
+            ATM IV shows <span className="font-semibold">DVOL 30D (proxy)</span> when
+            updated. IVR/IVP are computed from DVOL (52-week window). Samples are
+            mock values until refreshed.
           </div>
         </main>
 
