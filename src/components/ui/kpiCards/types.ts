@@ -56,6 +56,23 @@ export type KpiSnapshotPayload = {
 // allow sync or async sinks
 export type SnapshotSink = (snap: KpiSnapshotPayload) => void | Promise<void>;
 
+export type PersistableKpiVm = {
+  status: "loading" | "ready" | "error" | "empty";
+  meta?: string;
+  extraBadge?: string;
+  guidanceValue?: string | number | null;
+  error?: string;
+
+  main?: { label: string; formatted: string; value?: number | null } | null;
+
+  mini?: Array<{
+    key: string;
+    label: string;
+    formatted: string;
+    value?: number | null;
+  }>;
+};
+
 export type ExpectedMoveRow = {
   days: number;
   expiryTs: number | null;

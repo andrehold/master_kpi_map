@@ -1,8 +1,9 @@
-import KpiCard from "../../KpiCard";
+import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import { KpiMiniTable } from "../../KpiMiniTable";
 import { useAtmIvKpi } from "../../../../hooks/kpi";
 import type { KpiCardComponentProps } from "../types";
 import { tenorIvExpiryColumns } from "../tablePresets";
+import { toSnapshotPayload } from "../persistence/toSnapshotPayload";
 
 export default function AtmIvCard({ kpi, context }: KpiCardComponentProps) {
   const { locale, samples } = context;
@@ -15,11 +16,13 @@ export default function AtmIvCard({ kpi, context }: KpiCardComponentProps) {
 
   if (!vm) {
     return (
-      <KpiCard
+      <PersistedKpiCard
+        context={context}
         kpi={kpi}
         locale={locale}
         value={samples[kpi.id]}
         meta="Awaiting ATM IV data"
+        persist={null} // don't write to DB until we have real data
       />
     );
   }
@@ -28,18 +31,20 @@ export default function AtmIvCard({ kpi, context }: KpiCardComponentProps) {
   type Row = (typeof vm.footer.rows)[number];
 
   return (
-    <KpiCard
+    <PersistedKpiCard
+      context={context}
       kpi={kpi}
       locale={locale}
       value={vm.value ?? undefined}
       meta={vm.meta}
+      persist={toSnapshotPayload(kpi.id, vm.persistVm)}
       footer={
         vm.footer ? (
           <KpiMiniTable<Row>
             title={vm.footer.title}
             rows={vm.footer.rows}
-            getKey={(r) => r.id} // now valid because Row includes id
-            columns={tenorIvExpiryColumns<Row>()} // columns typed as Column<Row>[]
+            getKey={(r) => r.id}
+            columns={tenorIvExpiryColumns<Row>()}
           />
         ) : undefined
       }
