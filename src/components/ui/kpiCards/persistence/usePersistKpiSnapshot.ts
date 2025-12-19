@@ -21,6 +21,8 @@ export function usePersistKpiSnapshot(
 ) {
   const lastSigRef = useRef<string>("");
   const lastEmitTsRef = useRef<number>(0);
+  const pendingRef = useRef<{ payload: KpiSnapshotPayload; sig: string } | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const allow = opts.allowStatuses ?? ["ready", "error", "empty"];
   const minIntervalMs = opts.minIntervalMs ?? 0;
@@ -37,18 +39,64 @@ export function usePersistKpiSnapshot(
     if (!context.runId || !context.snapshotSink) return;
     if (!allow.includes(payload.status)) return;
 
-    // throttle
     const now = Date.now();
-    if (minIntervalMs > 0 && now - lastEmitTsRef.current < minIntervalMs) return;
 
-    // dedupe
+    // dedupe first: if it's identical to the last emitted signature, do nothing
     if (sig && sig === lastSigRef.current) return;
-    lastSigRef.current = sig;
-    lastEmitTsRef.current = now;
 
-    void context.snapshotSink({
-      ...payload,
-      ts: payload.ts ?? now,
-    });
+    const canEmitNow =
+      minIntervalMs <= 0 || now - lastEmitTsRef.current >= minIntervalMs;
+
+    if (canEmitNow) {
+      // leading edge: emit immediately
+      pendingRef.current = null;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+
+      lastSigRef.current = sig;
+      lastEmitTsRef.current = now;
+
+      void context.snapshotSink({
+        ...payload,
+        ts: payload.ts ?? now,
+      });
+      return;
+    }
+
+    // inside throttle window: store latest payload for trailing flush
+    pendingRef.current = { payload, sig };
+
+    // reschedule trailing flush to always emit the *latest* payload at the window end
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+
+    const wait = Math.max(0, minIntervalMs - (now - lastEmitTsRef.current));
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+
+      const pending = pendingRef.current;
+      pendingRef.current = null;
+      if (!pending) return;
+
+      // if sink/runId got reset, skip
+      if (!context.runId || !context.snapshotSink) return;
+
+      const now2 = Date.now();
+
+      // dedupe again at flush time
+      if (pending.sig && pending.sig === lastSigRef.current) return;
+
+      lastSigRef.current = pending.sig;
+      lastEmitTsRef.current = now2;
+
+      void context.snapshotSink({
+        ...pending.payload,
+        ts: pending.payload.ts ?? now2,
+      });
+    }, wait);
   }, [context.runId, context.snapshotSink, payload, sig, allow, minIntervalMs]);
 }
