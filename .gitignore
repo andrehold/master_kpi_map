@@ -3,3 +3,10 @@ node_modules
 dist
 *.local
 .env.local
+
+# local runtime data (sqlite, caches, snapshots)
+data/*
+!data/.gitkeep
+*.db
+*.db-shm
+*.db-wal
