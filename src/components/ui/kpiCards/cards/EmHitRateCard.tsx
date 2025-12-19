@@ -64,7 +64,7 @@ export default function EmHitRateCard({
 
   return (
     <PersistedKpiCard
-    context={context}
+      context={context}
       kpi={kpi}
       locale={locale}
       value={value}
