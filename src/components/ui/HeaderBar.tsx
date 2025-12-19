@@ -1,4 +1,4 @@
-import { RefreshCw, Download, Sun, Moon, Cloud, Settings } from "lucide-react";
+import { RefreshCw, Download, Sun, Moon, Cloud, Settings, Database } from "lucide-react";
 import type { ThemeKey } from "../../theme/tokens";
 
 export default function HeaderBar({
@@ -15,6 +15,7 @@ export default function HeaderBar({
   onExportJSON,
   loadingAny,
   onOpenConfig,
+  onOpenDb,
 }: {
   theme: ThemeKey;
   setTheme: (t: ThemeKey) => void;
@@ -29,6 +30,7 @@ export default function HeaderBar({
   onExportJSON: () => void;
   loadingAny: boolean;
   onOpenConfig: () => void;
+  onOpenDb: () => void;
 }) {
   return (
     <header className="sticky top-0 z-30 backdrop-blur bg-[var(--surface-950)]/95 border-b border-[var(--border)]">
@@ -119,6 +121,14 @@ export default function HeaderBar({
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)]"
           >
             <Settings className="w-4 h-4" /> Config
+          </button>
+
+          {/* DB button */}
+          <button
+            onClick={onOpenDb}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)]"
+          >
+            <Database className="w-4 h-4" /> DB
           </button>
 
           <button

@@ -23,6 +23,7 @@ import { StrategiesMenuButton } from "./components/ui/StrategiesMenuButton";
 import StrategyOverlay from "./components/overlays/StrategyOverlay";
 import { StrategySettings } from "./components/overlays/StrategySettings";
 import { KpiConfigOverlay } from "./components/config/KpiConfigOverlay";
+import { DbBrowser } from "./components/DbBrowser";
 
 import { useRunId } from "./hooks/app/useRunId";
 import { useKpiDashboardContext } from "./hooks/app/useKpiDashboardContext";
@@ -48,6 +49,7 @@ export default function MasterKPIMapDemo() {
   const [samples, setSamples] = useState<Samples>(() => buildSamples(KPI_GROUPS));
   const [theme, setTheme] = useState<ThemeKey>("light");
   const [showConfig, setShowConfig] = useState(false);
+  const [showDb, setShowDb] = useState(false);
 
   const {
     context: kpiCardContext,
@@ -62,7 +64,7 @@ export default function MasterKPIMapDemo() {
   const snapshotSink = useCallback(
     async (snap: KpiSnapshotPayload) => {
       if (!runId) return;
-  
+
       try {
         await fetch("/api/snapshots", {
           method: "POST",
@@ -186,9 +188,30 @@ export default function MasterKPIMapDemo() {
           onExportJSON={exportJSON}
           loadingAny={!!loadingAny}
           onOpenConfig={() => setShowConfig(true)}
+          onOpenDb={() => setShowDb(true)}
         />
 
         <KpiConfigOverlay open={showConfig} onClose={() => setShowConfig(false)} />
+
+        {/* DB Browser Overlay */}
+        {showDb ? (
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
+            <div className="absolute inset-x-0 top-16 mx-auto max-w-6xl px-4">
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-950)] shadow-[var(--shadow)] overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
+                  <div className="text-sm font-semibold">Snapshot DB</div>
+                  <button
+                    onClick={() => setShowDb(false)}
+                    className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)]"
+                  >
+                    Close
+                  </button>
+                </div>
+                <DbBrowser />
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <div className="fixed top-3 right-4 z-40">
           <StrategiesMenuButton
