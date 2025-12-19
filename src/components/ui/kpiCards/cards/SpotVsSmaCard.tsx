@@ -1,4 +1,4 @@
-import KpiCard from "../../KpiCard";
+import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import { KpiMiniTable } from "../../KpiMiniTable";
 import { useSpotVsSmaKpi } from "../../../../hooks/kpi";
 import type { KpiCardComponentProps } from "../types";
@@ -35,7 +35,8 @@ export default function SpotVsSmaCard({ kpi, context }: KpiCardComponentProps) {
     ) : undefined;
 
   return (
-    <KpiCard
+    <PersistedKpiCard
+      context={context}
       kpi={kpi}
       locale={locale}
       value={value}

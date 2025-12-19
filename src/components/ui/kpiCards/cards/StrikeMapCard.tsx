@@ -1,4 +1,4 @@
-import KpiCard from "../../KpiCard";
+import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import { KpiMiniTable } from "../../KpiMiniTable";
 import type { StrikeMapTableRow } from "../../../../kpi/strikeMapTypes";
 import { useStrikeMapKpi } from "../../../../hooks/kpi";
@@ -65,7 +65,8 @@ export default function StrikeMapCard({ kpi, context }: KpiCardComponentProps) {
   }
 
   return (
-    <KpiCard
+    <PersistedKpiCard
+      context={context}
       kpi={kpi}
       locale={locale}
       value={vm.value}

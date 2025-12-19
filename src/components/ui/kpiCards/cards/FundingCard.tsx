@@ -1,4 +1,4 @@
-import KpiCard from "../../KpiCard";
+import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import type { KpiCardComponentProps } from "../types";
 
 export default function FundingCard({ kpi, context }: KpiCardComponentProps) {
@@ -23,8 +23,7 @@ export default function FundingCard({ kpi, context }: KpiCardComponentProps) {
     value = "—";
     meta = "Awaiting data";
   }
-
   return (
-    <KpiCard kpi={kpi} locale={locale} value={value} meta={meta} extraBadge={badge} />
+    <PersistedKpiCard context={context} kpi={kpi} locale={locale} value={value} meta={meta} extraBadge={badge} />
   );
 }

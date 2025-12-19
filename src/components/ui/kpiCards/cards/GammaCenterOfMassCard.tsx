@@ -1,4 +1,4 @@
-import KpiCard from "../../KpiCard";
+import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import { KpiMiniTable } from "../../KpiMiniTable";
 import { KPI_IDS } from "../../../../kpi/kpiIds";
 import { useGammaCenterOfMassKpi } from "../../../../hooks/kpi";
@@ -45,7 +45,8 @@ export default function GammaCenterOfMassCard({
   }
 
   return (
-    <KpiCard
+    <PersistedKpiCard
+      context={context}
       kpi={kpi}
       locale={locale}
       value={value}

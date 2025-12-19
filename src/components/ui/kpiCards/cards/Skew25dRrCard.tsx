@@ -1,4 +1,4 @@
-import KpiCard from "../../KpiCard";
+import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import { KpiMiniTable } from "../../KpiMiniTable";
 import type { KpiCardComponentProps } from "../types";
 
@@ -61,7 +61,8 @@ export default function Skew25dRrCard({ kpi, context }: KpiCardComponentProps) {
   });
 
   return (
-    <KpiCard
+    <PersistedKpiCard
+      context={context}
       kpi={kpi}
       locale={locale}
       value={value}

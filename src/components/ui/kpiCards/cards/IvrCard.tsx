@@ -1,15 +1,16 @@
-import KpiCard from "../../KpiCard";
+import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import type { KpiCardComponentProps } from "../types";
 
 export default function IvrCard({ kpi, context }: KpiCardComponentProps) {
   const { locale, samples, ivr, ivp } = context;
 
   if (ivr == null) {
-    return <KpiCard kpi={kpi} locale={locale} value={samples[kpi.id]} />;
+    return <PersistedKpiCard context={context} kpi={kpi} locale={locale} value={samples[kpi.id]} persist={null} />;
   }
 
   return (
-    <KpiCard
+    <PersistedKpiCard
+      context={context}
       kpi={kpi}
       locale={locale}
       value={`${ivr}`}

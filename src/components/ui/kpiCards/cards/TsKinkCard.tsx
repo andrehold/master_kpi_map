@@ -1,4 +1,4 @@
-import KpiCard from "../../KpiCard";
+import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import type { KpiCardComponentProps } from "../types";
 
 export default function TsKinkCard({ kpi, context }: KpiCardComponentProps) {
@@ -30,7 +30,8 @@ export default function TsKinkCard({ kpi, context }: KpiCardComponentProps) {
   }
 
   return (
-    <KpiCard
+    <PersistedKpiCard
+      context={context}
       kpi={kpi}
       locale={locale}
       value={value}

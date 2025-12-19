@@ -15,6 +15,25 @@ function nodeToText(x: any): string {
   return "";
 }
 
+function isPlaceholderText(text: string): boolean {
+  const s = (text ?? "").trim();
+  if (!s) return true;
+
+  const lower = s.toLowerCase();
+  return (
+    s === "—" ||
+    s === "-" ||
+    s === "…" ||
+    s === "..." ||
+    lower === "n/a" ||
+    lower === "na" ||
+    lower === "awaiting data" ||
+    lower === "loading" ||
+    lower === "loading…" ||
+    lower === "loading..."
+  );
+}
+
 function parseMaybeNumber(text: string): number | null {
   const raw = text?.trim?.() ?? "";
   if (!raw || raw === "—" || raw === "-") return null;
@@ -112,7 +131,7 @@ function autoPersistFromCardProps(cardProps: CardProps): PersistableKpiVm | null
   const metaText = nodeToText((cardProps as any).meta);
 
   // If there's no meaningful main value, skip writing
-  if (!formattedMain || formattedMain === "—") return null;
+  if (isPlaceholderText(formattedMain)) return null;
 
   const kpi: any = (cardProps as any).kpi;
   const label = kpi?.name ?? kpi?.title ?? "KPI";

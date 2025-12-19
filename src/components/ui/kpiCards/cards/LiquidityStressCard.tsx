@@ -1,4 +1,4 @@
-import KpiCard from "../../KpiCard";
+import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import { KpiMiniTable } from "../../KpiMiniTable";
 import { useLiquidityStressKpi } from "../../../../hooks/kpi";
 import type { KpiCardComponentProps } from "../types";
@@ -39,7 +39,8 @@ export default function LiquidityStressCard({
   }
 
   return (
-    <KpiCard
+    <PersistedKpiCard
+      context={context}
       kpi={kpi}
       locale={locale}
       value={vm.value}

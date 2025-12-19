@@ -1,4 +1,4 @@
-import KpiCard from "../../KpiCard";
+import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import { KpiMiniTable } from "../../KpiMiniTable";
 import { useRealizedVolKpi } from "../../../../hooks/kpi";
 import type { KpiCardComponentProps } from "../types";
@@ -32,7 +32,8 @@ export default function RealizedVolCard({ kpi, context }: KpiCardComponentProps)
     );
 
   return (
-    <KpiCard
+    <PersistedKpiCard
+      context={context}
       kpi={kpi}
       locale={locale}
       value={vm.value}

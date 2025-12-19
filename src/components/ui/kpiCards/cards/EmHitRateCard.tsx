@@ -1,4 +1,4 @@
-import KpiCard from "../../KpiCard";
+import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import { KpiMiniTable } from "../../KpiMiniTable";
 import { KPI_IDS } from "../../../../kpi/kpiIds";
 import { useHitRateOfExpectedMoveKpi } from "../../../../hooks/kpi";
@@ -63,7 +63,8 @@ export default function EmHitRateCard({
   }
 
   return (
-    <KpiCard
+    <PersistedKpiCard
+    context={context}
       kpi={kpi}
       locale={locale}
       value={value}

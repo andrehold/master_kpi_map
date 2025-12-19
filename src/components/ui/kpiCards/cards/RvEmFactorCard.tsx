@@ -1,4 +1,4 @@
-import KpiCard from "../../KpiCard";
+import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import type { KpiCardComponentProps } from "../types";
 
 export default function RvEmFactorCard({
@@ -26,7 +26,8 @@ export default function RvEmFactorCard({
       : null;
 
   return (
-    <KpiCard
+    <PersistedKpiCard
+      context={context}
       kpi={kpi}
       locale={locale}
       value={value}

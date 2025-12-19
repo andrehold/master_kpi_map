@@ -1,4 +1,4 @@
-import KpiCard from "../../KpiCard";
+import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import { KpiMiniTable } from "../../KpiMiniTable";
 import { useGammaWallsKpi } from "../../../../hooks/kpi";
 import type { KpiCardComponentProps } from "../types";
@@ -49,7 +49,8 @@ export default function GammaWallsCard({
   }
 
   return (
-    <KpiCard
+    <PersistedKpiCard
+      context={context}
       kpi={kpi}
       locale={locale}
       value={vm.value}

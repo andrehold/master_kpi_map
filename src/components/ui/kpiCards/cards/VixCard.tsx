@@ -1,4 +1,4 @@
-import KpiCard from "../../KpiCard";
+import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import { KPI_IDS } from "../../../../kpi/kpiIds";
 import { useVixKpi } from "../../../../hooks/kpi";
 import type { KpiCardComponentProps } from "../types";
@@ -25,7 +25,8 @@ export default function VixCard({ kpi, context }: KpiCardComponentProps) {
   }
 
   return (
-    <KpiCard
+    <PersistedKpiCard
+      context={context}
       kpi={kpi}
       locale={locale}
       value={value}

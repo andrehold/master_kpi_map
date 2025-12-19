@@ -1,4 +1,4 @@
-import KpiCard from "../../KpiCard";
+import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import { KpiMiniTable } from "../../KpiMiniTable";
 import { KPI_IDS } from "../../../../kpi/kpiIds";
 import { useCondorCreditKpi } from "../../../../hooks/kpi";
@@ -32,8 +32,11 @@ export default function CondorCreditCard({
     );
   }
 
+  const persist = vm.value == null || vm.value === "…" || vm.value === "—" ? null : undefined;
+
   return (
-    <KpiCard
+    <PersistedKpiCard
+      context={context}
       kpi={kpi}
       locale={locale}
       value={vm.value}
@@ -42,6 +45,7 @@ export default function CondorCreditCard({
       infoKey={KPI_IDS.condorCreditEm}
       guidanceValue={vm.guidanceValue ?? null}
       footer={footer}
+      persist={persist}
     />
   );
 }

@@ -1,4 +1,4 @@
-import KpiCard from "../../KpiCard";
+import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import { KpiMiniTable } from "../../KpiMiniTable";
 import { getClientPortfolioModel, type ClientPortfolioRow } from "../../../../kpi/clientPortfolios";
 import type { KpiCardComponentProps } from "../types";
@@ -13,11 +13,13 @@ export default function PortfolioClientCard({
 
   if (!model) {
     return (
-      <KpiCard
+      <PersistedKpiCard
+        context={context}
         kpi={kpi}
         locale={locale}
         value={samples[kpi.id] ?? "—"}
         meta="No client config found"
+        persist={null}
       />
     );
   }
@@ -65,7 +67,8 @@ export default function PortfolioClientCard({
     : model.notes;
 
   return (
-    <KpiCard
+    <PersistedKpiCard
+      context={context}
       kpi={kpi}
       locale={locale}
       value={`${model.pnlPct.toFixed(2)}%`}
