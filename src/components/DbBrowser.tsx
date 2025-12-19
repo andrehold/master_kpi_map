@@ -16,13 +16,19 @@ export function DbBrowser() {
   const [tables, setTables] = React.useState<TableInfo[]>([]);
   const [table, setTable] = React.useState<string>("");
   const [data, setData] = React.useState<TableResp | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
   const [limit, setLimit] = React.useState(200);
   const [offset, setOffset] = React.useState(0);
 
   React.useEffect(() => {
     (async () => {
+      setError(null);
       const r = await fetch(`${API_BASE}/api/db/tables`);
-      const j = await r.json();
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setError(j?.error || `Failed to load tables (${r.status})`);
+        return;
+      }
       setTables(j.tables || []);
       if (!table && j.tables?.[0]?.name) setTable(j.tables[0].name);
     })().catch(console.error);
@@ -32,10 +38,16 @@ export function DbBrowser() {
   React.useEffect(() => {
     if (!table) return;
     (async () => {
+      setError(null);
+      setData(null);
       const r = await fetch(
         `${API_BASE}/api/db/table/${encodeURIComponent(table)}?limit=${limit}&offset=${offset}`
       );
-      const j = await r.json();
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setError(j?.error || `Failed to load table (${r.status})`);
+        return;
+      }
       setData(j);
     })().catch(console.error);
   }, [table, limit, offset]);
@@ -45,6 +57,15 @@ export function DbBrowser() {
 
   return (
     <div className="p-4 space-y-3">
+      {error ? (
+        <div className="text-sm rounded-lg border border-[var(--border)] bg-[var(--surface-900)] p-3">
+          <div className="font-semibold mb-1">DB Browser error</div>
+          <div className="text-[var(--fg-muted)] break-words">{error}</div>
+          <div className="text-xs text-[var(--fg-muted)] mt-2">
+            API: {API_BASE}
+          </div>
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <div className="text-sm opacity-70">SQLite browser</div>
 

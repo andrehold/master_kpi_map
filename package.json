@@ -6,10 +6,10 @@
   "scripts": {
     "dev": "vite",
     "dev:api": "tsx watch server/index.ts",
+    "db:view": "DB_PATH=\"./data/kpi.db\" node tools/db_view_server.cjs",
     "dev:all": "concurrently -k -n UI,API,DB \"npm:dev\" \"npm:dev:api\" \"npm:db:view\"",
     "build": "vite build",
-    "preview": "vite preview",
-    "db:view": "node tools/db_view_server.cjs"
+    "preview": "vite preview"
   },
   "dependencies": {
     "better-sqlite3": "^12.5.0",
