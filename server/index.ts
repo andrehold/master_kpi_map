@@ -203,28 +203,38 @@ app.listen(PORT, () => {
   console.log(`API listening on http://localhost:${PORT}`);
 });
 
-// Fetch timeseries for a specific KPI (filtered by runId)
+// Fetch timeseries for a specific KPI
 app.get("/api/timeseries", (req, res) => {
-  const { kpiId, limit = 100, runId } = req.query;
+  const { kpiId, limit = 100, since = "30" } = req.query;
+  
+  if (!kpiId) {
+    return res.status(400).json({ error: "Missing kpiId" });
+  }
 
-  if (!kpiId || !runId) {
-    return res.status(400).json({ error: "Missing kpiId or runId" });
+  // Ensure 'since' is treated as a number (default to 30 days if not provided)
+  const sinceDays = Number(since);  // Convert to number
+  if (isNaN(sinceDays)) {
+    return res.status(400).json({ error: "Invalid 'since' value" });
   }
 
   try {
+    // Calculate start date for the timeseries (e.g., last 30 days)
+    const endDate = Date.now();
+    const startDate = endDate - (sinceDays * 24 * 60 * 60 * 1000); // 'since' in days
+
+    // SQL query to fetch all data for the given kpiId
     const query = `
       SELECT 
         ts,
         json_extract(snapshot_json, '$.main.value') AS value,
         json_extract(snapshot_json, '$.main.formatted') AS formatted
       FROM snapshots
-      WHERE kpi_id = ?
-        AND run_id = ?
+      WHERE kpi_id = ? AND ts >= ? AND ts <= ?
       ORDER BY ts DESC
       LIMIT ?;
     `;
     
-    const rows = db.prepare(query).all(kpiId, runId, limit);
+    const rows = db.prepare(query).all(kpiId, startDate, endDate, limit);
     
     res.json(rows);
   } catch (error) {

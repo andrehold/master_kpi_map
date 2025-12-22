@@ -18,8 +18,8 @@ export async function postSnapshot(snapshot: unknown) {
 }
 
 // Fetch timeseries data for a specific KPI
-export async function fetchTimeseries(kpiId: string, runId: string, limit: number = 100) {
-  const r = await fetch(`/api/timeseries?kpiId=${kpiId}&runId=${runId}&limit=${limit}`);
+export async function fetchTimeseries(kpiId: string, limit: number = 100, since = "30") {
+  const r = await fetch(`/api/timeseries?kpiId=${kpiId}&limit=${limit}&since=${since}`);
   
   if (!r.ok) throw new Error(`fetchTimeseries failed: ${r.status}`);
   return await r.json();

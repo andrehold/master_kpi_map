@@ -1,8 +1,18 @@
-import { useRef, ReactNode } from "react";
-import Badge from "./Badge";
-import KpiInfo from "../KpiInfo";
-import { KpiGuidance } from "./Guidance";
-import type { KPIDef } from "../../data/kpis";
+import React, { useState, useEffect, useRef, ReactNode } from 'react';
+import { fetchTimeseries } from '../../api/kpiApi'; // Assume this is implemented to fetch timeseries
+import TimeseriesChart from './kpiCards/TimeseriesChart'; // The timeseries chart component
+import Badge from './Badge';
+import { Info, BarChart } from 'lucide-react';
+import KpiInfo from '../KpiInfo';
+import { KpiGuidance } from './Guidance';
+import type { KPIDef } from '../../data/kpis';
+
+// Placeholder Image for loading state
+const PlaceholderImage = () => (
+  <div className="w-full h-64 bg-gray-300 text-center text-gray-700 flex items-center justify-center">
+    Loading chart...
+  </div>
+);
 
 type Props = {
   kpi: KPIDef;
@@ -11,11 +21,9 @@ type Props = {
   extraBadge?: string | null;
   footer?: React.ReactNode;
   onInfoClick?: () => void;
-
-  // NEW (optional) props to enable the guidance drawer
-  infoKey?: string;                 // e.g. "ivr" – must match keys in kpis.ts / bands.base.ts
-  guidanceValue?: number | null;    // numeric value for context (e.g., IVR number)
-  locale?: string;                  // optional i18n, defaults to "en"
+  infoKey?: string;
+  guidanceValue?: number | null;
+  locale?: string;
 };
 
 export default function KpiCard({
@@ -29,6 +37,30 @@ export default function KpiCard({
   guidanceValue,
   locale = "en",
 }: Props) {
+  const [isTimeseriesVisible, setIsTimeseriesVisible] = useState(false);
+  const [timeseriesData, setTimeseriesData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const toggleTimeseries = () => setIsTimeseriesVisible((prev) => !prev);
+
+  useEffect(() => {
+    if (isTimeseriesVisible) {
+      const fetchData = async () => {
+        // Replace this with the appropriate fetch logic
+        try {
+          const data = await fetchTimeseries(kpi.id);  // Custom hook to fetch timeseries
+          setTimeseriesData(data);
+        } catch (error) {
+          console.error('Error fetching timeseries:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchData();
+    }
+  }, [isTimeseriesVisible, kpi.id]);
+
   const drawerRef = useRef<any>(null);
   const guidanceEnabled = !!infoKey;
 
@@ -38,10 +70,8 @@ export default function KpiCard({
   };
 
   const hasBadges = Boolean(extraBadge) || Boolean(meta);
-  // If meta is a string that clearly indicates loading, don't show "sample" yet.
   const looksLoading =
-    typeof meta === "string" &&
-    /\b(loading|updating|fetching|polling|refreshing)\b/i.test(meta);
+    typeof meta === 'string' && /\b(loading|updating|fetching|polling|refreshing)\b/i.test(meta);
 
   const showSample = !looksLoading && (!hasBadges || isEmptyKpiValue(value));
 
@@ -54,13 +84,25 @@ export default function KpiCard({
           <span>{kpi.name}</span>
           <span className="relative inline-flex">
             <KpiInfo id={kpi.id} description={kpi.description} />
+
+            {/* Info Button */}
             {guidanceEnabled && (
               <button
                 aria-label="Open KPI info"
-                className="absolute inset-0"
+                className="px-2 py-1 text-[var(--fg-muted)]"
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInfo(); }}
-              />
+              >
+                <Info className="w-5 h-5 text-[var(--fg)]" />
+              </button>
             )}
+
+            {/* Chart Icon Button */}
+            <button
+              onClick={toggleTimeseries}
+              className="ml-3 px-2 py-1 rounded-full bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-[var(--fg)]"
+            >
+              <BarChart className="w-5 h-5" />
+            </button>
           </span>
         </div>
 
@@ -97,19 +139,21 @@ export default function KpiCard({
 
       {footer ? <div className="mt-3">{footer}</div> : null}
 
-      {guidanceEnabled ? (
-        <div className="mt-3">
-          <KpiGuidance
-            ref={drawerRef}
-            trigger="external"
-            kpiId={kpi.id}
-            infoKey={resolvedInfoKey}
-            value={guidanceValue ?? null}
-            locale={locale}
-          />
-        </div>
-      ) : null}
-    </div>
+      {
+        guidanceEnabled ? (
+          <div className="mt-3">
+            <KpiGuidance
+              ref={drawerRef}
+              trigger="external"
+              kpiId={kpi.id}
+              infoKey={resolvedInfoKey}
+              value={guidanceValue ?? null}
+              locale={locale}
+            />
+          </div>
+        ) : null
+      }
+    </div >
   );
 }
 
@@ -117,6 +161,5 @@ function isEmptyKpiValue(v: unknown) {
   if (v == null) return true;
   if (typeof v === "number") return Number.isNaN(v);
   const s = String(v).trim().toLowerCase();
-  // treat common placeholders as empty
   return s === "" || s === "—" || s === "-" || s === "…" || s === "na" || s === "n/a" || s === "null";
 }
