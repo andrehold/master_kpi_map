@@ -61,26 +61,28 @@ export default function MasterKPIMapDemo() {
   } = useKpiDashboardContext({ currency, runId, samples, locale });
 
   // Cards/hooks can call context.snapshotSink?.({ kpiId, seriesKey, valueText, ... })
-  const snapshotSink = useCallback(
-    async (snap: KpiSnapshotPayload) => {
-      if (!runId) return;
-
-      try {
-        await fetch("/api/snapshots", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            runId,
-            ts: snap.ts ?? Date.now(),
-            ...snap,
-          }),
-        });
-      } catch {
-        // silent
+  const snapshotSink = useCallback(async (snap: KpiSnapshotPayload) => {
+    if (!runId) return;
+  
+    try {
+      const res = await fetch("/api/snapshots", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          runId,
+          ts: snap.ts ?? Date.now(),
+          ...snap,
+        }),
+      });
+  
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        console.warn("[persist] /api/snapshots failed:", res.status, text);
       }
-    },
-    [runId]
-  );
+    } catch (e) {
+      console.warn("[persist] /api/snapshots error:", e);
+    }
+  }, [runId]);
 
   const context: KpiCardRendererContext = useMemo(
     () => ({

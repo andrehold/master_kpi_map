@@ -30,7 +30,11 @@ export function DbBrowser() {
         return;
       }
       setTables(j.tables || []);
-      if (!table && j.tables?.[0]?.name) setTable(j.tables[0].name);
+      if (!table && j.tables?.length) {
+        const preferred = ["snapshots", "snapshot_events", "runs"];
+        const pick = preferred.find((p) => j.tables.some((t: any) => t.name === p));
+        setTable(pick || j.tables[0].name);
+      }
     })().catch(console.error);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

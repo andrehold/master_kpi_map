@@ -62,6 +62,11 @@ app.post("/api/snapshots", (req, res) => {
   const payload = stripRuntimeFields({ ...snapshot, status });
   const payloadJson = JSON.stringify(payload);
 
+  const mainValue =
+    payload?.main && typeof payload.main.value === "number" && Number.isFinite(payload.main.value)
+      ? payload.main.value
+      : null;
+
   // optional dedupe: if newest event has identical payload, skip inserting another
   const last = db
     .prepare(
@@ -74,20 +79,21 @@ app.post("/api/snapshots", (req, res) => {
 
   if (!last || last.snapshot_json !== payloadJson) {
     db.prepare(
-      `INSERT INTO snapshot_events (run_id, kpi_id, ts, status, snapshot_json)
-       VALUES (?, ?, ?, ?, ?)`
-    ).run(runId, kpiId, ts, status, payloadJson);
+      `INSERT INTO snapshot_events (run_id, kpi_id, ts, status, main_value, snapshot_json)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).run(runId, kpiId, ts, status, mainValue, payloadJson);
   }
 
   // keep latest cache for fast reads
   db.prepare(`
-    INSERT INTO snapshots (run_id, kpi_id, ts, status, snapshot_json)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO snapshots (run_id, kpi_id, ts, status, main_value, snapshot_json)
+    VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT(run_id, kpi_id) DO UPDATE SET
       ts = excluded.ts,
       status = excluded.status,
+      main_value = excluded.main_value,
       snapshot_json = excluded.snapshot_json
-  `).run(runId, kpiId, ts, status, payloadJson);
+  `).run(runId, kpiId, ts, status, mainValue, payloadJson);
 
   res.json({ ok: true });
 });

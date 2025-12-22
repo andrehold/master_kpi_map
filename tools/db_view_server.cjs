@@ -6,7 +6,7 @@ const express = require("express");
 const cors = require("cors");
 const Database = require("better-sqlite3");
 
-const PORT = Number(process.env.PORT || 8787);
+const PORT = Number(process.env.PORT || 8788);
 const DB_PATH = process.env.DB_PATH || path.resolve(process.cwd(), "data", "kpi.db");
 
 function csvEscape(v) {
@@ -80,6 +80,34 @@ app.get("/api/db/tables", (_req, res) => {
   }
 });
 
+app.get("/api/db/table/:name.csv", (req, res) => {
+  const name = req.params.name;
+  if (!name) return res.status(400).send("Missing table name");
+
+  const limit = Math.min(Math.max(Number(req.query.limit || 50000), 1), 200000);
+  const offset = Math.max(Number(req.query.offset || 0), 0);
+
+  const db = openDb();
+  try {
+    const allowed = new Set(listTables(db).map((t) => t.name));
+    if (!allowed.has(name)) return res.status(404).send("Table not found");
+
+    const qTable = quoteIdent(name);
+
+    const cols = db.prepare(`PRAGMA table_info(${qTable});`).all();
+    const columns = cols.map((c) => c.name);
+
+    const rows = db.prepare(`SELECT * FROM ${qTable} LIMIT ? OFFSET ?;`).all(limit, offset);
+
+    const csv = toCsv(columns, rows);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${name}.csv"`);
+    res.send(csv);
+  } finally {
+    db.close();
+  }
+});
+
 // query table rows
 app.get("/api/db/table/:name", (req, res) => {
   const name = req.params.name;
@@ -121,45 +149,12 @@ app.get("/api/db/table/:name", (req, res) => {
   }
 });
 
-// download table as CSV
-app.get("/api/db/table/:name.csv", (req, res) => {
-  const name = req.params.name;
-
-  if (!name) return res.status(400).send("Missing table name");
-
-  const limit = Math.min(Math.max(Number(req.query.limit || 50000), 1), 200000);
-  const offset = Math.max(Number(req.query.offset || 0), 0);
-
-  const db = openDb();
-  try {
-    const allowed = new Set(listTables(db).map((t) => t.name));
-    if (!allowed.has(name)) return res.status(404).send("Table not found");
-
-    const qTable = quoteIdent(name);
-
-    const cols = db.prepare(`PRAGMA table_info(${name});`).all();
-    const columns = cols.map((c) => c.name);
-
-    const cols2 = db.prepare(`PRAGMA table_info(${qTable});`).all();
-    const columns2 = cols2.map((c) => c.name);
-
-    const rows = db.prepare(`SELECT * FROM ${qTable} LIMIT ? OFFSET ?;`).all(limit, offset);
-
-    const csv = toCsv(columns2, rows);
-    res.setHeader("Content-Type", "text/csv; charset=utf-8");
-    res.setHeader("Content-Disposition", `attachment; filename="${name}.csv"`);
-    res.send(csv);
-  } finally {
-    db.close();
-  }
-});
-
 // download raw db
 app.get("/api/db/download", (_req, res) => {
   try {
     assertDbExists();
     res.setHeader("Content-Type", "application/x-sqlite3");
-    res.setHeader("Content-Disposition", 'attachment; filename="snapshots.db"');
+    res.setHeader("Content-Disposition", 'attachment; filename="kpi.db"');
     fs.createReadStream(DB_PATH).pipe(res);
   } catch (e) {
     res.status(500).send(String(e?.message || e));
