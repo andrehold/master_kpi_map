@@ -202,3 +202,32 @@ app.get("/api/runs/:runId/export.csv", (req, res) => {
 app.listen(PORT, () => {
   console.log(`API listening on http://localhost:${PORT}`);
 });
+
+// Fetch timeseries for a specific KPI (filtered by runId)
+app.get("/api/timeseries", (req, res) => {
+  const { kpiId, limit = 100, runId } = req.query;
+
+  if (!kpiId || !runId) {
+    return res.status(400).json({ error: "Missing kpiId or runId" });
+  }
+
+  try {
+    const query = `
+      SELECT 
+        ts,
+        json_extract(snapshot_json, '$.main.value') AS value,
+        json_extract(snapshot_json, '$.main.formatted') AS formatted
+      FROM snapshots
+      WHERE kpi_id = ?
+        AND run_id = ?
+      ORDER BY ts DESC
+      LIMIT ?;
+    `;
+    
+    const rows = db.prepare(query).all(kpiId, runId, limit);
+    
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: "Error querying timeseries data" });
+  }
+});
