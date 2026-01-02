@@ -81,10 +81,9 @@ export default function KpiCard({
     <div className="group rounded-2xl border border-[var(--border)] bg-[var(--surface-950)] p-4">
       <div className="grid grid-cols-[1fr_auto] items-start gap-x-4">
         <div className="text-[var(--fg)] font-medium leading-snug flex items-center gap-1">
-          <span>{kpi.name}</span>
+        <span>{kpi.name}</span>
           <span className="relative inline-flex">
-            <KpiInfo id={kpi.id} description={kpi.description} />
-
+            
             {/* Info Button */}
             {guidanceEnabled && (
               <button
@@ -153,6 +152,13 @@ export default function KpiCard({
           </div>
         ) : null
       }
+
+      {/* Timeseries Chart Section */}
+      {isTimeseriesVisible && (
+        <div className="mt-4">
+          {loading ? <PlaceholderImage /> : <TimeseriesChart kpiId={kpi.id} />}
+        </div>
+      )}
     </div >
   );
 }
