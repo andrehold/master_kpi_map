@@ -97,9 +97,7 @@ export type OptionInstrument = {
 };
 
 // Use Vite dev proxy in development to avoid CORS; fall back to absolute in prod
-const DERIBIT = (typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV)
-  ? '/api/v2'
-  : 'https://www.deribit.com/api/v2';
+const DERIBIT = '/api/v2';
 
 const indexTsStore = new Map<string, number>();
 // ---------- Debug logging (toggle at runtime) --------------------------------

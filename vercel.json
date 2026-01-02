@@ -1,0 +1,17 @@
+{
+    "rewrites": [
+      {
+        "source": "/api/v2/:path*",
+        "destination": "https://www.deribit.com/api/v2/:path*"
+      },
+      {
+        "source": "/fred/:path*",
+        "destination": "https://api.stlouisfed.org/:path*"
+      },
+      {
+        "source": "/(.*)",
+        "destination": "/index.html"
+      }
+    ]
+  }
+  
