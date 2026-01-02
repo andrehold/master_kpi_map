@@ -111,7 +111,7 @@ function extractMiniFromFooter(footer: ReactNode): PersistableKpiVm["mini"] {
   return rows.map((r, idx) => {
     const keyRaw = (getKey ? getKey(r) : null) ?? r?.id ?? r?.key ?? `${idx}`;
     const labelRaw =
-      pickFirstField(r, ["tenor", "label", "name", "strike", "days", "dte", "expiry", "id", "key"]) ?? keyRaw;
+    pickFirstField(r, ["tenor","label","metric","windowLabel","name","strike","days","dte","expiry","id","key"]) ?? keyRaw;
     const valueRaw = pickFirstField(r, ["iv", "value", "pct", "abs", "amount", "price", "rate", "formatted"]);
 
     const label = nodeToText(labelRaw) || String(keyRaw);

@@ -1,6 +1,7 @@
 import { KPI_IDS } from "../../../kpi/kpiIds";
 import type { KpiCardComponent } from "./types";
 
+import AdxCard from "./cards/AdxCard";
 import AtmIvCard from "./cards/AtmIvCard";
 import IvrCard from "./cards/IvrCard";
 import RealizedVolCard from "./cards/RealizedVolCard";
@@ -27,6 +28,7 @@ import PortfolioClientCard from "./cards/PortfolioClientCard";
 type KpiId = (typeof KPI_IDS)[keyof typeof KPI_IDS];
 
 const EXACT: Partial<Record<KpiId, KpiCardComponent>> = {
+  [KPI_IDS.adx]: AdxCard,
   [KPI_IDS.atmIv]: AtmIvCard,
   [KPI_IDS.ivr]: IvrCard,
   [KPI_IDS.rv]: RealizedVolCard,

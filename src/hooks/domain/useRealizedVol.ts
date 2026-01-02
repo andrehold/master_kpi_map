@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchPerpHistory } from "../../services/deribit";
+import { realizedVolFromCandles } from "../../lib/ohlc";
 
 export type UseRealizedVolOptions = {
   currency?: "BTC" | "ETH";
@@ -15,21 +16,6 @@ export type UseRealizedVolReturn = {
   error?: string;
   refresh: () => Promise<void>;
 };
-
-function computeRealizedVol(closes: number[], windowDays: number, annualizationDays: number): number | undefined {
-  if (closes.length < windowDays + 1) return undefined;
-  const tail = closes.slice(- (windowDays + 1));
-  const rets: number[] = [];
-  for (let i = 1; i < tail.length; i++) {
-    const r = Math.log(tail[i] / tail[i - 1]);
-    if (isFinite(r)) rets.push(r);
-  }
-  if (rets.length < 2) return undefined;
-  const mean = rets.reduce((a, b) => a + b, 0) / rets.length;
-  const varSample = rets.reduce((s, x) => s + (x - mean) * (x - mean), 0) / (rets.length - 1);
-  const sd = Math.sqrt(Math.max(varSample, 0));
-  return sd * Math.sqrt(annualizationDays);
-}
 
 export function useRealizedVol(options: UseRealizedVolOptions = {}): UseRealizedVolReturn {
   const {
@@ -51,8 +37,7 @@ export function useRealizedVol(options: UseRealizedVolOptions = {}): UseRealized
     try {
       const limit = Math.max(windowDays + 50, windowDays + 1); // buffer for missing bars
       const candles = await fetchPerpHistory(currency, limit, resolutionSec);
-      const closes = candles.map(c => c.close).filter((v): v is number => typeof v === 'number' && isFinite(v));
-      const val = computeRealizedVol(closes, windowDays, annualizationDays);
+      const val = realizedVolFromCandles(candles, windowDays, resolutionSec, annualizationDays);
       if (val === undefined) throw new Error("Insufficient price history for RV");
       setRv(val);
       setTs(Date.now());

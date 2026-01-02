@@ -15,6 +15,34 @@ export function labelValueColumns<
 }
 
 /**
+ * ADX-style table: Metric / Value / Updated
+ * Row must have: { metric, value, asOf }.
+ */
+export function metricValueAsOfColumns<
+  Row extends { metric: ReactNode; value: ReactNode; asOf: ReactNode },
+>(): Column<Row>[] {
+  return [
+    { id: "metric", header: "Metric", render: (r) => r.metric },
+    { id: "value", header: "Value", align: "right", render: (r) => r.value },
+    { id: "asOf", header: "Updated", align: "right", render: (r) => r.asOf },
+  ];
+}
+
+/**
+ * Label-style table: Metric / Value / Updated
+ * Row must have: { label, value, asOf }.
+ */
+export function labelValueAsOfColumns<
+  Row extends { label: ReactNode; value: ReactNode; asOf: ReactNode },
+>(): Column<Row>[] {
+  return [
+    { id: "label", header: "Metric", render: (r) => r.label },
+    { id: "value", header: "Value", align: "right", render: (r) => r.value },
+    { id: "asOf", header: "Updated", align: "right", render: (r) => r.asOf },
+  ];
+}
+
+/**
  * Tenor / IV / Expiry (used by ATM IV + Term Structure cards).
  * Row must have: { tenor, iv, expiry }.
  */
