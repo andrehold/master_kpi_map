@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "packageManager": "npm@11.3.0",
   "scripts": {
     "dev": "vite",
     "dev:api": "PORT=8787 tsx watch server/index.ts",
