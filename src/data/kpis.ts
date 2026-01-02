@@ -69,6 +69,7 @@ export const KPIS: KpiMeta[] = [
   { id: KPI_IDS.tsKink, title: "Term Structure Kink (abs)" },
   { id: KPI_IDS.strikeMap, title: "Strike support / resistance" },
   { id: KPI_IDS.spotVsSma, title: "Spot vs SMAs" },
+  { id: KPI_IDS.adx, title: "ADX (Trend strength)", valueType: "index" },
   { id: KPI_IDS.rv, title: "Realized Volatility (RV)", valueType: "percent" },
   { id: KPI_IDS.ivRvSpread, title: "IV–RV Spread", valueType: "percent" },
   { id: KPI_IDS.timeToFirstBreach, title: "Time to First Breach %", valueType: "percent" },
@@ -239,6 +240,7 @@ export const KPI_GROUPS: KPIGroup[] = [
       KPI_IDS.strikeMap,
       KPI_IDS.gammaCenterOfMass,
       KPI_IDS.spotVsSma,
+      KPI_IDS.adx,
     ],
   },
   {
@@ -705,6 +707,20 @@ export const KPI_INFO: Partial<Record<KpiId, KpiInfoDoc>> = {
     bullets: [
       "Typical usage: Contextualizing directional risk and mean-reversion expectations.",
       "Combine with: EM ribbon, RV, term structure, and basis/funding.",
+    ],
+  },
+
+  [KPI_IDS.adx]: {
+    title: "ADX (Trend strength)",
+    paragraphs: [
+      "Definition: ADX(14) measures trend strength (not direction). It answers: “Is this a trending environment?”",
+      "Why it matters: Strong trends stress tight short-gamma range structures (condors/strangles). Range regimes are typically friendlier for short premium carry.",
+      "How to read: Watch both level and slope. Rising ADX strengthens the trend; falling ADX suggests consolidation / mean-reversion.",
+    ],
+    bullets: [
+      "High & rising ADX: avoid tight condors/strangles; go wider, reduce size, or use defined-risk structures with a clear adjustment plan.",
+      "Low & falling ADX: range regime; condors and other short-premium structures generally behave better.",
+      "Mini-table idea: +DI(14), −DI(14) (direction context) and ΔADX (e.g., 5D change) for slope.",
     ],
   },
 
@@ -1351,6 +1367,7 @@ export const STRATEGY_CATALOG: Record<StrategyKey, StrategyMeta> = {
     name: "Range-Bound Premium",
     short: "Neutral",
     primaryKpis: [KPI_IDS.ivr, KPI_IDS.skew, KPI_IDS.termStructure, KPI_IDS.gammaWalls, KPI_IDS.oiConcentration],
+    secondaryKpis: [KPI_IDS.adx, KPI_IDS.spotVsSma, KPI_IDS.gammaCenterOfMass],
   },
   weekend: {
     id: "weekend",

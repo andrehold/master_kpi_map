@@ -1,5 +1,6 @@
 export const KPI_IDS = {
   arrivalSlippage: "arrivalSlippage",
+  adx: "adx",
   atmIv: "atmIv",
   basis: "basis",
   boxFinancingSpread: "boxFinancingSpread",

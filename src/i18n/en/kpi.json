@@ -53,6 +53,7 @@
     "latency": "End-to-end automation latency (ms).",
     "dataFreshness": "Book/update staleness; data freshness for decisions.",
     "uptime": "Automation uptime and safety/kill-switch trigger counts.",
-    "spotVsSma": "Spot distance vs 20/50/100/200D simple moving averages; >0% = above SMA."
+    "spotVsSma": "Spot distance vs 20/50/100/200D simple moving averages; >0% = above SMA.",
+    "adx": "ADX(14) trend strength (not direction). Higher & rising = strengthening trend; low & falling = range regime."
   }
 }

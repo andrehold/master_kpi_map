@@ -704,5 +704,27 @@
         "guidance": "Clearly above SMAs; positive momentum but risk of overextension grows."
       }
     ]
+  },
+  "adx": {
+    "title": "ADX (14) – Trend strength",
+    "description": "ADX(14) measures trend strength (not direction). Higher & rising = strengthening trend; low & falling = range regime.",
+    "bands": [
+      {
+        "label": "<15",
+        "guidance": "Low trend strength; range / mean-reversion regime—condors and short premium generally behave better."
+      },
+      {
+        "label": "15–25",
+        "guidance": "Transition regime; keep widths comfortable and size conservatively until trend confirms or fades."
+      },
+      {
+        "label": "25–35",
+        "guidance": "Trending; avoid tight condors/strangles—go wider, reduce size, prefer defined-risk with an adjustment plan."
+      },
+      {
+        "label": ">35",
+        "guidance": "Strong trend; tight short-gamma structures are vulnerable—avoid or hedge aggressively."
+      }
+    ]
   }
 }

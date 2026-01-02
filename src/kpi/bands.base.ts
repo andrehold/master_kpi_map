@@ -165,7 +165,7 @@ export const BAND_BASE: Record<string, BandBaseSet> = {
     ],
     note: "Condor credit as % of expected move width.",
   },
-  
+
   [KPI_IDS.vix]: {
     valueScale: "raw",
     hasBar: true,
@@ -240,6 +240,18 @@ export const BAND_BASE: Record<string, BandBaseSet> = {
       { min: 5, tone: "caution" },
     ],
     note: "Distance of spot vs key SMAs (20/50/100/200D) in %. Positive = above SMAs, negative = below.",
+  },
+
+  [KPI_IDS.adx]: {
+    valueScale: "raw",
+    hasBar: true,
+    thresholds: [
+      { max: 15, tone: "good" },       // range-friendly
+      { min: 15, max: 25, tone: "neutral" }, // transition
+      { min: 25, max: 35, tone: "caution" }, // trending
+      { min: 35, tone: "avoid" },      // strong trend
+    ],
+    note: "ADX(14) trend strength (not direction). Higher and rising = strengthening trend; low/falling = range regime.",
   },
 
   [KPI_IDS.strikeMap]: {
