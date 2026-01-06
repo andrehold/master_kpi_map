@@ -8,7 +8,7 @@
   },
   "packageManager": "npm@11.3.0",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --open",
     "dev:api": "PORT=8787 tsx watch server/index.ts",
     "db:view": "PORT=8788 DB_PATH=\"./data/kpi.db\" node tools/db_view_server.cjs",
     "dev:all": "concurrently -k -n UI,API,DB \"npm:dev\" \"npm:dev:api\" \"npm:db:view\"",
