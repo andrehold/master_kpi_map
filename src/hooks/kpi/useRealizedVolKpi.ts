@@ -4,7 +4,8 @@ import { useRealizedVol } from "../domain/useRealizedVol";
 export type RvRow = {
   id: string;
   windowLabel: string;
-  rv: string;
+  rvClose: string;
+  rvParkinson: string;
   asOf: string;
 };
 
@@ -37,9 +38,9 @@ export function useRealizedVolKpi(
   const currency = opts.currency ?? "BTC";
 
   // windows: 7 / 21 / 60 days
-  const rv7 = useRealizedVol({ currency, windowDays: 7 });
-  const rv21 = useRealizedVol({ currency, windowDays: 21 });
-  const rv60 = useRealizedVol({ currency, windowDays: 60 });
+  const rv7 = useRealizedVol({ currency, windowDays: 7, includeParkinson: true });
+  const rv21 = useRealizedVol({ currency, windowDays: 21, includeParkinson: true });
+  const rv60 = useRealizedVol({ currency, windowDays: 60, includeParkinson: true });
 
   const rows: RvRow[] = [
     buildRow("7d", "7D", rv7),
@@ -60,9 +61,10 @@ export function useRealizedVolKpi(
     meta = "error";
   } else if (typeof rv21.rv === "number") {
     value = formatPct(rv21.rv);
+    const park = typeof rv21.parkinsonRv === "number" ? ` • Parkinson ${formatPct(rv21.parkinsonRv)}` : "";
     meta = rv21.lastUpdated
-      ? `30D RV (21D window) · ${new Date(rv21.lastUpdated).toLocaleDateString()}`
-      : "30D RV (21D window)";
+      ? `30D RV (21D window)${park} · ${new Date(rv21.lastUpdated).toLocaleDateString()}`
+      : `30D RV (21D window)${park}`;
   } else {
     value = "—";
     meta = "Awaiting data";
@@ -75,9 +77,9 @@ export function useRealizedVolKpi(
   const table: RvTableSpec | undefined =
     rows.length > 0
       ? {
-          title: "Realized vol (annualized)",
-          rows,
-        }
+        title: "Realized vol (annualized)",
+        rows,
+      }
       : undefined;
 
   const guidanceValue =
@@ -93,7 +95,8 @@ export function useRealizedVolKpi(
 }
 
 type RvState = {
-  rv?: number;
+  rvClose?: number;
+  rvParkinson?: number;
   lastUpdated?: number;
   loading: boolean;
   error?: string;
@@ -104,23 +107,25 @@ function buildRow(
   windowLabel: string,
   state: RvState
 ): RvRow {
-  let rvText = "—";
+  let rvClose = "—";
+  let rvParkinson = "—";
   let asOf = "";
 
-  if (state.loading && state.rv == null) {
-    rvText = "…";
+  if (state.loading && state.rvClose == null) {
+    rvClose = "…";
+    rvParkinson = "…";
     asOf = "loading";
-  } else if (state.error && state.rv == null) {
-    rvText = "err";
+  } else if (state.error && state.rvClose == null) {
+    rvClose = "err";
+    rvParkinson = "err";
     asOf = "error";
-  } else if (typeof state.rv === "number") {
-    rvText = formatPct(state.rv);
-    asOf = state.lastUpdated
-      ? new Date(state.lastUpdated).toLocaleDateString()
-      : "";
+  } else if (typeof state.rvClose === "number") {
+    rvClose = formatPct(state.rvClose);
+    rvParkinson = typeof state.rvParkinson === "number" ? formatPct(state.rvParkinson) : "—";
+    asOf = state.lastUpdated ? new Date(state.lastUpdated).toLocaleDateString() : "";
   }
 
-  return { id, windowLabel, rv: rvText, asOf };
+  return { id, windowLabel, rvClose, rvParkinson, asOf };
 }
 
 function formatPct(v?: number) {

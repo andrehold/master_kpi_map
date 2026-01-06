@@ -714,13 +714,16 @@ export const KPI_INFO: Partial<Record<KpiId, KpiInfoDoc>> = {
     title: "ADX (Trend strength)",
     paragraphs: [
       "Definition: ADX(14) measures trend strength (not direction). It answers: “Is this a trending environment?”",
-      "Why it matters: Strong trends stress tight short-gamma range structures (condors/strangles). Range regimes are typically friendlier for short premium carry.",
-      "How to read: Watch both level and slope. Rising ADX strengthens the trend; falling ADX suggests consolidation / mean-reversion.",
+      "+DI(14) and −DI(14) are the directional components behind ADX. They provide context for “Which way is it leaning?” (+DI > −DI suggests upward pressure; −DI > +DI suggests downward pressure).",
+      "Why it matters: Strong trends stress tight, short-gamma range structures (condors/strangles) and increase the chance of repeated strike pressure. Range regimes are typically friendlier for short premium carry.",
+      "How to read: Watch both level and slope. Rising ADX = trend strength is increasing; falling ADX = consolidation / mean-reversion risk is increasing. Use +DI/−DI to identify which side is more likely to get stressed first.",
+      "Rule-of-thumb regimes: ADX < 15 (range), 15–25 (transition), 25–35 (trending), > 35 (strong trend).",
     ],
     bullets: [
-      "High & rising ADX: avoid tight condors/strangles; go wider, reduce size, or use defined-risk structures with a clear adjustment plan.",
+      "High & rising ADX: avoid tight condors/strangles; widen wings, reduce size, or prefer defined-risk structures with a clear adjustment plan.",
       "Low & falling ADX: range regime; condors and other short-premium structures generally behave better.",
-      "Mini-table idea: +DI(14), −DI(14) (direction context) and ΔADX (e.g., 5D change) for slope.",
+      "Directional context: +DI > −DI → up-bias (call-side shorts get stressed sooner); −DI > +DI → down-bias (put-side shorts get stressed sooner).",
+      "Mini-table: ADX(14), ΔADX (e.g., 5D change), +DI(14), −DI(14).",
     ],
   },
 

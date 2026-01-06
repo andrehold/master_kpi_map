@@ -15,18 +15,9 @@ export default function RealizedVolCard({ kpi, context }: KpiCardComponentProps)
         getKey={(r) => r.id}
         columns={[
           { id: "window", header: "Window", render: (r) => r.windowLabel },
-          {
-            id: "rv",
-            header: "RV (ann.)",
-            align: "right",
-            render: (r) => r.rv,
-          },
-          {
-            id: "asOf",
-            header: "Updated",
-            align: "right",
-            render: (r) => r.asOf,
-          },
+          { id: "rvClose", header: "RV (close)", align: "right", render: (r) => r.rvClose },
+          { id: "rvPark", header: "RV (range)", align: "right", render: (r) => r.rvParkinson },
+          { id: "asOf", header: "Updated", align: "right", render: (r) => r.asOf },
         ]}
       />
     );

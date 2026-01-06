@@ -81,9 +81,12 @@ export function useAdxKpi(opts: UseAdxKpiOptions = {}): AdxKpiViewModel {
     ? new Date(state.lastUpdated).toLocaleDateString()
     : "";
 
+  const pressure = pressureLabel(state.diPlus, state.diMinus);
+
   const rows: AdxRow[] = [
     { id: "adx14", metric: "ADX (14)", value: fmt1(state.adx), asOf },
     { id: "dAdx5", metric: "ΔADX (5D)", value: fmtSigned1(state.adxDelta), asOf },
+    { id: "pressure", metric: "Directional pressure", value: pressure, asOf },
     { id: "diPlus14", metric: "+DI (14)", value: fmt1(state.diPlus), asOf },
     { id: "diMinus14", metric: "−DI (14)", value: fmt1(state.diMinus), asOf },
   ];
@@ -102,4 +105,14 @@ export function useAdxKpi(opts: UseAdxKpiOptions = {}): AdxKpiViewModel {
     guidanceValue,
     table,
   };
+}
+
+function pressureLabel(diPlus?: number, diMinus?: number): string {
+  if (diPlus == null || diMinus == null) return "—";
+
+  const diff = diPlus - diMinus;
+  const deadband = 1.0; // avoid noise / flip-flop around equality
+  if (Math.abs(diff) < deadband) return "Mixed / balanced";
+
+  return diff > 0 ? "Upward pressure" : "Downward pressure";
 }

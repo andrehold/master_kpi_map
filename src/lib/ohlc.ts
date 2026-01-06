@@ -78,6 +78,47 @@ export type OhlcCandle = {
     const ppy = barsPerYear(annualizationDays, resolutionSec);
     return realizedVolFromCloses(closes, wBars, ppy);
   }
+
+  export function parkinsonVolFromCandles(
+    candles: OhlcCandle[],
+    windowDays: number,
+    resolutionSec: number,
+    annualizationDays: number
+  ): number | undefined {
+    const sorted = sortCandlesAsc(candles);
+    const wBars = windowBarsFromDays(windowDays, resolutionSec);
+    const ppy = barsPerYear(annualizationDays, resolutionSec);
+  
+    if (sorted.length < wBars) return undefined;
+  
+    const tail = sorted.slice(-wBars);
+  
+    // Parkinson variance per bar: (1 / (4 ln 2)) * mean( ln(H/L)^2 )
+    const k = 1 / (4 * Math.log(2));
+  
+    let sum = 0;
+    let n = 0;
+  
+    for (const c of tail) {
+      const h = isNum(c.high) ? c.high : c.close;
+      const l = isNum(c.low) ? c.low : c.close;
+      if (!isNum(h) || !isNum(l) || h <= 0 || l <= 0) continue;
+  
+      const x = Math.log(h / l);
+      if (!Number.isFinite(x)) continue;
+  
+      sum += x * x;
+      n++;
+    }
+  
+    if (n < 2) return undefined;
+  
+    const varPerBar = k * (sum / n);
+    const annVar = varPerBar * Math.max(1, ppy);
+  
+    return Math.sqrt(Math.max(0, annVar)); // decimal (0.40 => 40%)
+  }
+  
   
   // ---------------------------------------------------------------------------
   // ADX(14) helpers (Wilder).
