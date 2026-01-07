@@ -4,16 +4,16 @@ import { realizedVolFromCandles, parkinsonVolFromCandles } from "../../lib/ohlc"
 
 export type UseRealizedVolOptions = {
   currency?: "BTC" | "ETH";
-  windowDays?: number;       // trailing window in days (e.g., 20)
-  resolutionSec?: number;    // bar size (default daily)
-  annualizationDays?: number; // 365 for crypto
+  windowDays?: number;
+  resolutionSec?: number;
+  annualizationDays?: number;
   includeParkinson?: boolean;
 };
 
 export type UseRealizedVolReturn = {
-  rv?: number;            // decimal (e.g., 0.48 => 48%)
-  parkinsonRv?: number;            // decimal (e.g., 0.48 => 48%)
-  lastUpdated?: number;   // ms
+  rv?: number; // close-to-close, decimal
+  rvParkinson?: number; // range-based, decimal
+  lastUpdated?: number;
   loading: boolean;
   error?: string;
   refresh: () => Promise<void>;
@@ -39,21 +39,21 @@ export function useRealizedVol(options: UseRealizedVolOptions = {}): UseRealized
     setLoading(true);
     setError(undefined);
 
-    // If caller turns Parkinson off, don't keep stale values around
     if (!includeParkinson) setRvParkinson(undefined);
 
     try {
-      const limit = Math.max(windowDays + 50, windowDays + 1); // buffer for missing bars
+      const limit = Math.max(windowDays + 50, windowDays + 1);
       const candles = await fetchPerpHistory(currency, limit, resolutionSec);
+
       const closeVal = realizedVolFromCandles(candles, windowDays, resolutionSec, annualizationDays);
       if (closeVal === undefined) throw new Error("Insufficient price history for RV");
-
       setRv(closeVal);
 
       if (includeParkinson) {
         const parkVal = parkinsonVolFromCandles(candles, windowDays, resolutionSec, annualizationDays);
         setRvParkinson(parkVal);
       }
+
       setTs(Date.now());
     } catch (e: any) {
       setError(e?.message || String(e));
@@ -66,7 +66,9 @@ export function useRealizedVol(options: UseRealizedVolOptions = {}): UseRealized
 
   const refresh = useCallback(async () => { tick.current++; await run(); }, [run]);
 
-  return useMemo(() => ({ rv, rvParkinson, lastUpdated: ts, loading, error, refresh }), [rv, rvParkinson, ts, loading, error, refresh]);
+  return useMemo(
+    () => ({ rv, rvParkinson, lastUpdated: ts, loading, error, refresh }),
+    [rv, rvParkinson, ts, loading, error, refresh]
+  );
 }
-
 

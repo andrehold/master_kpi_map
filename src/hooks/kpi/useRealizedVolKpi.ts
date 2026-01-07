@@ -61,7 +61,7 @@ export function useRealizedVolKpi(
     meta = "error";
   } else if (typeof rv21.rv === "number") {
     value = formatPct(rv21.rv);
-    const park = typeof rv21.parkinsonRv === "number" ? ` • Parkinson ${formatPct(rv21.parkinsonRv)}` : "";
+    const park = typeof rv21.rvParkinson === "number" ? ` • Parkinson ${formatPct(rv21.rvParkinson)}` : "";
     meta = rv21.lastUpdated
       ? `30D RV (21D window)${park} · ${new Date(rv21.lastUpdated).toLocaleDateString()}`
       : `30D RV (21D window)${park}`;
@@ -95,38 +95,35 @@ export function useRealizedVolKpi(
 }
 
 type RvState = {
-  rvClose?: number;
+  rv?: number;
   rvParkinson?: number;
   lastUpdated?: number;
   loading: boolean;
   error?: string;
 };
 
-function buildRow(
-  id: string,
-  windowLabel: string,
-  state: RvState
-): RvRow {
+function buildRow(id: string, windowLabel: string, state: RvState): RvRow {
   let rvClose = "—";
   let rvParkinson = "—";
   let asOf = "";
 
-  if (state.loading && state.rvClose == null) {
+  if (state.loading && state.rv == null) {
     rvClose = "…";
     rvParkinson = "…";
     asOf = "loading";
-  } else if (state.error && state.rvClose == null) {
+  } else if (state.error && state.rv == null) {
     rvClose = "err";
     rvParkinson = "err";
     asOf = "error";
-  } else if (typeof state.rvClose === "number") {
-    rvClose = formatPct(state.rvClose);
+  } else if (typeof state.rv === "number") {
+    rvClose = formatPct(state.rv);
     rvParkinson = typeof state.rvParkinson === "number" ? formatPct(state.rvParkinson) : "—";
     asOf = state.lastUpdated ? new Date(state.lastUpdated).toLocaleDateString() : "";
   }
 
   return { id, windowLabel, rvClose, rvParkinson, asOf };
 }
+
 
 function formatPct(v?: number) {
   if (v == null || !isFinite(v)) return "—";
