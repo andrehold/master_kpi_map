@@ -17,16 +17,16 @@ export const TOKENS = {
   },
   dark: {
     colorScheme: "dark",
-    bg: "#0a0f1a",
-    surface950: "#0b1020",
-    surface900: "#0e1629",
-    border: "#1e293b",
-    shadow: "0 1px 0 rgba(255,255,255,0.04)",
-    fg: "#e2e8f0",
-    fgMuted: "#94a3b8",
-    brand400: "#22d3ee",
-    brand500: "#6366f1",
-    brand600: "#4f46e5",
+    bg: "#000000",          // main background
+    surface950: "#070707",  // main card surface
+    surface900: "#272727",  // controls / chips / secondary surfaces
+    border: "#282828",      // borders
+    shadow: "0 0 0 1px rgba(255,255,255,0.04)",
+    fg: "#DBDBDB",          // primary text
+    fgMuted: "#808080",     // muted text
+    brand400: "#3861F6",
+    brand500: "#3861F6",
+    brand600: "#2A49B9",
   },
 } as const;
 
