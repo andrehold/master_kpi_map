@@ -110,7 +110,8 @@ export default function HeaderBar({
 
           <button
             onClick={onExportJSON}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)]"
+            disabled={loadingAny}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-900)] hover:bg-[var(--surface-950)] text-sm shadow-[var(--shadow)] disabled:opacity-60"
           >
             <Download className="w-4 h-4" /> JSON
           </button>

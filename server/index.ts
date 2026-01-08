@@ -12,6 +12,29 @@ function newRunId() {
   return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
+function csvEscape(v: any) {
+  if (v == null) return '""';
+  const s = typeof v === "string" ? v : JSON.stringify(v);
+  return `"${s.replaceAll('"', '""')}"`;
+}
+
+function toCsv(columns: string[], rows: Array<Record<string, any>>) {
+  const header = columns.map(csvEscape).join(",") + "\n";
+  const body = rows
+    .map((r) => columns.map((c) => csvEscape(r[c])).join(","))
+    .join("\n");
+  return header + body + (rows.length ? "\n" : "");
+}
+
+function latestCompletedRun(): any | null {
+  return (
+    (db.prepare(`SELECT * FROM runs WHERE ended_at IS NOT NULL ORDER BY ended_at DESC LIMIT 1`).get() as any) ||
+    (db.prepare(`SELECT * FROM runs ORDER BY started_at DESC LIMIT 1`).get() as any) ||
+    null
+  );
+}
+
+
 function stripRuntimeFields(snapshot: any) {
   // store run_id + ts in columns; keep JSON payload stable
   const copy = { ...snapshot };
@@ -104,19 +127,35 @@ app.get("/api/runs/latest/snapshots", (_req, res) => {
   if (!run) return res.json({ run: null, snapshots: [] });
 
   const rows = db
-    .prepare(`SELECT kpi_id, ts, status, snapshot_json FROM snapshots WHERE run_id = ?`)
+    .prepare(`SELECT kpi_id, ts, status, main_value, snapshot_json FROM snapshots WHERE run_id = ?`)
     .all(run.id) as Array<any>;
 
   const snapshots = rows.map((r) => {
     const payload = JSON.parse(r.snapshot_json);
+
+    // ensure you always have a numeric latest value available
+    const mainValue =
+      (typeof payload?.main?.value === "number" && Number.isFinite(payload.main.value))
+        ? payload.main.value
+        : (typeof r.main_value === "number" && Number.isFinite(r.main_value))
+          ? r.main_value
+          : null;
+
+    // (optional) inject back into payload.main.value so your export JSON has it where you expect
+    if (payload?.main && payload.main.value == null && mainValue != null) {
+      payload.main.value = mainValue;
+    }
+
     return {
       runId: run.id,
       kpiId: r.kpi_id,
       ts: r.ts,
       status: r.status,
-      ...payload,
+      mainValue,              // ✅ top-level convenience
+      ...payload,             // contains main/meta/mini/etc
     };
   });
+
 
   res.json({ run, snapshots });
 });
@@ -199,6 +238,109 @@ app.get("/api/runs/:runId/export.csv", (req, res) => {
   res.send(lines.join("\n"));
 });
 
+// export "latest per KPI" for a given run (JSON)
+app.get("/api/runs/:runId/export.json", (req, res) => {
+  const { runId } = req.params;
+
+  const run = db.prepare(`SELECT * FROM runs WHERE id = ?`).get(runId) as any;
+  if (!run) return res.status(404).json({ error: "Run not found" });
+
+  const rows = db
+    .prepare(
+      `SELECT kpi_id, ts, status, main_value, snapshot_json
+       FROM snapshots
+       WHERE run_id = ?
+       ORDER BY kpi_id ASC`
+    )
+    .all(runId) as Array<any>;
+
+  const kpis = rows.map((r) => ({
+    kpiId: r.kpi_id,
+    ts: r.ts,
+    status: r.status,
+    mainValue: r.main_value ?? null,
+    snapshot: JSON.parse(r.snapshot_json),
+  }));
+
+  const payload = { runId, run, exportedAt: Date.now(), kpis };
+
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="kpis_${runId}.json"`);
+  res.send(JSON.stringify(payload, null, 2));
+});
+
+// export "latest per KPI" for latest completed run (JSON)
+app.get("/api/runs/latest/export.json", (_req, res) => {
+  const run = latestCompletedRun();
+  if (!run) return res.status(404).json({ error: "No runs found" });
+
+  const rows = db
+    .prepare(
+      `SELECT kpi_id, ts, status, main_value, snapshot_json
+       FROM snapshots
+       WHERE run_id = ?
+       ORDER BY kpi_id ASC`
+    )
+    .all(run.id) as Array<any>;
+
+  const kpis = rows.map((r) => ({
+    runId: run.id,
+    kpiId: r.kpi_id,
+    ts: r.ts,
+    status: r.status,
+    mainValue: r.main_value ?? null,
+    snapshot: JSON.parse(r.snapshot_json),
+  }));
+
+  const payload = { run, exportedAt: Date.now(), kpis };
+
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="kpis_${run.id}.json"`);
+  res.send(JSON.stringify(payload, null, 2));
+});
+
+// export "latest per KPI" for latest completed run (CSV, flattened)
+app.get("/api/runs/latest/export.csv", (_req, res) => {
+  const run = latestCompletedRun();
+  if (!run) return res.status(404).json({ error: "No runs found" });
+
+  const rows = db
+    .prepare(
+      `SELECT kpi_id, ts, status, main_value, snapshot_json
+       FROM snapshots
+       WHERE run_id = ?
+       ORDER BY kpi_id ASC`
+    )
+    .all(run.id) as Array<any>;
+
+  const flat = rows.map((r) => {
+    const p = JSON.parse(r.snapshot_json);
+    const main = p?.main ?? {};
+    return {
+      runId: run.id,
+      kpiId: r.kpi_id,
+      ts: r.ts,
+      status: r.status,
+      main_value: r.main_value ?? null,
+      main_label: main.label ?? "",
+      main_formatted: main.formatted ?? "",
+      meta: p?.meta ?? "",
+      guidanceValue: p?.guidanceValue ?? null,
+      // keep complex fields as JSON strings so you don't lose information
+      mini_json: p?.mini ? JSON.stringify(p.mini) : "",
+      badges_json: p?.badges ? JSON.stringify(p.badges) : "",
+      footer_json: p?.footer ? JSON.stringify(p.footer) : "",
+    };
+  });
+
+  const columns = Object.keys(flat[0] ?? { runId: "", kpiId: "", ts: "", status: "" });
+  const csv = toCsv(columns, flat);
+
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="kpis_${run.id}.csv"`);
+  res.send(csv);
+});
+
 app.listen(PORT, () => {
   console.log(`API listening on http://localhost:${PORT}`);
 });
@@ -206,7 +348,7 @@ app.listen(PORT, () => {
 // Fetch timeseries for a specific KPI
 app.get("/api/timeseries", (req, res) => {
   const { kpiId, limit = 100, since = "30" } = req.query;
-  
+
   if (!kpiId) {
     return res.status(400).json({ error: "Missing kpiId" });
   }
@@ -233,9 +375,9 @@ app.get("/api/timeseries", (req, res) => {
       ORDER BY ts DESC
       LIMIT ?;
     `;
-    
+
     const rows = db.prepare(query).all(kpiId, startDate, endDate, limit);
-    
+
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: "Error querying timeseries data" });

@@ -63,7 +63,7 @@ export default function MasterKPIMapDemo() {
   // Cards/hooks can call context.snapshotSink?.({ kpiId, seriesKey, valueText, ... })
   const snapshotSink = useCallback(async (snap: KpiSnapshotPayload) => {
     if (!runId) return;
-  
+
     try {
       const res = await fetch("/api/snapshots", {
         method: "POST",
@@ -74,7 +74,7 @@ export default function MasterKPIMapDemo() {
           ...snap,
         }),
       });
-  
+
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         console.warn("[persist] /api/snapshots failed:", res.status, text);
@@ -132,34 +132,34 @@ export default function MasterKPIMapDemo() {
     setSamples(buildSamples(KPI_GROUPS));
   }
 
-  function exportJSON() {
-    const payload = {
-      generated_at: new Date().toISOString(),
-      strategies: STRATEGIES,
-      groups: KPI_GROUPS.map((g) => ({
-        id: g.id,
-        title: g.title,
-        kpis: g.kpis.map((kpiId) => {
-          const def = makeKpiDef(kpiId);
-          return {
-            id: def.id,
-            name: def.name,
-            strategies: def.strategies,
-            value: samples[def.id],
-          };
-        }),
-      })),
-    };
+  async function exportJSON() {
+    try {
+      // Prefer the active runId (matches the data you persist during Update)
+      const url = runId
+        ? `/api/runs/${encodeURIComponent(runId)}/export.json`
+        : `/api/runs/latest/export.json`;
 
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `master-kpi-map-sample-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+      const res = await fetch(url);
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        console.warn("[exportJSON] failed:", res.status, text);
+        return;
+      }
+
+      const blob = await res.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `kpis_${runId ?? "latest"}_${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      URL.revokeObjectURL(downloadUrl);
+    } catch (e) {
+      console.warn("[exportJSON] error:", e);
+    }
   }
 
   const [overlayStrategy, setOverlayStrategy] = useState<StrategyKey | null>(null);
