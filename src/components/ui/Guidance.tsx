@@ -150,6 +150,134 @@ function bandFor(value: number | null | undefined, bands: Band[]) {
   return bands.find((b) => (b.min == null || value >= b.min) && (b.max == null || value < b.max)) || null;
 }
 
+function toneToCss(tone?: Tone) {
+  // Per your mapping:
+  // - avoid = red
+  // - caution/warning = orange
+  // - good + neutral = blue
+  switch (tone) {
+    case "avoid": return "var(--signal-avoid)";
+    case "caution": return "var(--signal-warn)";
+    case "good":
+    case "neutral":
+    default:
+      return "var(--signal-good)";
+  }
+}
+
+type ToneSeg = { a: number; b: number; c: string };
+
+function clamp01(v: number, lo = 0, hi = 100) {
+  return v < lo ? lo : v > hi ? hi : v;
+}
+
+// Build segments across 0..100 using the band tones; fill gaps as neutral.
+function buildToneSegments(bands: Band[], lo = 0, hi = 100): ToneSeg[] {
+  const cuts = new Set<number>([lo, hi]);
+
+  for (const b of bands) {
+    if (typeof b.min === "number" && Number.isFinite(b.min)) cuts.add(clamp01(b.min, lo, hi));
+    if (typeof b.max === "number" && Number.isFinite(b.max)) cuts.add(clamp01(b.max, lo, hi));
+  }
+
+  const xs = Array.from(cuts).sort((a, b) => a - b);
+  const segs: ToneSeg[] = [];
+
+  for (let i = 0; i < xs.length - 1; i++) {
+    const a = xs[i], b = xs[i + 1];
+    if (b <= a) continue;
+
+    const mid = (a + b) / 2;
+    const hit = bandFor(mid, bands);              // uses your band logic
+    const c = toneToCss(hit?.tone ?? "neutral");  // fill gaps as neutral
+
+    const prev = segs[segs.length - 1];
+    if (prev && prev.c === c) prev.b = b;
+    else segs.push({ a, b, c });
+  }
+
+  // Ensure we always cover full [lo..hi]
+  if (segs.length === 0) segs.push({ a: lo, b: hi, c: toneToCss("neutral") });
+  return segs;
+}
+
+// Turn segments into a smooth gradient with soft transitions at boundaries
+function buildBandGradient(bands: Band[], lo = 0, hi = 100) {
+  const segs = buildToneSegments(bands, lo, hi);
+  if (segs.length === 1) return `linear-gradient(90deg, ${segs[0].c} 0%, ${segs[0].c} 100%)`;
+
+  const SMOOTH = 4.8; // % width for blending (small = subtle)
+  const stops: string[] = [];
+
+  // Start
+  stops.push(`${segs[0].c} ${segs[0].a.toFixed(2)}%`);
+
+  for (let i = 0; i < segs.length - 1; i++) {
+    const left = segs[i];
+    const right = segs[i + 1];
+    const p = left.b;
+
+    const leftW = (left.b - left.a) / 2;
+    const rightW = (right.b - right.a) / 2;
+    const w = Math.max(0, Math.min(SMOOTH, leftW, rightW));
+
+    // blend around boundary p
+    stops.push(`${left.c} ${(p - w).toFixed(2)}%`);
+    stops.push(`${right.c} ${(p + w).toFixed(2)}%`);
+  }
+
+  // End
+  const last = segs[segs.length - 1];
+  stops.push(`${last.c} ${last.b.toFixed(2)}%`);
+
+  return `linear-gradient(90deg, ${stops.join(", ")})`;
+}
+
+function isZeroToHundredBands(bands: Band[]) {
+  return bands.every((b) =>
+    (b.min == null || (b.min >= 0 && b.min <= 100)) &&
+    (b.max == null || (b.max >= 0 && b.max <= 100))
+  );
+}
+
+function buildSlotGradient(bands: Band[]) {
+  // Use the tones in slot order (low -> high), equal widths, smooth transitions
+  const raw = bands.map((b) => toneToCss(b.tone ?? "neutral"));
+
+  // Merge adjacent equal colors
+  const colors: string[] = [];
+  for (const c of raw) {
+    if (colors.length === 0 || colors[colors.length - 1] !== c) colors.push(c);
+  }
+  if (colors.length === 0) return `linear-gradient(90deg, ${toneToCss("neutral")} 0%, ${toneToCss("neutral")} 100%)`;
+  if (colors.length === 1) return `linear-gradient(90deg, ${colors[0]} 0%, ${colors[0]} 100%)`;
+
+  const n = colors.length;
+  const w = 100 / n;
+  const SMOOTH = Math.min(4.0, w * 0.35); // blend width
+
+  const stops: string[] = [];
+  stops.push(`${colors[0]} 0%`);
+
+  for (let i = 0; i < n - 1; i++) {
+    const p = (i + 1) * w;
+    stops.push(`${colors[i]} ${(p - SMOOTH).toFixed(2)}%`);
+    stops.push(`${colors[i + 1]} ${(p + SMOOTH).toFixed(2)}%`);
+  }
+
+  stops.push(`${colors[n - 1]} 100%`);
+  return `linear-gradient(90deg, ${stops.join(", ")})`;
+}
+
+function buildTrackGradientForSet(set: BandSet) {
+  // Only use numeric 0..100 mapping when it actually makes sense
+  if (set.valueScale === "percent" && isZeroToHundredBands(set.bands)) {
+    return buildBandGradient(set.bands, 0, 100);
+  }
+  // Otherwise: follow band order (slot-based), which matches “bands logic”
+  return buildSlotGradient(set.bands);
+}
+
 /* ------------------------------ Mini Band Bar ---------------------------- */
 export function BandBar({ value, set }: { value?: number | null; set: BandSet }) {
   if (!set.hasBar) return null;
@@ -158,14 +286,14 @@ export function BandBar({ value, set }: { value?: number | null; set: BandSet })
   const pc = typeof p === "number" ? Math.min(98.5, Math.max(1.5, p)) : undefined;
 
   const active = bandFor(value ?? null, set.bands);
-  const toneColor =
-    active?.tone === "good" ? "var(--signal-good)" :
-      active?.tone === "caution" ? "var(--signal-warn)" :
-        active?.tone === "avoid" ? "var(--signal-avoid)" :
-          "rgba(255,255,255,0.35)";
 
   // Marker should be white
   const markerWhite = "rgba(255,255,255,0.92)";
+
+  const trackGradient = React.useMemo(
+    () => buildTrackGradientForSet(set),
+    [set]
+  );
 
   return (
     // OUTER wrapper: allows indicator to overflow (no cropping)
@@ -175,7 +303,7 @@ export function BandBar({ value, set }: { value?: number | null; set: BandSet })
         {/* gradient */}
         <div
           className="absolute inset-0 opacity-95"
-          style={{ backgroundImage: "var(--signal-gradient)" }}
+          style={{ backgroundImage: trackGradient }}
         />
         {/* subtle highlight */}
         <div
