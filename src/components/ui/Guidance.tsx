@@ -106,11 +106,11 @@ function useGuidancePrefs() {
   const [showBars, setShowBars] = React.useState<boolean>(true);
   React.useEffect(() => {
     if (!isClient) return;
-    try { const v = localStorage.getItem("kpi:guidance:bars"); if (v === "0") setShowBars(false); } catch {}
+    try { const v = localStorage.getItem("kpi:guidance:bars"); if (v === "0") setShowBars(false); } catch { }
   }, [isClient]);
   React.useEffect(() => {
     if (!isClient) return;
-    try { localStorage.setItem("kpi:guidance:bars", showBars ? "1" : "0"); } catch {}
+    try { localStorage.setItem("kpi:guidance:bars", showBars ? "1" : "0"); } catch { }
   }, [showBars, isClient]);
   return { showBars, setShowBars };
 }
@@ -157,40 +157,68 @@ export function BandBar({ value, set }: { value?: number | null; set: BandSet })
   const p = set.valueScale === "percent" ? clampPercent(value) : undefined;
   const pc = typeof p === "number" ? Math.min(98.5, Math.max(1.5, p)) : undefined;
 
-  // first/middle/last lanes if >3 bands
-  const lanes: Band[] =
-    set.bands.length <= 3
-      ? set.bands
-      : [set.bands[0], set.bands[Math.floor(set.bands.length / 2)], set.bands[set.bands.length - 1]];
+  const active = bandFor(value ?? null, set.bands);
+  const toneColor =
+    active?.tone === "good" ? "var(--signal-good)" :
+      active?.tone === "caution" ? "var(--signal-warn)" :
+        active?.tone === "avoid" ? "var(--signal-avoid)" :
+          "rgba(255,255,255,0.35)";
+
+  // Marker should be white
+  const markerWhite = "rgba(255,255,255,0.92)";
 
   return (
-    <div
-      className={`
-        relative mt-3 rounded-xl border border-[var(--border)] h-3 overflow-hidden
-        [--indicator:theme(colors.neutral.700)]
-        dark:[--indicator:#ffffff]
-      `}
-    >
-      {/* lanes */}
-      <div className="absolute inset-0 grid grid-cols-3 gap-px opacity-60">
-        {lanes.map((b, i) => (
-          <div key={b.slot} className={i === 0 ? "bg-rose-500/50" : i === 1 ? "bg-emerald-500/40" : "bg-amber-500/40"} />
-        ))}
+    // OUTER wrapper: allows indicator to overflow (no cropping)
+    <div className="relative mt-3 h-3 overflow-visible">
+      {/* INNER track: keeps rounded ends clipped */}
+      <div className="absolute inset-0 rounded-xl overflow-hidden border border-[var(--border)] bg-[var(--surface-900)]">
+        {/* gradient */}
+        <div
+          className="absolute inset-0 opacity-95"
+          style={{ backgroundImage: "var(--signal-gradient)" }}
+        />
+        {/* subtle highlight */}
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage:
+              "linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0) 60%)",
+          }}
+        />
       </div>
-
-      {/* vertical indicator */}
+  
+      {/* INDICATOR (white): rendered in outer wrapper so it won't be clipped */}
       {set.valueScale === "percent" && typeof pc === "number" && (
         <div
           aria-hidden
-          className="absolute inset-y-0 -translate-x-1/2 z-20 pointer-events-none"
+          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 pointer-events-none"
           style={{ left: `${pc}%` }}
         >
-          <div className="h-full w-[4px] rounded-sm" style={{ backgroundColor: "var(--indicator)" }} />
+          <div className="relative h-6">
+            {/* needle */}
+            <div
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[3px] h-6 rounded-sm"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.92)",
+                boxShadow: "0 0 10px rgba(255,255,255,0.22)",
+              }}
+            />
+            {/* dot */}
+            <div
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-3 w-3 rounded-full"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.95)",
+                boxShadow:
+                  "0 0 0 2px rgba(0,0,0,0.35), 0 0 14px rgba(255,255,255,0.20)",
+              }}
+            />
+          </div>
         </div>
       )}
     </div>
-  );
+  );  
 }
+
 
 /* -------------------------------- Drawer --------------------------------- */
 function DrawerTabs({

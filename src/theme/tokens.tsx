@@ -14,6 +14,9 @@ export const TOKENS = {
     brand400: "#60A5FA",
     brand500: "#2563EB",
     brand600: "#1D4ED8",
+    signalAvoid: "#DF484C",
+    signalWarn: "#6F499E",
+    signalGood: "#3861F6",
   },
   dark: {
     colorScheme: "dark",
@@ -27,6 +30,9 @@ export const TOKENS = {
     brand400: "#3861F6",
     brand500: "#3861F6",
     brand600: "#2A49B9",
+    signalAvoid: "#DF484C",
+    signalWarn: "#6F499E",
+    signalGood: "#3861F6",
   },
 } as const;
 
@@ -48,6 +54,15 @@ export function TokenStyles({ theme }: { theme: ThemeKey }) {
       --brand-500:${t.brand500};
       --brand-600:${t.brand600};
       --radius-lg:.5rem; --radius-xl:.75rem; --radius-2xl:1rem;
+      --signal-avoid:${t.signalAvoid};
+      --signal-warn:${t.signalWarn};
+      --signal-good:${t.signalGood};
+      --signal-gradient:linear-gradient(
+        90deg,
+        var(--signal-avoid) 0%,
+        var(--signal-warn) 55%,
+        var(--signal-good) 100%
+      );
     }
   `;
   return <style>{css}</style>;
