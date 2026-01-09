@@ -70,7 +70,7 @@ export const KPIS: KpiMeta[] = [
   { id: KPI_IDS.strikeMap, title: "Strike support / resistance" },
   { id: KPI_IDS.spotVsSma, title: "Spot vs SMAs" },
   { id: KPI_IDS.smaTrendQuality, title: "MA Trend Quality", valueType: "percent" },
-  { id: KPI_IDS.vwapAnchors, title: "VWAP + Anchored VWAP", valueType: "price" },
+  { id: KPI_IDS.vwapAnchors, title: "VWAP + Anchored VWAP", valueType: "percent" },
   { id: KPI_IDS.adx, title: "ADX (Trend strength)", valueType: "index" },
   { id: KPI_IDS.rv, title: "Realized Volatility (RV)", valueType: "percent" },
   { id: KPI_IDS.ivRvSpread, title: "IV–RV Spread", valueType: "percent" },

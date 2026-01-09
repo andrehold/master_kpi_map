@@ -25,6 +25,7 @@ import GammaCenterOfMassCard from "./cards/GammaCenterOfMassCard";
 import VixCard from "./cards/VixCard";
 import TimeToFirstBreachCard from "./cards/TimeToFirstBreachCard";
 import PortfolioClientCard from "./cards/PortfolioClientCard";
+import VwapAnchorsCard from "./cards/VwapAnchorsCard";
 
 type KpiId = (typeof KPI_IDS)[keyof typeof KPI_IDS];
 
@@ -51,6 +52,7 @@ const EXACT: Partial<Record<KpiId, KpiCardComponent>> = {
   [KPI_IDS.strikeMap]: StrikeMapCard,
   [KPI_IDS.gammaCenterOfMass]: GammaCenterOfMassCard,
   [KPI_IDS.vix]: VixCard,
+  [KPI_IDS.vwapAnchors]: VwapAnchorsCard,
   [KPI_IDS.timeToFirstBreach]: TimeToFirstBreachCard,
 };
 
