@@ -69,6 +69,7 @@ export const KPIS: KpiMeta[] = [
   { id: KPI_IDS.tsKink, title: "Term Structure Kink (abs)" },
   { id: KPI_IDS.strikeMap, title: "Strike support / resistance" },
   { id: KPI_IDS.spotVsSma, title: "Spot vs SMAs" },
+  { id: KPI_IDS.smaTrendQuality, title: "MA Trend Quality", valueType: "percent" },
   { id: KPI_IDS.adx, title: "ADX (Trend strength)", valueType: "index" },
   { id: KPI_IDS.rv, title: "Realized Volatility (RV)", valueType: "percent" },
   { id: KPI_IDS.ivRvSpread, title: "IV–RV Spread", valueType: "percent" },
@@ -240,6 +241,7 @@ export const KPI_GROUPS: KPIGroup[] = [
       KPI_IDS.strikeMap,
       KPI_IDS.gammaCenterOfMass,
       KPI_IDS.spotVsSma,
+      KPI_IDS.smaTrendQuality,
       KPI_IDS.adx,
     ],
   },
@@ -724,6 +726,21 @@ export const KPI_INFO: Partial<Record<KpiId, KpiInfoDoc>> = {
       "Low & falling ADX: range regime; condors and other short-premium structures generally behave better.",
       "Directional context: +DI > −DI → up-bias (call-side shorts get stressed sooner); −DI > +DI → down-bias (put-side shorts get stressed sooner).",
       "Mini-table: ADX(14), ΔADX (e.g., 5D change), +DI(14), −DI(14).",
+    ],
+  },
+
+  [KPI_IDS.smaTrendQuality]: {
+    title: "MA Trend Quality (slope + separation)",
+    paragraphs: [
+      "Definition: Uses MA slope + MA separation to describe whether the tape is drifting (grindy trend) versus mean-reverting.",
+      "Inputs shown: 50D slope and 100D slope (normalized by price as bps/day; optionally also in ATR/day) and MA separation (MA50 − MA100) / spot.",
+      "Why it matters (options): Steep slopes + large separation = grindy trend risk → widen short strikes, reduce deltas, or lean to broken-wing / skewed neutral structures. Flat slopes + tight separation = more range-friendly for carry.",
+      "How to read: Separation gives the “trend base”; slope tells you if it is still accelerating or starting to roll.",
+    ],
+    bullets: [
+      "Grindy trend risk: big |MA50−MA100| and both slopes aligned → avoid tight short gamma; go wider, smaller, more conservative deltas.",
+      "Mixed / transition: separation moderate but slopes disagree → expect chop; keep risk defined and avoid over-tight ranges.",
+      "Range-friendly: small separation and flat slopes → carry/mean-reversion structures tend to behave better.",
     ],
   },
 

@@ -705,6 +705,32 @@
       }
     ]
   },
+  "smaTrendQuality": {
+    "title": "MA Trend Quality (slope + separation)",
+    "description": "MA separation (MA50−MA100)/spot drives the band; slopes are shown in the mini-table (bps/day, optional ATR/day). Large absolute separation implies established trend (range-risk for short gamma).",
+    "bands": [
+      {
+        "label": "< -6%",
+        "guidance": "Strong downtrend base; grindy trend risk. Avoid tight short gamma; widen put-side shorts, reduce deltas, consider defined-risk or skewed structures."
+      },
+      {
+        "label": "-6% to -2%",
+        "guidance": "Moderate downtrend base; trend risk rising. Keep widths comfortable and watch slope alignment."
+      },
+      {
+        "label": "-2% to +2%",
+        "guidance": "Tight separation; more range/mean-reversion friendly. Carry and neutral structures tend to behave better."
+      },
+      {
+        "label": "+2% to +6%",
+        "guidance": "Moderate uptrend base; trend risk rising. Be cautious with tight call-side shorts; consider skew/broken-wings."
+      },
+      {
+        "label": "> +6%",
+        "guidance": "Strong uptrend base; grindy trend risk. Avoid tight short gamma; widen call-side shorts, reduce deltas, consider defined-risk or skewed structures."
+      }
+    ]
+  },
   "adx": {
     "title": "ADX (14) – Trend strength",
     "description": "ADX(14) measures trend strength (not direction). Higher & rising = strengthening trend; low & falling = range regime.",

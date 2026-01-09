@@ -60,6 +60,7 @@ export const KPI_IDS = {
   skew: "skew",
   skew25dRr: "skew25dRr",
   slippage: "slippage",
+  smaTrendQuality: "smaTrendQuality",
   spotPerpBasis: "spotPerpBasis",
   spread: "spread",
   stressTests: "stressTests",

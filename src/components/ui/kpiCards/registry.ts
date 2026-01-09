@@ -16,6 +16,7 @@ import CondorCreditCard from "./cards/CondorCreditCard";
 import EmHitRateCard from "./cards/EmHitRateCard";
 import BasisCard from "./cards/BasisCard";
 import SpotVsSmaCard from "./cards/SpotVsSmaCard";
+import SmaTrendQualityCard from "./cards/SmaTrendQualityCard";
 import GammaWallsCard from "./cards/GammaWallsCard";
 import OiConcentrationCard from "./cards/OiConcentrationCard";
 import LiquidityStressCard from "./cards/LiquidityStressCard";
@@ -43,6 +44,7 @@ const EXACT: Partial<Record<KpiId, KpiCardComponent>> = {
   [KPI_IDS.emHitRate]: EmHitRateCard,
   [KPI_IDS.spotPerpBasis]: BasisCard,
   [KPI_IDS.spotVsSma]: SpotVsSmaCard,
+  [KPI_IDS.smaTrendQuality]: SmaTrendQualityCard,
   [KPI_IDS.gammaWalls]: GammaWallsCard,
   [KPI_IDS.oiConcentration]: OiConcentrationCard,
   [KPI_IDS.liquidityStress]: LiquidityStressCard,

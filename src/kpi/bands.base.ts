@@ -254,6 +254,20 @@ export const BAND_BASE: Record<string, BandBaseSet> = {
     note: "ADX(14) trend strength (not direction). Higher and rising = strengthening trend; low/falling = range regime.",
   },
 
+  [KPI_IDS.smaTrendQuality]: {
+    valueScale: "percent",
+    hasBar: true,
+    thresholds: [
+      // Symmetric: strong trend risk on either side
+      { max: -6, tone: "avoid" },
+      { min: -6, max: -2, tone: "caution" },
+      { min: -2, max: 2, tone: "good" },
+      { min: 2, max: 6, tone: "caution" },
+      { min: 6, tone: "avoid" },
+    ],
+    note: "MA separation (MA50 − MA100) / spot in %. Large absolute separation implies established trend (range-risk for short gamma).",
+  },
+
   [KPI_IDS.strikeMap]: {
     valueScale: "raw",
     hasBar: false,
