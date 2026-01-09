@@ -70,6 +70,7 @@ export const KPIS: KpiMeta[] = [
   { id: KPI_IDS.strikeMap, title: "Strike support / resistance" },
   { id: KPI_IDS.spotVsSma, title: "Spot vs SMAs" },
   { id: KPI_IDS.smaTrendQuality, title: "MA Trend Quality", valueType: "percent" },
+  { id: KPI_IDS.vwapAnchors, title: "VWAP + Anchored VWAP", valueType: "price" },
   { id: KPI_IDS.adx, title: "ADX (Trend strength)", valueType: "index" },
   { id: KPI_IDS.rv, title: "Realized Volatility (RV)", valueType: "percent" },
   { id: KPI_IDS.ivRvSpread, title: "IV–RV Spread", valueType: "percent" },
@@ -243,6 +244,7 @@ export const KPI_GROUPS: KPIGroup[] = [
       KPI_IDS.spotVsSma,
       KPI_IDS.smaTrendQuality,
       KPI_IDS.adx,
+      KPI_IDS.vwapAnchors,
     ],
   },
   {
@@ -1209,6 +1211,20 @@ export const KPI_INFO: Partial<Record<KpiId, KpiInfoDoc>> = {
     bullets: [
       "Typical usage: Operational risk oversight and SLA monitoring.",
       "Combine with: Infra error rates, stress tests, and incident post-mortems.",
+    ],
+  },
+
+  [KPI_IDS.vwapAnchors]: {
+    title: "VWAP + Anchored VWAP (mean-reversion anchors)",
+    paragraphs: [
+      "Definition: VWAP is the volume-weighted average price over a session (today). Anchored VWAP (AVWAP) is VWAP starting from a chosen anchor point (e.g., swing high/low, monthly open, event candle).",
+      "Why it matters: Distance from key VWAP anchors is a clean ‘stretch’ gauge. When spot is far from an anchor, mean-reversion odds often rise.",
+      "Options mapping: Stretched vs AVWAP can favor short premium carry — but only if trend strength (ADX) is not elevated (strong trends can keep stretching).",
+    ],
+    bullets: [
+      "Spot far above AVWAP: upside stretch → expect pullback risk; short premium can work if ADX is tame and strikes are outside realistic continuation.",
+      "Spot far below AVWAP: downside stretch → bounce risk; same logic applies.",
+      "High ADX / trending: treat stretch as ‘can stay stretched’ → prefer wider structures, defined risk, smaller size, clearer adjustment plan.",
     ],
   },
 

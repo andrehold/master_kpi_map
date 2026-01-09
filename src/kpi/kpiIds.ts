@@ -76,7 +76,8 @@ export const KPI_IDS = {
   vix: "vix",
   vixVvix: "vixVvix",
   volOfVol: "volOfVol",
-  vvix: "vvix"
+  vvix: "vvix",
+  vwapAnchors: "vwap_anchors"
 } as const;
 
 export type KpiId = (typeof KPI_IDS)[keyof typeof KPI_IDS];
