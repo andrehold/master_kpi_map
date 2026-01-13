@@ -13,3 +13,4 @@ export * from "./useSpotVsSmaKpi";
 export * from "./useAtmIvKpi";
 export * from "./useGammaCenterOfMassKpi";
 export * from "./useAdxKpi";
+export * from "./useBbWidthKpi";

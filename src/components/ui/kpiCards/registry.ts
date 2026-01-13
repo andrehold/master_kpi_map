@@ -26,6 +26,7 @@ import VixCard from "./cards/VixCard";
 import TimeToFirstBreachCard from "./cards/TimeToFirstBreachCard";
 import PortfolioClientCard from "./cards/PortfolioClientCard";
 import VwapAnchorsCard from "./cards/VwapAnchorsCard";
+import BbWidthCard from "./cards/BbWidthCard";
 
 type KpiId = (typeof KPI_IDS)[keyof typeof KPI_IDS];
 
@@ -54,6 +55,7 @@ const EXACT: Partial<Record<KpiId, KpiCardComponent>> = {
   [KPI_IDS.vix]: VixCard,
   [KPI_IDS.vwapAnchors]: VwapAnchorsCard,
   [KPI_IDS.timeToFirstBreach]: TimeToFirstBreachCard,
+  [KPI_IDS.bbWidth20x2]: BbWidthCard,
 };
 
 const PREDICATES: Array<{ test: (id: string) => boolean; card: KpiCardComponent }> =
