@@ -274,4 +274,16 @@ export const BAND_BASE: Record<string, BandBaseSet> = {
     thresholds: [],
     note: "Qualitative strike support/resistance map. No numeric bands yet; info-only KPI.",
   },
+
+  [KPI_IDS.bbWidth20x2]: {
+    valueScale: "percent",
+    hasBar: true,
+    thresholds: [
+      { max: 8, tone: "avoid" },                 // squeeze
+      { min: 8, max: 16, tone: "caution" },      // low
+      { min: 16, max: 28, tone: "neutral" },     // normal
+      { min: 28, tone: "good" },                 // high (often post-move)
+    ],
+    note: "Bollinger Band Width (20,2) as % of mid-band. Low = squeeze/breakout risk; high + stabilizing often supports premium selling.",
+  },
 };

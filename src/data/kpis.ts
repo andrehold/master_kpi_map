@@ -71,6 +71,7 @@ export const KPIS: KpiMeta[] = [
   { id: KPI_IDS.spotVsSma, title: "Spot vs SMAs" },
   { id: KPI_IDS.smaTrendQuality, title: "MA Trend Quality", valueType: "percent" },
   { id: KPI_IDS.vwapAnchors, title: "VWAP + Anchored VWAP", valueType: "percent" },
+  { id: KPI_IDS.bbWidth20x2, title: "BB Width (20,2)", valueType: "percent" },
   { id: KPI_IDS.adx, title: "ADX (Trend strength)", valueType: "index" },
   { id: KPI_IDS.rv, title: "Realized Volatility (RV)", valueType: "percent" },
   { id: KPI_IDS.ivRvSpread, title: "IV–RV Spread", valueType: "percent" },
@@ -243,6 +244,7 @@ export const KPI_GROUPS: KPIGroup[] = [
       KPI_IDS.gammaCenterOfMass,
       KPI_IDS.spotVsSma,
       KPI_IDS.smaTrendQuality,
+      KPI_IDS.bbWidth20x2,
       KPI_IDS.adx,
       KPI_IDS.vwapAnchors,
     ],
@@ -728,6 +730,19 @@ export const KPI_INFO: Partial<Record<KpiId, KpiInfoDoc>> = {
       "Low & falling ADX: range regime; condors and other short-premium structures generally behave better.",
       "Directional context: +DI > −DI → up-bias (call-side shorts get stressed sooner); −DI > +DI → down-bias (put-side shorts get stressed sooner).",
       "Mini-table: ADX(14), ΔADX (e.g., 5D change), +DI(14), −DI(14).",
+    ],
+  },
+
+  [KPI_IDS.bbWidth20x2]: {
+    title: "BB Width (20,2)",
+    paragraphs: [
+      "Definition: Bollinger Band Width measures volatility contraction/expansion using a 20-period SMA and ±2σ bands, expressed as a percent of the middle band.",
+      "Why it matters: Very low width (“squeeze”) often precedes breakouts; high width that stabilizes often reflects post-move digestion.",
+      "Options mapping: In a squeeze, avoid selling tight—if you sell, go wider/smaller or use defined-risk. After a large expansion that’s stabilizing, premium selling conditions are often better.",
+    ],
+    bullets: [
+      "Typical usage: Volatility regime filter for strike width and sizing.",
+      "Combine with: RV, IV–RV spread, MA trend quality, and expected-move KPIs.",
     ],
   },
 

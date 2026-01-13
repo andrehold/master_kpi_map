@@ -46,86 +46,40 @@ All KPI cards must use `PersistedKpiCard` so values + meta + footer mini-tables 
   - Add a new entry to `KPI_IDS`
   - The string id must match everywhere (registry, groups, bands)
 
-2) **Register KPI definition + place into a section**
+2) **Register KPI meta + place into a section**
 - `src/config/kpis.ts`
-  - Add a `KPIDef` entry (uses `name`, not `title`)
-  - Add the KPI id into the desired group (e.g. `9. Strikes & Positioning`)
-  - (Optional) Add KPI_INFO entry for explanation text
+  - Add a `KpiMeta` entry to `KPIS` (uses `title`, optional `valueType`)
+  - Add the KPI id into the desired `KPI_GROUPS` entry (e.g. `9. Strikes & Positioning`)
+  - (Optional) Add `KPI_INFO[KPI_IDS.<newId>]` text for the Info drawer
 
 3) **Add bands (optional but recommended for guidance color/bar)**
 - `src/config/bands.base.ts`
-  - Add thresholds for `KPI_IDS.<newId>`
-  - If bands are used, the hook should return a numeric `guidanceValue`
+  - Add `BAND_BASE[KPI_IDS.<newId>] = { valueScale, hasBar, thresholds: [{min?,max?,tone}] }`
+  - If bands are used, the KPI hook should return a numeric `guidanceValue` on the same scale.
 
-4) **Create KPI hook**
-- `src/kpi/hooks/use<Something>Kpi.ts`
-  - Return a view-model with:
-    - `status: "loading" | "ready" | "error"`
-    - `value: string | null` (main display)
-    - `guidanceValue?: number` (numeric used for band thresholds)
+4) **Create a domain hook (optional, recommended when you need fetched data or series math)**
+- `src/hooks/domain/use<Something>.ts`
+  - Fetch raw inputs (Deribit, DB, etc.)
+  - Compute indicator series / raw numerics
+  - Return `{ loading, error, lastUpdated, refresh, ...computedValues }`
+
+5) **Create KPI hook (formats domain data into a card view-model)**
+- `src/hooks/kpis/use<Something>Kpi.ts`
+  - Return a view-model shaped like existing KPIs:
+    - `value: ReactNode`
     - `meta?: string`
-    - `errorMessage?: string`
-    - `rows: Row[]` for the mini table
-  - Row shape convention:
-    ```ts
-    type Row = {
-      id: string;
-      metric: string;
-      formatted: string;     // displayed text
-      value?: number | null; // raw numeric (preferred for persistence)
-    };
-    ```
+    - `extraBadge?: string | null`
+    - `guidanceValue?: number | null`
+    - `table?: { title: string; rows: { id; metric; value; asOf }[] }`
 
-5) **Create KPI card component (MUST use PersistedKpiCard)**
+6) **Create KPI card component (MUST use PersistedKpiCard)**
 - `src/kpiCards/cards/<NewCard>.tsx`
-  - Card must accept `({ kpi, context }: KpiCardComponentProps)`
-  - Card must render `PersistedKpiCard` and pass `kpi={kpi}` through
-  - Mini table must be passed via `footer={...}` (not children)
-  - `KpiMiniTable` must include `getKey={(r) => r.id}`
+  - Call your KPI hook, build a `KpiMiniTable` as `footer`
+  - Pass `infoKey={KPI_IDS.<newId>}` and `guidanceValue={vm.guidanceValue}`
 
-  Template:
-  ```tsx
-  export default function NewKpiCard({ kpi, context }: KpiCardComponentProps) {
-    const vm = useNewKpi(context);
-
-    const footer =
-      vm.rows?.length ? (
-        <KpiMiniTable
-          title="Details"
-          rows={vm.rows}
-          getKey={(r) => r.id}
-          columns={[
-            { id: "metric", header: "Metric", render: (r) => r.metric },
-            { id: "value", header: "Value", align: "right", render: (r) => r.formatted },
-          ]}
-        />
-      ) : undefined;
-
-    return (
-      <PersistedKpiCard
-        context={context}
-        kpi={kpi}
-        status={vm.status}
-        value={vm.value}
-        meta={vm.meta}
-        guidanceValue={vm.guidanceValue}
-        errorMessage={vm.errorMessage}
-        footer={footer}
-      />
-    );
-  }
-Register the card in the KPI registry
-
-src/kpiCards/registry.ts
-
-Import the new card
-
-Add mapping:
-
-ts
-Copy code
-[KPI_IDS.<newId>]: NewKpiCard
-If this step is missing (or the id mismatches), you’ll typically see only the title (fallback card).
+7) **Register the card**
+- `src/kpiCards/registry.ts`
+  - Add `[KPI_IDS.<newId>]: <NewCard>`
 
 Common failure modes
 Only the title shows: card not resolved (missing registry entry or KPI id mismatch).

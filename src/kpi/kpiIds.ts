@@ -3,6 +3,7 @@ export const KPI_IDS = {
   adx: "adx",
   atmIv: "atmIv",
   basis: "basis",
+  bbWidth20x2: "bb-width-20-2",
   boxFinancingSpread: "boxFinancingSpread",
   boxSlippage: "boxSlippage",
   boxSpread: "boxSpread",
