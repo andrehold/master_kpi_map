@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { toExpectedMoveRows, type ExpectedMoveStateLike as ExpectedMoveStateLikeLib } from "../../lib/expectedMoveMath";
 
 const EXPECTED_MOVE_PRIMARY_TENOR = 30;
 
@@ -9,7 +10,7 @@ export interface ExpectedMoveRow {
   pct: number | null;
 }
 
-export interface ExpectedMoveStateLike {
+export interface ExpectedMoveStateLike extends ExpectedMoveStateLikeLib {
   loading?: boolean;
   error?: unknown;
   asOf?: number | null;
@@ -49,7 +50,7 @@ export function useEmRibbonKpi(
   emContext: ExpectedMoveStateLike | null | undefined,
   locale: string
 ): EmRibbonKpiViewModel {
-  const rows = emContext?.rows ?? [];
+  const rows = emContext?.rows ?? toExpectedMoveRows(emContext);
   const sortedRows = [...rows].sort((a, b) => a.days - b.days);
   const primaryRow = sortedRows.find(
     (row) => row.days === EXPECTED_MOVE_PRIMARY_TENOR

@@ -56,6 +56,14 @@ All KPI cards must use `PersistedKpiCard` so values + meta + footer mini-tables 
 - `src/config/bands.base.ts`
   - Add `BAND_BASE[KPI_IDS.<newId>] = { valueScale, hasBar, thresholds: [{min?,max?,tone}] }`
   - If bands are used, the KPI hook should return a numeric `guidanceValue` on the same scale.
+  ### Guidance bands (BandSet + i18n)
+  - If your KPI uses the guidance band widget (i.e. `KPIMeta.bandsId` is set), you must also wire it into `Guidance.tsx`:
+  1) Add a BandSet entry in the band registry with the exact same id as `bandsId`.
+    - If you see: `Unknown bands id: <id>` → the band set registry is missing that key (or the id mismatches).
+  2) Add i18n text for the same id in every supported locale (at least `en`).
+    - If you see: `Missing i18n for <id> in en` → the band set exists, but the locale text entry is missing.
+
+Tip: Keep `bandsId` naming consistent (kebab-case preferred) to avoid subtle mismatches.
 
 4) **Create a domain hook (optional, recommended when you need fetched data or series math)**
 - `src/hooks/domain/use<Something>.ts`

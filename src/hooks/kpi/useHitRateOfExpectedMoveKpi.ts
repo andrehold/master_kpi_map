@@ -5,6 +5,7 @@ import {
   DvolPoint,
   PriceCandle,
 } from "../../services/deribit";
+import { emAbsFromSpotIv } from "../../lib/expectedMoveMath";
 
 export type HitRateOfExpectedMoveStatus = "loading" | "ready" | "error";
 
@@ -358,8 +359,7 @@ function computeHitRateOfExpectedMove(
     const spotEnd = end.spot!;
     const ivAnnual = start.ivPct! / 100; // to decimal
 
-    const em =
-      spotStart * ivAnnual * Math.sqrt(horizonDays / 365); // expected move
+    const em = emAbsFromSpotIv(spotStart, ivAnnual, horizonDays);
     const rm = Math.abs(spotEnd - spotStart); // realized move
 
     total += 1;
@@ -434,7 +434,7 @@ function computeTimeToFirstBreachFromMerged(
     const spotStart = start.spot!;
     const ivAnnual = start.ivPct! / 100;
 
-    const em = spotStart * ivAnnual * Math.sqrt(horizonDays / 365);
+    const em = emAbsFromSpotIv(spotStart, ivAnnual, horizonDays);
 
     let breached = false;
 

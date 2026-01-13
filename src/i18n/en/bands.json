@@ -752,5 +752,41 @@
         "guidance": "Strong trend; tight short-gamma structures are vulnerable—avoid or hedge aggressively."
       }
     ]
+  },
+  "bb-width-20-2": {
+    "title": "Bollinger Band Width (20,2)",
+    "unit": "%",
+    "bands": {
+      "good": {
+        "label": "Squeeze / very low",
+        "desc": "Volatility contraction → breakout risk in next ~5–15 days. Avoid selling tight; go wider/smaller or defined-risk."
+      },
+      "caution": {
+        "label": "Normal",
+        "desc": "Balanced regime. Still respect expansion risk; avoid getting too tight."
+      },
+      "avoid": {
+        "label": "Wide / elevated",
+        "desc": "Post-move expansion. Prefer defined risk, wider wings, or wait for stabilization."
+      }
+    }
+  },
+  "vwap_anchors": {
+    "title": "VWAP Anchors",
+    "unit": "%",
+    "bands": {
+      "good": {
+        "label": "Near anchor",
+        "desc": "Close to anchored VWAP → mean-reversion zone; premium selling often safer."
+      },
+      "caution": {
+        "label": "Stretched",
+        "desc": "Moderate deviation → trend risk rising. Prefer defined risk / wider."
+      },
+      "avoid": {
+        "label": "Very stretched",
+        "desc": "Large deviation → continuation or snapback risk. Avoid tight short-premium; reduce size or hedge."
+      }
+    }
   }
 }

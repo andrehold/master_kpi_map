@@ -1,3 +1,5 @@
+import { emAbsFromSpotIv } from "../../lib/expectedMoveMath";
+
 interface DailyIv {
     ts: number;
     closePct: number;   // annualized IV in percent
@@ -50,7 +52,7 @@ interface DailyIv {
   
       // 1) expected move for chosen horizon (1D or 7D)
       const iv = ivPct / 100;
-      const em = spot * iv * Math.sqrt(horizonDays / 365);
+      const em = emAbsFromSpotIv(spot, iv, horizonDays);
   
       // 2) realized move
       const rm = Math.abs(nextSpot - spot);

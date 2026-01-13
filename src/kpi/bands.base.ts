@@ -286,4 +286,15 @@ export const BAND_BASE: Record<string, BandBaseSet> = {
     ],
     note: "Bollinger Band Width (20,2) as % of mid-band. Low = squeeze/breakout risk; high + stabilizing often supports premium selling.",
   },
+
+  [KPI_IDS.vwapAnchors]: {
+    valueScale: "percent", // use whatever your system expects: "percent" / "number" / etc.
+    hasBar: true,
+    thresholds: [
+      // Tune thresholds to your model; these are sensible defaults for % distance to anchor
+      { tone: "good",    max: 0.5 },  // very close to anchor
+      { tone: "caution", max: 1.5 },  // moderately stretched
+      { tone: "avoid",   max: Infinity }, // far from anchor
+    ],
+  },
 };
