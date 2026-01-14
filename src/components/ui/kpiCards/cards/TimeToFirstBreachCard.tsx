@@ -2,6 +2,7 @@ import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import { KpiMiniTable } from "../../KpiMiniTable";
 import { KPI_IDS } from "../../../../kpi/kpiIds";
 import { useTimeToFirstBreachKpi } from "../../../../hooks/kpi";
+import { useKpiConfig } from "../../../../config/kpiConfig";
 import type { KpiCardComponentProps } from "../types";
 
 export default function TimeToFirstBreachCard({
@@ -10,7 +11,19 @@ export default function TimeToFirstBreachCard({
 }: KpiCardComponentProps) {
   const { locale } = context;
 
-  const vm = useTimeToFirstBreachKpi("BTC", { horizonDays: 1, lookbackDays: 30 });
+  const [cfg] = useKpiConfig();
+  const params = (cfg[KPI_IDS.emHitRate] ?? {}) as Record<string, unknown>;
+
+  const horizonDays =
+    typeof params.horizonDays === "number" && Number.isFinite(params.horizonDays)
+      ? Math.max(1, Math.round(params.horizonDays))
+      : 1;
+  const lookbackDays =
+    typeof params.lookbackDays === "number" && Number.isFinite(params.lookbackDays)
+      ? Math.max(1, Math.round(params.lookbackDays))
+      : 30;
+
+  const vm = useTimeToFirstBreachKpi("BTC", { horizonDays, lookbackDays });
 
   let value: any = vm.formatted;
   let meta: string | undefined = vm.message ?? "Avg time to first EM breach (1D horizon)";

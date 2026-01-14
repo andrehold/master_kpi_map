@@ -1,5 +1,5 @@
 // src/config/kpiConfig.ts
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { KPI_IDS, type KpiId } from "../kpi/kpiIds";
 
 //
@@ -127,6 +127,67 @@ export const KPI_CONFIG_DEFS: KpiConfigDefinition[] = [
       },
     ],
   },
+  // ---------------------- Expected Move Hit Rate ----------------------
+  {
+    kpiId: KPI_IDS.emHitRate,
+    label: "EM Hit Rate",
+    params: [
+      {
+        id: "horizonDays",
+        type: "number",
+        label: "Horizon",
+        description: "Realized move window (calendar days) used for EM and evaluation.",
+        defaultValue: 1,
+        min: 1,
+        max: 30,
+        step: 1,
+        unit: "days",
+      },
+      {
+        id: "lookbackDays",
+        type: "number",
+        label: "Lookback window",
+        description: "How many historical start points to evaluate.",
+        defaultValue: 30,
+        min: 5,
+        max: 365,
+        step: 1,
+        unit: "days",
+      },
+    ],
+  },
+
+  // ---------------------- Time to First Breach ----------------------
+
+  {
+    kpiId: KPI_IDS.timeToFirstBreach,
+    label: "Time to First Breach",
+    params: [
+      {
+        id: "horizonDays",
+        type: "number",
+        label: "Horizon",
+        description:
+          "Trade life (calendar days). Breach is searched within this horizon.",
+        defaultValue: 1,
+        min: 1,
+        max: 30,
+        step: 1,
+        unit: "days",
+      },
+      {
+        id: "lookbackDays",
+        type: "number",
+        label: "Lookback window",
+        description: "How many historical start points to evaluate.",
+        defaultValue: 30,
+        min: 5,
+        max: 365,
+        step: 1,
+        unit: "days",
+      },
+    ],
+  },
   // Add more KPIs here as they become configurable
 ];
 
@@ -203,6 +264,13 @@ function persistConfig(values: KpiConfigValues) {
 
 let currentConfig: KpiConfigValues | null = null;
 
+type ConfigListener = (next: KpiConfigValues) => void;
+const listeners = new Set<ConfigListener>();
+
+function notify(next: KpiConfigValues) {
+  for (const l of listeners) l(next);
+}
+
 function getOrInitConfig(): KpiConfigValues {
   if (!currentConfig) {
     currentConfig = loadInitialConfig();
@@ -213,6 +281,7 @@ function getOrInitConfig(): KpiConfigValues {
 function setConfig(next: KpiConfigValues) {
   currentConfig = next;
   persistConfig(next);
+  notify(next);
 }
 
 //
@@ -240,6 +309,15 @@ export function useKpiConfig(): [
   const [config, setLocalConfig] = useState<KpiConfigValues>(() =>
     getOrInitConfig()
   );
+
+  // Keep all hook consumers in sync
+useEffect(() => {
+  const listener: ConfigListener = (next) => setLocalConfig(next);
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}, []);
 
   const setParam = useCallback(
     (kpiId: KpiId, paramId: string, value: KpiParamValue) => {

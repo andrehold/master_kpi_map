@@ -2,6 +2,7 @@ import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import { KpiMiniTable } from "../../KpiMiniTable";
 import { KPI_IDS } from "../../../../kpi/kpiIds";
 import { useHitRateOfExpectedMoveKpi } from "../../../../hooks/kpi";
+import { useKpiConfig } from "../../../../config/kpiConfig";
 import type { KpiCardComponentProps } from "../types";
 
 export default function EmHitRateCard({
@@ -10,7 +11,19 @@ export default function EmHitRateCard({
 }: KpiCardComponentProps) {
   const { locale } = context;
 
-  const vm = useHitRateOfExpectedMoveKpi("BTC", { horizonDays: 1, lookbackDays: 30 });
+  const [cfg] = useKpiConfig();
+  const params = (cfg[KPI_IDS.emHitRate] ?? {}) as Record<string, unknown>;
+
+  const horizonDays =
+    typeof params.horizonDays === "number" && Number.isFinite(params.horizonDays)
+      ? Math.max(1, Math.round(params.horizonDays))
+      : 1;
+  const lookbackDays =
+    typeof params.lookbackDays === "number" && Number.isFinite(params.lookbackDays)
+      ? Math.max(1, Math.round(params.lookbackDays))
+      : 30;
+
+  const vm = useHitRateOfExpectedMoveKpi("BTC", { horizonDays, lookbackDays });
 
   let value: any = vm.formatted;
   let meta: string | undefined = vm.message ?? "Hit rate of 1D expected move";
