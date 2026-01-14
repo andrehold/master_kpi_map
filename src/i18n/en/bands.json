@@ -755,38 +755,42 @@
   },
   "bb-width-20-2": {
     "title": "Bollinger Band Width (20,2)",
-    "unit": "%",
-    "bands": {
-      "good": {
-        "label": "Squeeze / very low",
-        "desc": "Volatility contraction → breakout risk in next ~5–15 days. Avoid selling tight; go wider/smaller or defined-risk."
+    "description": "Volatility contraction/expansion regime via BB width (20,2).",
+    "bands": [
+      {
+        "label": "<8% (squeeze)",
+        "guidance": "Volatility contraction → breakout risk over the next ~5–15 days. Avoid selling tight; if short premium, go wider/smaller or use defined-risk."
       },
-      "caution": {
-        "label": "Normal",
-        "desc": "Balanced regime. Still respect expansion risk; avoid getting too tight."
+      {
+        "label": "8–16% (low)",
+        "guidance": "Still relatively compressed. Be careful with tight condors/strangles; prefer wider wings and smaller size."
       },
-      "avoid": {
-        "label": "Wide / elevated",
-        "desc": "Post-move expansion. Prefer defined risk, wider wings, or wait for stabilization."
+      {
+        "label": "16–28% (normal)",
+        "guidance": "Balanced regime. Premium selling is usually more stable, but keep room for expansion."
+      },
+      {
+        "label": "≥28% (wide / post-move)",
+        "guidance": "Expansion/post-move digestion. Can be good for premium selling *if* it’s stabilizing; prefer defined-risk and avoid getting greedy on tight wings."
       }
-    }
+    ]
   },
   "vwap_anchors": {
     "title": "VWAP Anchors",
-    "unit": "%",
-    "bands": {
-      "good": {
+    "description": "Distance to anchored VWAP (mode-dependent).",
+    "bands": [
+      {
         "label": "Near anchor",
-        "desc": "Close to anchored VWAP → mean-reversion zone; premium selling often safer."
+        "guidance": "Price is close to anchored VWAP → mean-reversion zone; premium selling often behaves better (still watch trend filters)."
       },
-      "caution": {
+      {
         "label": "Stretched",
-        "desc": "Moderate deviation → trend risk rising. Prefer defined risk / wider."
+        "guidance": "Moderate deviation → trend risk rising. Prefer defined-risk, wider wings, and smaller size."
       },
-      "avoid": {
+      {
         "label": "Very stretched",
-        "desc": "Large deviation → continuation or snapback risk. Avoid tight short-premium; reduce size or hedge."
+        "guidance": "Large deviation → continuation or snapback risk. Avoid tight short-gamma; reduce size, widen, or hedge."
       }
-    }
+    ]
   }
 }

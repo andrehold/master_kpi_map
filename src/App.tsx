@@ -47,7 +47,7 @@ export default function MasterKPIMapDemo() {
   );
 
   const [samples, setSamples] = useState<Samples>(() => buildSamples(KPI_GROUPS));
-  const [theme, setTheme] = useState<ThemeKey>("light");
+  const [theme, setTheme] = useState<ThemeKey>("dark");
   const [showConfig, setShowConfig] = useState(false);
   const [showDb, setShowDb] = useState(false);
 
