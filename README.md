@@ -89,7 +89,101 @@ Tip: Keep `bandsId` naming consistent (kebab-case preferred) to avoid subtle mis
 - `src/kpiCards/registry.ts`
   - Add `[KPI_IDS.<newId>]: <NewCard>`
 
-Common failure modes
+
+## Making a KPI configurable (KPI Configuration overlay)
+
+Some KPIs have “knobs” that should be user-adjustable (e.g., lookback window, horizon days, tenors, bands, etc.). The project supports this via a small config registry + an overlay UI. Config is stored **per-browser** in `localStorage` (key: `kpi-config.v1`) and does **not** go to the DB.
+
+### Checklist
+
+1) **Make sure the KPI has a stable id**
+- `src/kpi/kpiIds.ts`
+  - Add / confirm `KPI_IDS.<yourKpi>` exists
+  - You’ll use this id in the config registry
+
+2) **Add a config definition (this makes it show up in the overlay)**
+- `src/config/kpiConfig.ts`
+  - Add a new entry to `KPI_CONFIG_DEFS`
+  - Each entry has:
+    - `kpiId`: the KPI id (from `KPI_IDS`)
+    - `label`: section title shown in the overlay
+    - `params`: array of param descriptors (currently supported types: `"number"`, `"string"`, `"number[]"`)
+
+Example:
+
+```ts
+// src/config/kpiConfig.ts
+import { KPI_IDS } from "../kpi/kpiIds";
+
+export const KPI_CONFIG_DEFS = [
+  // ...
+  {
+    kpiId: KPI_IDS.emHitRate,
+    label: "EM Hit Rate",
+    params: [
+      {
+        id: "horizonDays",
+        type: "number",
+        label: "Horizon",
+        description: "Realized move window (calendar days).",
+        defaultValue: 1,
+        min: 1,
+        max: 30,
+        step: 1,
+        unit: "days",
+      },
+      {
+        id: "lookbackDays",
+        type: "number",
+        label: "Lookback window",
+        description: "How many historical start points to evaluate.",
+        defaultValue: 30,
+        min: 5,
+        max: 365,
+        step: 1,
+        unit: "days",
+      },
+    ],
+  },
+];
+```
+
+3) **Read the config values inside the KPI hook or card**
+Use `getKpiParam()` (or `getKpiParamsFor()`) to read values. Always provide a fallback default.
+
+```ts
+import { getKpiParam } from "../../config/kpiConfig";
+import { KPI_IDS } from "../../kpi/kpiIds";
+
+const horizonDays = getKpiParam<number>(KPI_IDS.emHitRate, "horizonDays") ?? 1;
+const lookbackDays = getKpiParam<number>(KPI_IDS.emHitRate, "lookbackDays") ?? 30;
+```
+
+For arrays:
+
+```ts
+const tenors = getKpiParam<number[]>(KPI_IDS.atmIv, "extraTenors") ?? [7, 30, 60];
+```
+
+4) **Validate / normalize before using**
+Even though the overlay clamps numeric inputs, your KPI hook/card should still:
+- clamp to sane minimums
+- round values that represent “days” (`Math.round`)
+- handle missing values via defaults
+
+5) **Optional: show the chosen params in the KPI card**
+Recommended for transparency. Add a footer row such as:
+- Horizon: `1D`
+- Lookback: `30D`
+- Tenors: `4, 7, 21, 30, 60`
+
+### Common failure modes (config)
+
+- **Config section doesn’t show up:** missing entry in `KPI_CONFIG_DEFS` or `kpiId` mismatch.
+- **Param always uses defaults:** `param.id` mismatch between registry and the code reading it.
+- **Config changes don’t apply:** KPI does not re-render after changing config (ensure the config hook is reactive or config values are part of the renderer context).
+
+### Common failure modes
 Only the title shows: card not resolved (missing registry entry or KPI id mismatch).
 
 Card resolved but empty: hook stuck in loading/error, or footer not set because rows are empty.
@@ -98,7 +192,8 @@ Mini table error: missing getKey prop.
 
 Persistence missing table data: mini table rendered as children instead of footer, or row fields don’t include formatted/value.
 
-pgsql
-Copy code
+If you want it even more foolproof, add a tiny “KPI quick self-test” while building:
 
-If you want it even more foolproof, add a tiny “KPI quick self-test” note to the README: temporarily render `value={vm.value ?? "Loading…"}` and `meta={vm.errorMessage ?? vm.meta}` — if you still only see the title, it’s definitely a registry/id mismatch.
+- Temporarily render `JSON.stringify(vm)` inside the card to confirm the hook returns data.
+- Add a single hardcoded footer row (one `KpiMiniTable` row) to confirm persistence wiring.
+- Once it works, remove the debug output and switch to real rows.
