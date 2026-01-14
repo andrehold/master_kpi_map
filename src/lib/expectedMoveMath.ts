@@ -12,15 +12,19 @@ export type ExpectedMoveRow = {
   export type ExpectedMoveStateLike = {
     asOf?: number | string | null;
     currency?: string;
-    indexPrice?: number | null; // spot
+  
+    // spot aliases
+    indexPrice?: number | null;
     spot?: number | null;
     price?: number | null;
   
-    // common domain shape you showed:
+    // curve points (preferred)
     points?: ExpectedMovePointLike[] | null;
-    em?: number | null; // primary tenor expected move (usually abs $)
   
-    // sometimes already normalized:
+    // IMPORTANT: can be number OR object OR tenor-map depending on your domain hook
+    em?: unknown;
+  
+    // sometimes already normalized
     rows?: ExpectedMoveRow[] | null;
   
     loading?: boolean;
@@ -33,8 +37,8 @@ export type ExpectedMoveRow = {
     spot: number | null;
     expiryTs: number | null;
   
-    emAbs: number | null;   // $ move
-    emPct: number | null;   // decimal
+    emAbs: number | null; // $ move
+    emPct: number | null; // decimal
     ivAnnDec: number | null; // annualized IV decimal (0.55 = 55%)
   
     source: "point" | "state" | "none";
@@ -74,19 +78,39 @@ export type ExpectedMoveRow = {
     return iv;
   }
   
+  function parseTenorToDays(s: string): number | null {
+    const m = s.trim().match(/^(\d+(?:\.\d+)?)\s*([DWM])$/i);
+    if (!m) return null;
+    const n = Number(m[1]);
+    if (!Number.isFinite(n)) return null;
+    const u = m[2].toUpperCase();
+    if (u === "D") return Math.round(n);
+    if (u === "W") return Math.round(n * 7);
+    if (u === "M") return Math.round(n * 30);
+    return null;
+  }
+  
   function pointDays(p: ExpectedMovePointLike): number | null {
-    const d = pickNum(p?.days, p?.horizonDays, p?.tenorDays, p?.d, p?.tDays);
-    return isNum(d) ? d : null;
+    const d = pickNum(p?.days, p?.horizonDays, p?.tenorDays, p?.d, p?.tDays, p?.dte);
+    if (isNum(d)) return d;
+  
+    const label =
+      (typeof p?.tenor === "string" && p.tenor) ||
+      (typeof p?.label === "string" && p.label) ||
+      (typeof p?.term === "string" && p.term) ||
+      (typeof p?.name === "string" && p.name) ||
+      null;
+  
+    if (label) return parseTenorToDays(label);
+    return null;
   }
   
   function pickClosestPoint(points: ExpectedMovePointLike[], days: number): ExpectedMovePointLike | null {
     if (!points.length) return null;
   
-    // exact match first
     const exact = points.find((p) => pointDays(p) === days);
     if (exact) return exact;
   
-    // else closest
     let best: ExpectedMovePointLike | null = null;
     let bestDist = Infinity;
   
@@ -102,16 +126,133 @@ export type ExpectedMoveRow = {
     return best;
   }
   
-  function interpretEmValue(emVal: number, spot: number | null): { emAbs: number | null; emPct: number | null } {
+  function interpretEmNumber(
+    emVal: number,
+    spot: number | null
+  ): { emAbs: number | null; emPct: number | null } {
     if (!isNum(emVal)) return { emAbs: null, emPct: null };
   
-    // Heuristic:
-    // - if spot is "large" and emVal is small (<~3), it's probably a pct (0.06 = 6%)
-    // - otherwise treat as absolute dollars
-    if (spot != null && spot > 20 && emVal <= 3) {
-      return { emAbs: spot * emVal, emPct: emVal };
+    // Heuristics for BTC/ETH:
+    // - <= 3 : likely decimal pct (0.06 = 6%)
+    // - 3..150 : often percent pct (6 = 6%)
+    // - else : absolute dollars
+    if (spot != null && spot > 20) {
+      if (emVal <= 3) {
+        return { emAbs: spot * emVal, emPct: emVal };
+      }
+      if (emVal <= 150) {
+        const pct = emVal / 100;
+        return { emAbs: spot * pct, emPct: pct };
+      }
     }
+  
     return { emAbs: emVal, emPct: spot != null && spot > 0 ? emVal / spot : null };
+  }
+  
+  function interpretEmObject(
+    emObj: any,
+    spot: number | null
+  ): { emAbs: number | null; emPct: number | null } {
+    if (!emObj || typeof emObj !== "object") return { emAbs: null, emPct: null };
+  
+    // direct abs/pct fields
+    const abs = pickNum(
+      emObj.abs,
+      emObj.emAbs,
+      emObj.expectedMoveAbs,
+      emObj.expectedMoveUsd,
+      emObj.moveUsd,
+      emObj.moveAbs,
+      emObj.usd
+    );
+  
+    const pct = pickNum(
+      emObj.pct,
+      emObj.emPct,
+      emObj.expectedMovePct,
+      emObj.movePct,
+      emObj.pctMove
+    );
+  
+    if (abs != null || pct != null) {
+      return {
+        emAbs: abs ?? (pct != null && spot != null ? spot * pct : null),
+        emPct: pct ?? (abs != null && spot != null && spot > 0 ? abs / spot : null),
+      };
+    }
+  
+    // common single-value containers
+    const v = pickNum(emObj.value, emObj.em, emObj.move, emObj.expectedMove);
+    if (v != null) return interpretEmNumber(v, spot);
+  
+    return { emAbs: null, emPct: null };
+  }
+  
+  function pickFromTenorMap(
+    emMap: Record<string, any>,
+    days: number,
+    spot: number | null
+  ): { emAbs: number | null; emPct: number | null } {
+    // keys like "5D", "1W", "30D"
+    const entries: Array<{ d: number; v: any }> = [];
+    for (const [k, v] of Object.entries(emMap)) {
+      const d = parseTenorToDays(k);
+      if (d != null) entries.push({ d, v });
+    }
+    if (!entries.length) return { emAbs: null, emPct: null };
+  
+    // closest key
+    let best = entries[0];
+    let bestDist = Math.abs(best.d - days);
+    for (const e of entries) {
+      const dist = Math.abs(e.d - days);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = e;
+      }
+    }
+  
+    if (isNum(best.v)) return interpretEmNumber(best.v, spot);
+    if (best.v && typeof best.v === "object") return interpretEmObject(best.v, spot);
+    return { emAbs: null, emPct: null };
+  }
+  
+  function interpretEmAny(
+    emAny: any,
+    days: number,
+    spot: number | null
+  ): { emAbs: number | null; emPct: number | null } {
+    if (isNum(emAny)) return interpretEmNumber(emAny, spot);
+  
+    if (Array.isArray(emAny)) {
+      // treat as points-like list
+      const p = pickClosestPoint(emAny as any[], days);
+      if (!p) return { emAbs: null, emPct: null };
+  
+      const abs0 = pickNum(p?.abs, p?.emAbs, p?.expectedMoveAbs, p?.expectedMoveUsd, p?.moveUsd);
+      const pct0 = pickNum(p?.pct, p?.emPct, p?.expectedMovePct, p?.movePct);
+  
+      const spot2 = pickNum(p?.indexPrice, p?.spot, p?.price, spot) ?? null;
+  
+      const fromEm =
+        p?.em != null ? interpretEmAny(p.em, days, spot2) : { emAbs: null, emPct: null };
+  
+      return {
+        emAbs: abs0 ?? fromEm.emAbs,
+        emPct: pct0 ?? fromEm.emPct,
+      };
+    }
+  
+    if (emAny && typeof emAny === "object") {
+      // if it looks like a tenor-map (keys like "5D"/"1W"), try that
+      const tenorPicked = pickFromTenorMap(emAny as any, days, spot);
+      if (tenorPicked.emAbs != null || tenorPicked.emPct != null) return tenorPicked;
+  
+      // otherwise interpret as object
+      return interpretEmObject(emAny, spot);
+    }
+  
+    return { emAbs: null, emPct: null };
   }
   
   /**
@@ -131,42 +272,53 @@ export type ExpectedMoveRow = {
     const points = Array.isArray(state?.points) ? state!.points! : [];
     const p = pickClosestPoint(points, days);
   
-    const spot = pickNum(
-      p?.indexPrice,
-      p?.spot,
-      p?.price,
-      state?.indexPrice,
-      state?.spot,
-      state?.price
-    ) ?? null;
+    const spot =
+      pickNum(p?.indexPrice, p?.spot, p?.price, state?.indexPrice, state?.spot, state?.price) ?? null;
   
     const expiryTs =
       pickNum(p?.expiryTs, p?.expirationTs, p?.expiration_timestamp, p?.expiry, p?.expiration) ?? null;
   
-    // Try to get abs/pct explicitly from point/rows-style fields
+    // explicit abs/pct from point
     const abs0 = pickNum(p?.abs, p?.emAbs, p?.expectedMoveAbs, p?.expectedMoveUsd, p?.moveUsd);
     const pct0 = pickNum(p?.pct, p?.emPct, p?.expectedMovePct, p?.movePct);
   
-    // If there is a generic `em` value, interpret it (abs vs pct)
-    const emVal = pickNum(p?.em, state?.em);
-    const emInterp = isNum(emVal) ? interpretEmValue(emVal, spot) : { emAbs: null, emPct: null };
+    // interpret `em` from point or state (number/object/map/array)
+    const fromEm = interpretEmAny(p?.em ?? state?.em, days, spot);
   
-    let emAbs = abs0 ?? emInterp.emAbs;
-    let emPct = pct0 ?? emInterp.emPct;
+    let emAbs = abs0 ?? fromEm.emAbs;
+    let emPct = pct0 ?? fromEm.emPct;
   
-    // Fill missing side using spot
     if (emAbs == null && emPct != null && spot != null) emAbs = spot * emPct;
     if (emPct == null && emAbs != null && spot != null && spot > 0) emPct = emAbs / spot;
   
-    // Try IV if present, else infer from emAbs/spot
-    const ivRaw = pickNum(p?.iv, p?.atmIv, p?.markIv, p?.mark_iv, state as any);
+    // IV: prefer explicit if present, else infer from emPct (best), else from emAbs+spot
+    const ivRaw = pickNum(
+      // point-level
+      p?.ivAnnDec,
+      p?.ivAnn,
+      p?.iv,
+      p?.atmIv,
+      p?.atm_iv,
+      p?.markIv,
+      p?.mark_iv,
+      p?.atmMarkIv,
+      p?.atm_mark_iv,
+      // state-level
+      (state as any)?.ivAnnDec,
+      (state as any)?.ivAnn,
+      (state as any)?.iv,
+      (state as any)?.atmIv,
+      (state as any)?.atm_iv,
+      (state as any)?.markIv,
+      (state as any)?.mark_iv
+    );
+  
     const iv0 = normalizeIvDec(ivRaw);
   
     const ivAnnDec =
       iv0 ??
-      (emAbs != null && spot != null && spot > 0
-        ? ivAnnFromEmAbs(emAbs, spot, days)
-        : null);
+      (emPct != null ? ivAnnFromEmPct(emPct, days) : null) ??
+      (emAbs != null && spot != null && spot > 0 ? ivAnnFromEmAbs(emAbs, spot, days) : null);
   
     const source: PickedExpectedMove["source"] = p ? "point" : (state?.em != null ? "state" : "none");
   
@@ -187,9 +339,7 @@ export type ExpectedMoveRow = {
    * - If `state.rows` exists, returns it.
    * - Else maps `points` to {days, expiryTs, abs, pct}.
    */
-  export function toExpectedMoveRows(
-    state: ExpectedMoveStateLike | null | undefined
-  ): ExpectedMoveRow[] {
+  export function toExpectedMoveRows(state: ExpectedMoveStateLike | null | undefined): ExpectedMoveRow[] {
     const rows = state?.rows;
     if (Array.isArray(rows) && rows.length) return rows;
   
@@ -202,16 +352,16 @@ export type ExpectedMoveRow = {
       const d = pointDays(p);
       if (d == null) continue;
   
-      const spot = pickNum(p?.indexPrice, p?.spot, p?.price, state?.indexPrice, state?.spot, state?.price) ?? null;
+      const spot =
+        pickNum(p?.indexPrice, p?.spot, p?.price, state?.indexPrice, state?.spot, state?.price) ?? null;
   
       const abs0 = pickNum(p?.abs, p?.emAbs, p?.expectedMoveAbs, p?.expectedMoveUsd, p?.moveUsd);
       const pct0 = pickNum(p?.pct, p?.emPct, p?.expectedMovePct, p?.movePct);
   
-      const emVal = pickNum(p?.em);
-      const emInterp = isNum(emVal) ? interpretEmValue(emVal, spot) : { emAbs: null, emPct: null };
+      const fromEm = interpretEmAny(p?.em, d, spot);
   
-      let abs = abs0 ?? emInterp.emAbs;
-      let pct = pct0 ?? emInterp.emPct;
+      let abs = abs0 ?? fromEm.emAbs;
+      let pct = pct0 ?? fromEm.emPct;
   
       if (abs == null && pct != null && spot != null) abs = spot * pct;
       if (pct == null && abs != null && spot != null && spot > 0) pct = abs / spot;

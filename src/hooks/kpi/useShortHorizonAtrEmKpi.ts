@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { atrWilderLast, windowBarsFromDays, type OhlcCandle } from "../../lib/ohlc";
+import { pickEmForDays } from "../../lib/expectedMoveMath";
 import { usePerpHistory } from "../domain/usePerpHistory";
 import { useExpectedMove } from "../domain/useExpectedMove";
-import { pickEmForDays } from "../../lib/expectedMoveMath";
 
 export type AtrEmRow = {
   id: string;
@@ -34,15 +34,15 @@ export interface UseShortHorizonAtrEmKpiOptions {
   resolutionSec?: number;
 }
 
-function fmt0(v?: number): string {
+function fmt0(v?: number | null): string {
   if (v == null || !Number.isFinite(v)) return "—";
   return v.toFixed(0);
 }
-function fmt2(v?: number): string {
+function fmt2(v?: number | null): string {
   if (v == null || !Number.isFinite(v)) return "—";
   return v.toFixed(2);
 }
-function pct1(v?: number): string {
+function pct1(v?: number | null): string {
   if (v == null || !Number.isFinite(v)) return "—";
   return `${(v * 100).toFixed(1)}%`;
 }
@@ -61,7 +61,7 @@ function metaForRatio(r?: number): string | undefined {
 /**
  * Short-horizon ATR / Expected Move
  * - ATR computed from PERP OHLC (Wilder)
- * - EM + implied IV derived via pickEmForDays(useExpectedMove(...), horizonDays)
+ * - EM/IV comes from useExpectedMove via pickEmForDays()
  */
 export function useShortHorizonAtrEmKpi(
   opts: UseShortHorizonAtrEmKpiOptions = {}
@@ -73,14 +73,9 @@ export function useShortHorizonAtrEmKpi(
     resolutionSec = 86400,
   } = opts;
 
-  // Domain hooks (no new domain hook needed)
-  const ph = usePerpHistory as any;
-  const emh = useExpectedMove as any;
+  const perp = (usePerpHistory as any)({ currency, limit: 500, resolutionSec }) as any;
+  const emState = (useExpectedMove as any)({ currency, horizonDays }) as any;
 
-  const perp = ph({ currency, limit: 500, resolutionSec }) as any;
-  const emState = emh({ currency, horizonDays }) as any;
-
-  // ---- Candles (PERP OHLC)
   const candles: OhlcCandle[] | undefined =
     (perp?.candles ?? perp?.history ?? perp?.data ?? perp?.series) as any;
 
@@ -94,29 +89,21 @@ export function useShortHorizonAtrEmKpi(
     return Math.max(a ?? 0, b ?? 0);
   })();
 
-  // ---- Expected move bundle for this horizon (spot + emAbs + inferred annual IV)
+  // ✅ unified extraction (handles em as number/object/map)
   const picked = pickEmForDays(emState, horizonDays);
 
-  const spot: number | undefined = picked.spot ?? undefined;
-  const expectedMove: number | undefined = picked.emAbs ?? undefined; // absolute move in price units
-  const atmIvDec: number | undefined = picked.ivAnnDec ?? undefined;  // annualized IV (decimal)
+  const spot = picked.spot ?? null;
+  const expectedMove = picked.emAbs ?? null;
+  const atmIvDec = picked.ivAnnDec ?? null;
 
-  const asOf =
-    typeof picked.asOf === "string" && picked.asOf
-      ? picked.asOf
-      : asDate(lastUpdated);
-
-  // ---- ATR
+  // ATR
   const periodBars = windowBarsFromDays(atrDays, resolutionSec);
   const atr: number | undefined = candles ? atrWilderLast(candles, periodBars) : undefined;
 
-  // ---- Ratio
+  // Ratio
   const ratio =
-    atr != null && expectedMove != null && expectedMove > 0
-      ? atr / expectedMove
-      : undefined;
+    atr != null && expectedMove != null && expectedMove > 0 ? atr / expectedMove : undefined;
 
-  // ---- Value/meta/badge
   let value: ReactNode = ratio == null ? "—" : `${fmt2(ratio)}×`;
   let meta: string | undefined;
   let extraBadge: string | null = `${horizonDays}d`;
@@ -132,21 +119,21 @@ export function useShortHorizonAtrEmKpi(
     meta = metaForRatio(ratio);
   }
 
-  if (loading && typeof ratio === "number") extraBadge = "Refreshing…";
-
-  // If not loading/error but still missing, surface what's missing (debuggable, user-visible)
   if (!loading && !error && ratio == null) {
     meta =
       (candles ? "" : "no candles; ") +
       (spot == null ? "no spot; " : "") +
       (atmIvDec == null ? "no ATM IV; " : "") +
       (expectedMove == null ? "no EM; " : "") +
-      (atr == null ? "no ATR; " : "");
+      (atr == null ? "no ATR; " : "") +
+      ` (em source: ${picked.source})`;
   }
+
+  const asOf = asDate(lastUpdated);
 
   const rows: AtrEmRow[] = [
     { id: "spot", metric: "Spot", value: fmt0(spot), asOf },
-    { id: "atmIv", metric: "ATM IV", value: pct1(atmIvDec), asOf },
+    { id: "atmIv", metric: "ATM IV (ann.)", value: pct1(atmIvDec), asOf },
     { id: "atr", metric: `ATR (${atrDays}D)`, value: fmt0(atr), asOf },
     { id: "em", metric: `${horizonDays}D Expected Move`, value: fmt0(expectedMove), asOf },
     { id: "ratio", metric: "ATR / EM", value: ratio == null ? "—" : `${fmt2(ratio)}×`, asOf },

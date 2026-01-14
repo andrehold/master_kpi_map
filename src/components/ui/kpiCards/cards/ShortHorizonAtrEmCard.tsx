@@ -19,11 +19,6 @@ export default function ShortHorizonAtrEmCard({ kpi, context }: KpiCardComponent
     resolutionSec: 86400,
   });
 
-  let value: any = vm.value ?? "—";
-  let meta: string | undefined = vm.meta ?? "Short-horizon ATR / EM";
-  let extraBadge: string | null = vm.extraBadge ?? null;
-  let guidanceValue: number | null = vm.guidanceValue ?? null;
-
   let footer: any;
   if (vm.table?.rows?.length) {
     type Row = (typeof vm.table.rows)[number];
@@ -42,12 +37,12 @@ export default function ShortHorizonAtrEmCard({ kpi, context }: KpiCardComponent
       context={context}
       kpi={kpi}
       locale={locale}
-      value={value}
-      meta={meta}
-      extraBadge={extraBadge}
+      value={vm.value ?? "—"}
+      meta={vm.meta ?? "Short-horizon ATR / EM"}
+      extraBadge={vm.extraBadge ?? null}
       footer={footer}
       infoKey={KPI_IDS.shortHorizonAtr}
-      guidanceValue={guidanceValue}
+      guidanceValue={vm.guidanceValue ?? null}
     />
   );
 }
