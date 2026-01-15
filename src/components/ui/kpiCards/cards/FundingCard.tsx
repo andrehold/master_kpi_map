@@ -1,14 +1,13 @@
+// src/kpiCards/cards/FundingCard.tsx
 import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import { KpiMiniTable } from "../../KpiMiniTable";
+import { KPI_IDS } from "../../../../kpi/kpiIds";
 import { metricValueAsOfColumns } from "../tablePresets";
 import type { KpiCardComponentProps } from "../types";
-import { KPI_IDS } from "../../../../kpi/kpiIds";
-import { useFundingKpi } from "../../../../hooks/kpi/useFundingKpi"; // adjust if your path differs
+import { useFundingKpi } from "../../../../hooks/kpi/useFundingKpi";
 
 export default function FundingCard({ kpi, context }: KpiCardComponentProps) {
-  const { locale } = context;
-
-  const vm = useFundingKpi({ locale });
+  const vm = useFundingKpi({ locale: context.locale });
 
   let footer: any;
   if (vm.table?.rows?.length) {
@@ -17,7 +16,7 @@ export default function FundingCard({ kpi, context }: KpiCardComponentProps) {
       <KpiMiniTable<Row>
         title={vm.table.title}
         rows={vm.table.rows}
-        getKey={(r) => r.id}
+        getKey={(r) => (r as any).id}
         columns={metricValueAsOfColumns<Row>()}
       />
     );
@@ -27,13 +26,13 @@ export default function FundingCard({ kpi, context }: KpiCardComponentProps) {
     <PersistedKpiCard
       context={context}
       kpi={kpi}
-      locale={locale}
+      locale={context.locale}
       value={vm.value ?? "—"}
       meta={vm.meta}
       extraBadge={vm.extraBadge ?? null}
       footer={footer}
-      infoKey={KPI_IDS.funding}                 // ✅ enables guidance rendering
-      guidanceValue={vm.guidanceValue ?? null}  // ✅ drives the band bar
+      infoKey={KPI_IDS.funding}
+      guidanceValue={vm.guidanceValue ?? null}
     />
   );
 }
