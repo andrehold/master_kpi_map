@@ -180,23 +180,24 @@
     ]
   },
   "funding": {
-    "title": "Perpetual Funding (ann.)",
-    "description": "Annualized funding rate on perpetual swaps.",
+    "title": "Funding pressure (z-score)",
+    "description": "How extreme the current 8h perp funding is versus its recent distribution. Magnitude = crowding; direction is shown by the z-score sign in the mini-table.",
     "bands": [
       {
-        "label": "<−10%",
-        "guidance": "Paying heavily to be long; consider structural shorts or arbitrage."
+        "label": "< 1σ",
+        "guidance": "Normal positioning/carry. Funding is not a major risk filter."
       },
       {
-        "label": "−10% to +10%",
-        "guidance": "Neutral; funding not a primary driver."
+        "label": "1–2σ",
+        "guidance": "Crowding building. For neutral short-gamma, size down and/or widen wings; prefer defined-risk."
       },
       {
-        "label": ">+10%",
-        "guidance": "Getting paid to be long; watch for crowded positioning."
+        "label": "≥ 2σ",
+        "guidance": "Extreme crowding. Treat as elevated snapback risk; avoid tight neutral shorts. Check sign: +z = upside crowding, −z = downside crowding."
       }
     ]
   },
+
   "eventWindow": {
     "title": "Macro Event Window",
     "description": "Days to next major macro event.",

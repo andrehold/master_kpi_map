@@ -178,15 +178,15 @@ export const BAND_BASE: Record<string, BandBaseSet> = {
   },
 
   [KPI_IDS.funding]: {
-    valueScale: "percent",
+    valueScale: "raw",
     hasBar: true,
     thresholds: [
-      { max: -10, tone: "avoid" },     // heavily negative funding
-      { min: -10, max: 10, tone: "neutral" },
-      { min: 10, tone: "caution" },    // very positive funding (crowded longs)
+      { max: 1, tone: "good" },           // <1σ: normal
+      { min: 1, max: 2, tone: "caution" },// 1–2σ: crowded building
+      { min: 2, tone: "avoid" },          // ≥2σ: extreme crowding
     ],
-    note: "Annualized perpetual funding rate. Very negative = paying to be long; very positive = crowded long positioning.",
-  },
+    note: "Funding pressure measured as |z-score| of current 8h funding vs recent history. Use sign in the mini-table: +z = upside crowding, -z = downside crowding.",
+  },  
 
   [KPI_IDS.basis]: {
     valueScale: "percent",
