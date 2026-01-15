@@ -282,18 +282,91 @@ function buildTrackGradientForSet(set: BandSet) {
 export function BandBar({ value, set }: { value?: number | null; set: BandSet }) {
   if (!set.hasBar) return null;
 
-  const p = set.valueScale === "percent" ? clampPercent(value) : undefined;
-  const pc = typeof p === "number" ? Math.min(98.5, Math.max(1.5, p)) : undefined;
+  function finite(n: any): n is number {
+    return typeof n === "number" && Number.isFinite(n);
+  }
+
+  function clampMarkerPc(pc: number) {
+    return Math.min(98.5, Math.max(1.5, pc));
+  }
+
+  function deriveRangeFromBands(
+    bands: Array<{ min?: number; max?: number }>,
+    v: number | null | undefined
+  ) {
+    const mins: number[] = [];
+    const maxs: number[] = [];
+    let hasOpenLow = false;
+    let hasOpenHigh = false;
+
+    for (const b of bands) {
+      if (finite(b.min)) mins.push(b.min);
+      else hasOpenLow = true;
+
+      if (finite(b.max)) maxs.push(b.max);
+      else hasOpenHigh = true;
+    }
+
+    // Base range from thresholds (fallbacks if missing)
+    let lo =
+      mins.length > 0 ? Math.min(...mins) : 0;
+
+    let hi =
+      maxs.length > 0
+        ? Math.max(...maxs)
+        : mins.length > 0
+          ? Math.max(...mins) + 1
+          : 1;
+
+    // If we have an open-low band, 0 is usually a sensible baseline for "raw" scales (e.g., |z|)
+    if (hasOpenLow) lo = Math.min(lo, 0);
+
+    // Ensure current value fits (helps open-ended top band)
+    if (finite(v)) {
+      lo = Math.min(lo, v);
+      hi = Math.max(hi, v);
+    }
+
+    // Degenerate safety
+    if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi <= lo) {
+      lo = 0;
+      hi = 1;
+    }
+
+    // Small padding so marker doesn’t hug the edges (especially for open-ended bands)
+    const span = hi - lo;
+    const pad = span * 0.05;
+    if (pad > 0) {
+      lo -= pad;
+      hi += pad;
+    }
+
+    return { lo, hi };
+  }
+
+  function valueToMarkerPc(v: number | null | undefined, set: BandSet): number | undefined {
+    if (!finite(v)) return undefined;
+
+    if (set.valueScale === "percent") {
+      const p = clampPercent(v); // expected to return 0..100
+      return clampMarkerPc(p);
+    }
+
+    // raw/other: map to 0..100 based on band threshold span
+    const { lo, hi } = deriveRangeFromBands(set.bands, v);
+    const pc = ((v - lo) / (hi - lo)) * 100;
+    if (!Number.isFinite(pc)) return undefined;
+    return clampMarkerPc(pc);
+  }
+
+  const pc = React.useMemo(() => valueToMarkerPc(value ?? null, set), [value, set]);
 
   const active = bandFor(value ?? null, set.bands);
 
   // Marker should be white
   const markerWhite = "rgba(255,255,255,0.92)";
 
-  const trackGradient = React.useMemo(
-    () => buildTrackGradientForSet(set),
-    [set]
-  );
+  const trackGradient = React.useMemo(() => buildTrackGradientForSet(set), [set]);
 
   return (
     // OUTER wrapper: allows indicator to overflow (no cropping)
@@ -314,9 +387,9 @@ export function BandBar({ value, set }: { value?: number | null; set: BandSet })
           }}
         />
       </div>
-  
+
       {/* INDICATOR (white): rendered in outer wrapper so it won't be clipped */}
-      {set.valueScale === "percent" && typeof pc === "number" && (
+      {typeof pc === "number" && (
         <div
           aria-hidden
           className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 pointer-events-none"
@@ -327,7 +400,7 @@ export function BandBar({ value, set }: { value?: number | null; set: BandSet })
             <div
               className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[3px] h-6 rounded-sm"
               style={{
-                backgroundColor: "rgba(255,255,255,0.92)",
+                backgroundColor: markerWhite,
                 boxShadow: "0 0 10px rgba(255,255,255,0.22)",
               }}
             />
@@ -344,8 +417,9 @@ export function BandBar({ value, set }: { value?: number | null; set: BandSet })
         </div>
       )}
     </div>
-  );  
+  );
 }
+
 
 
 /* -------------------------------- Drawer --------------------------------- */
@@ -566,7 +640,7 @@ export const KpiGuidance = React.forwardRef<KpiGuidanceHandle, KpiGuidanceProps>
   }, [hasSignals, hasInfo, tab]);
 
   const { showBars } = useGuidancePrefs();
-  const enableBar = !!set && (showBar ?? set.hasBar) && set.valueScale === "percent" && showBars;
+  const enableBar = !!set && (showBar ?? set.hasBar) && showBars;
 
   React.useImperativeHandle(ref, () => ({
     open: () => { setOpen(true); },

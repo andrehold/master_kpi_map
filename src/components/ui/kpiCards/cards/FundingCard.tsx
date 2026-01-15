@@ -1,4 +1,3 @@
-// src/kpiCards/cards/FundingCard.tsx
 import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import { KpiMiniTable } from "../../KpiMiniTable";
 import { KPI_IDS } from "../../../../kpi/kpiIds";
@@ -7,7 +6,8 @@ import type { KpiCardComponentProps } from "../types";
 import { useFundingKpi } from "../../../../hooks/kpi/useFundingKpi";
 
 export default function FundingCard({ kpi, context }: KpiCardComponentProps) {
-  const vm = useFundingKpi({ locale: context.locale });
+  const { locale } = context;
+  const vm = useFundingKpi({ locale });
 
   let footer: any;
   if (vm.table?.rows?.length) {
@@ -16,7 +16,7 @@ export default function FundingCard({ kpi, context }: KpiCardComponentProps) {
       <KpiMiniTable<Row>
         title={vm.table.title}
         rows={vm.table.rows}
-        getKey={(r) => (r as any).id}
+        getKey={(r) => r.id}
         columns={metricValueAsOfColumns<Row>()}
       />
     );
@@ -26,7 +26,7 @@ export default function FundingCard({ kpi, context }: KpiCardComponentProps) {
     <PersistedKpiCard
       context={context}
       kpi={kpi}
-      locale={context.locale}
+      locale={locale}
       value={vm.value ?? "—"}
       meta={vm.meta}
       extraBadge={vm.extraBadge ?? null}
