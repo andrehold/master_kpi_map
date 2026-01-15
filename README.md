@@ -62,6 +62,16 @@ All KPI cards must use `PersistedKpiCard` so values + meta + footer mini-tables 
     - If you see: `Unknown bands id: <id>` → the band set registry is missing that key (or the id mismatches).
   2) Add i18n text for the same id in every supported locale (at least `en`).
     - If you see: `Missing i18n for <id> in en` → the band set exists, but the locale text entry is missing.
+  #### Band bar behavior (important)
+  - The guidance section is enabled when the card passes `infoKey={KPI_IDS.<id>}`.
+  - The band bar (gradient track + marker) is shown only if:
+    - `BandSet.hasBar` is true, AND
+    - the global toggle is enabled (`localStorage["kpi:guidance:bars"]` is not `"0"`).
+  - `guidanceValue` must be a finite number and must use the same scale as the band thresholds.
+  Value scales:
+  - `valueScale: "percent"` → marker uses 0–100% positioning.
+  - `valueScale: "raw"` (e.g., z-score, ratios) → marker position is mapped across the threshold range derived from the band definitions.
+  - Make sure your thresholds define a sensible range (e.g., z-score: `<1`, `1–2`, `>=2`).
 
 Tip: Keep `bandsId` naming consistent (kebab-case preferred) to avoid subtle mismatches.
 
@@ -184,6 +194,8 @@ Recommended for transparency. Add a footer row such as:
 - **Config changes don’t apply:** KPI does not re-render after changing config (ensure the config hook is reactive or config values are part of the renderer context).
 
 ### Common failure modes
+- **ⓘ icon shows but no band bar:** ensure the card passes a numeric `guidanceValue`, the band set has `hasBar: true`, and the global toggle `localStorage["kpi:guidance:bars"]` is not `"0"`. For `valueScale: "raw"` KPIs (e.g., z-score), ensure the Guidance `BandBar` implementation supports raw marker mapping across thresholds.
+
 Only the title shows: card not resolved (missing registry entry or KPI id mismatch).
 
 Card resolved but empty: hook stuck in loading/error, or footer not set because rows are empty.
