@@ -54,9 +54,9 @@ export const KpiConfigOverlay: React.FC<Props> = ({ open, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 backdrop-blur-[2px]">
       {/* Panel with solid white background */}
-      <div className="mt-16 max-h-[80vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-[var(--border)] bg-white p-6 shadow-[var(--shadow)] text-[var(--fg)]">
+      <div className="mt-16 max-h-[80vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface-950)] p-6 shadow-[var(--shadow)] text-[var(--fg)]">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">KPI Configuration</h2>
           <div className="flex gap-2">
@@ -83,7 +83,7 @@ export const KpiConfigOverlay: React.FC<Props> = ({ open, onClose }) => {
             return (
               <section
                 key={String(def.kpiId)}
-                className="rounded-lg border border-[var(--border)] bg-[var(--surface-900)]/40 p-4"
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface-900)] p-4"
               >
                 <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--fg-muted)]">
                   {def.label}
@@ -111,7 +111,7 @@ export const KpiConfigOverlay: React.FC<Props> = ({ open, onClose }) => {
                           )}
                           <input
                             type="number"
-                            className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--surface-950)] px-2 py-1 text-sm text-[var(--fg)]"
+                            className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--surface-950)] px-2 py-1 text-sm text-[var(--fg)] outline-none focus:ring-2 focus:ring-[var(--brand-400)]"
                             value={String(value ?? "")}
                             min={numParam.min}
                             max={numParam.max}
@@ -150,7 +150,7 @@ export const KpiConfigOverlay: React.FC<Props> = ({ open, onClose }) => {
                           )}
                           <input
                             type="text"
-                            className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--surface-950)] px-2 py-1 text-sm text-[var(--fg)]"
+                            className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--surface-950)] px-2 py-1 text-sm text-[var(--fg)] outline-none focus:ring-2 focus:ring-[var(--brand-400)]"
                             value={arrValue.join(", ")}
                             onChange={(e) =>
                               handleNumberArrayChange(
@@ -178,7 +178,7 @@ export const KpiConfigOverlay: React.FC<Props> = ({ open, onClose }) => {
                         )}
                         <input
                           type="text"
-                          className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--surface-950)] px-2 py-1 text-sm text-[var(--fg)]"
+                          className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--surface-950)] px-2 py-1 text-sm text-[var(--fg)] outline-none focus:ring-2 focus:ring-[var(--brand-400)]"
                           value={String(value ?? "")}
                           onChange={(e) =>
                             setParam(def.kpiId, param.id, e.target.value)
