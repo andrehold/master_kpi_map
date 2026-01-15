@@ -1,12 +1,13 @@
 import { PersistedKpiCard } from "../persistence/PersistedKpiCard";
 import { KpiMiniTable } from "../../KpiMiniTable";
-import { KPI_IDS } from "../../../../kpi/kpiIds";
 import { metricValueAsOfColumns } from "../tablePresets";
 import type { KpiCardComponentProps } from "../types";
-import { useFundingKpi } from "../../../../hooks/kpi/useFundingKpi";
+import { KPI_IDS } from "../../../../kpi/kpiIds";
+import { useFundingKpi } from "../../../../hooks/kpi/useFundingKpi"; // adjust if your path differs
 
 export default function FundingCard({ kpi, context }: KpiCardComponentProps) {
   const { locale } = context;
+
   const vm = useFundingKpi({ locale });
 
   let footer: any;
@@ -31,8 +32,8 @@ export default function FundingCard({ kpi, context }: KpiCardComponentProps) {
       meta={vm.meta}
       extraBadge={vm.extraBadge ?? null}
       footer={footer}
-      infoKey={KPI_IDS.funding}
-      guidanceValue={vm.guidanceValue ?? null}
+      infoKey={KPI_IDS.funding}                 // ✅ enables guidance rendering
+      guidanceValue={vm.guidanceValue ?? null}  // ✅ drives the band bar
     />
   );
 }

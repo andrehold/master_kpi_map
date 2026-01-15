@@ -17,8 +17,8 @@ export type FundingKpiViewModel = {
   value: ReactNode;
   meta?: string;
   extraBadge?: string | null;
-  guidanceValue?: number | null; // <-- bands drive off this
-  table?: FundingTableSpec;      // <-- mini table rows
+  guidanceValue?: number | null; // drives bands
+  table?: FundingTableSpec;      // mini table
 };
 
 export type UseFundingKpiOptions = {
@@ -26,57 +26,59 @@ export type UseFundingKpiOptions = {
   locale?: string;
 };
 
-function fmtPct8h(x?: number) {
-  if (x == null || !Number.isFinite(x)) return "—";
-  return `${(x * 100).toFixed(3)}%`;
-}
+const PERIODS_PER_YEAR_8H = 3 * 365; // 1095
 
+function fmtPct(x?: number, d = 1) {
+  if (x == null || !Number.isFinite(x)) return "—";
+  return `${x.toFixed(d)}%`;
+}
 function fmtZ(z?: number) {
   if (z == null || !Number.isFinite(z)) return "—";
   const s = z >= 0 ? "+" : "";
   return `${s}${z.toFixed(1)}`;
 }
-
 function crowdLabel(z?: number) {
-  if (z == null || !Number.isFinite(z)) return null;
+  if (z == null || !Number.isFinite(z)) return "—";
   const a = Math.abs(z);
   if (a >= 2) return z > 0 ? "upside crowding" : "downside crowding";
   if (a >= 1) return z > 0 ? "mild upside crowding" : "mild downside crowding";
-  return null;
+  return "normal";
 }
 
 export function useFundingKpi(opts: UseFundingKpiOptions = {}): FundingKpiViewModel {
   const instrument = opts.instrument ?? "BTC-PERPETUAL";
   const locale = opts.locale;
 
-  const state = useDeribitFunding(instrument);
-  const { loading, error, current8h, avg7d8h, zScore, zLookbackDays, updatedAt } = state as any;
+  const { loading, error, current8h, avg7d8h, zScore, updatedAt } = useDeribitFunding(instrument);
+
+  // Convert per-8h decimal -> annualized percent points
+  const curAnnPct =
+    typeof current8h === "number" ? current8h * PERIODS_PER_YEAR_8H * 100 : undefined;
+  const avgAnnPct =
+    typeof avg7d8h === "number" ? avg7d8h * PERIODS_PER_YEAR_8H * 100 : undefined;
 
   let value: ReactNode = "—";
   let meta: string | undefined;
   let extraBadge: string | null = null;
 
-  if (loading && current8h == null) {
+  if (loading && curAnnPct == null) {
     value = "…";
     meta = "loading";
-  } else if (error && current8h == null) {
+  } else if (error && curAnnPct == null) {
     value = "—";
     meta = "error";
-  } else if (typeof current8h === "number") {
-    value = fmtPct8h(current8h);
-
+  } else if (typeof curAnnPct === "number") {
+    value = fmtPct(curAnnPct, 1);
     if (updatedAt) {
       const t = new Date(updatedAt);
-      meta = `Deribit 8h · ${locale ? t.toLocaleTimeString(locale) : t.toLocaleTimeString()}`;
+      meta = `Funding (ann.) · ${locale ? t.toLocaleTimeString(locale) : t.toLocaleTimeString()}`;
     } else {
-      meta = "Deribit 8h";
+      meta = "Funding (ann.)";
     }
 
-    // Keep badge lightweight; details go into miniTable
-    if (loading) extraBadge = "Refreshing…";
-    else {
-      const crowd = crowdLabel(zScore);
-      if (crowd && typeof zScore === "number" && Math.abs(zScore) >= 2) extraBadge = crowd;
+    // Optional: only show a short badge when it’s extreme
+    if (!loading && typeof zScore === "number" && Math.abs(zScore) >= 2) {
+      extraBadge = crowdLabel(zScore);
     }
   } else {
     value = "—";
@@ -88,24 +90,18 @@ export function useFundingKpi(opts: UseFundingKpiOptions = {}): FundingKpiViewMo
       ? (locale ? new Date(updatedAt).toLocaleDateString(locale) : new Date(updatedAt).toLocaleDateString())
       : "";
 
-  const zMetric = zLookbackDays ? `Z-score (${zLookbackDays}d)` : "Z-score";
-  const pressure = crowdLabel(zScore) ?? "—";
-
   const rows: FundingRow[] = [
-    { id: "cur", metric: "Funding (8h)", value: fmtPct8h(current8h), asOf },
-    { id: "avg7", metric: "Avg (7d)", value: fmtPct8h(avg7d8h), asOf },
-    { id: "z", metric: zMetric, value: fmtZ(zScore), asOf },
-    { id: "pressure", metric: "Pressure", value: pressure, asOf },
+    { id: "cur", metric: "Funding (ann.)", value: fmtPct(curAnnPct, 1), asOf },
+    { id: "avg7", metric: "Avg (7d, ann.)", value: fmtPct(avgAnnPct, 1), asOf },
+    { id: "z", metric: "Z-score (7d)", value: fmtZ(zScore), asOf },
+    { id: "pressure", metric: "Pressure", value: crowdLabel(zScore), asOf },
   ];
-
-  // Bands: use magnitude only (risk filter). Thresholds will be 1 / 2 sigmas.
-  const guidanceValue = typeof zScore === "number" ? Math.abs(zScore) : null;
 
   return {
     value,
     meta,
     extraBadge,
-    guidanceValue,
+    guidanceValue: typeof curAnnPct === "number" ? curAnnPct : null, // matches bands.base.ts funding thresholds
     table: { title: "Perps pressure (funding)", rows },
   };
 }
