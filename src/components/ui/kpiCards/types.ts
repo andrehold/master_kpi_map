@@ -120,6 +120,8 @@ export type KpiCardRendererContext = {
     error: string | null;
     current8h?: number | null;
     avg7d8h?: number | null;
+    zScore?: number | null;
+    zLookbackDays?: number | null;
     ts?: number | null;
   };
 
